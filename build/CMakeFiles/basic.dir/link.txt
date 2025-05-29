@@ -1,0 +1,2 @@
+/usr/bin/llvm-ar-18 qc lib/libbasic.a CMakeFiles/basic.dir/bytearray.cpp.o
+/usr/bin/llvm-ranlib-18 lib/libbasic.a

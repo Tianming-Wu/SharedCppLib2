@@ -1,0 +1,32 @@
+[
+{
+  "directory": "/home/tianming/Documents/Code/Cpp/SharedCppLib2/build",
+  "command": "/usr/bin/clang++-18  -I/home/tianming/Documents/Code/Cpp/SharedCppLib2/include -std=gnu++23 -o CMakeFiles/variant.dir/variant.cpp.o -c /home/tianming/Documents/Code/Cpp/SharedCppLib2/variant.cpp",
+  "file": "/home/tianming/Documents/Code/Cpp/SharedCppLib2/variant.cpp",
+  "output": "CMakeFiles/variant.dir/variant.cpp.o"
+},
+{
+  "directory": "/home/tianming/Documents/Code/Cpp/SharedCppLib2/build",
+  "command": "/usr/bin/clang++-18  -I/home/tianming/Documents/Code/Cpp/SharedCppLib2/include -std=gnu++23 -o CMakeFiles/basic.dir/bytearray.cpp.o -c /home/tianming/Documents/Code/Cpp/SharedCppLib2/bytearray.cpp",
+  "file": "/home/tianming/Documents/Code/Cpp/SharedCppLib2/bytearray.cpp",
+  "output": "CMakeFiles/basic.dir/bytearray.cpp.o"
+},
+{
+  "directory": "/home/tianming/Documents/Code/Cpp/SharedCppLib2/build",
+  "command": "/usr/bin/clang++-18  -I/home/tianming/Documents/Code/Cpp/SharedCppLib2/include -std=gnu++23 -o CMakeFiles/logd.dir/logd.cpp.o -c /home/tianming/Documents/Code/Cpp/SharedCppLib2/logd.cpp",
+  "file": "/home/tianming/Documents/Code/Cpp/SharedCppLib2/logd.cpp",
+  "output": "CMakeFiles/logd.dir/logd.cpp.o"
+},
+{
+  "directory": "/home/tianming/Documents/Code/Cpp/SharedCppLib2/build",
+  "command": "/usr/bin/clang++-18  -I/home/tianming/Documents/Code/Cpp/SharedCppLib2/include -std=gnu++23 -o CMakeFiles/logf.dir/logf.cpp.o -c /home/tianming/Documents/Code/Cpp/SharedCppLib2/logf.cpp",
+  "file": "/home/tianming/Documents/Code/Cpp/SharedCppLib2/logf.cpp",
+  "output": "CMakeFiles/logf.dir/logf.cpp.o"
+},
+{
+  "directory": "/home/tianming/Documents/Code/Cpp/SharedCppLib2/build",
+  "command": "/usr/bin/clang++-18  -I/home/tianming/Documents/Code/Cpp/SharedCppLib2/include -std=gnu++23 -o CMakeFiles/sha256.dir/sha256.cpp.o -c /home/tianming/Documents/Code/Cpp/SharedCppLib2/sha256.cpp",
+  "file": "/home/tianming/Documents/Code/Cpp/SharedCppLib2/sha256.cpp",
+  "output": "CMakeFiles/sha256.dir/sha256.cpp.o"
+}
+]

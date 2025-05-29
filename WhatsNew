@@ -1,0 +1,28 @@
+# Changelog
+
+### v1.10.1
+- New "hpint.hpp" for regular high-precision calculation. (Not tested)
+- New "hpalgo.hpp" for algorithms, and "hparray.hpp" for number arrays.
+
+### v1.9.1
+- stringlist::split now supports using stringlist as delims, in which case anything matched will be used.
+- New "pipeline.hpp", now contains a fuction for splitting pipeline input into seperate lines.
+
+### v1.9.0
+- Introduce bytearray.
+- Rewrite variant, corrected the typo.
+- Supports cmake install
+
+### v1.4.0
+- Introduce tasker for threaded works.
+- Modified Base64 to support more cases.
+
+### v1.1.0
+- 
+
+### v1.0.0
+- Introduce ansiio for ANSI Featured output.
+
+### v0.5.0
+- Completed basic structures
+- Introduce stringlist, sha256, logd, Base64

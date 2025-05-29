@@ -1,0 +1,2 @@
+/usr/bin/llvm-ar-18 qc lib/liblogd.a CMakeFiles/logd.dir/logd.cpp.o
+/usr/bin/llvm-ranlib-18 lib/liblogd.a

@@ -1,0 +1,97 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-86749c65bc408e8d6b6c.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.10"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4
+					]
+				}
+			],
+			"name" : "",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "SharedCppLib2",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "basic::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-basic-32f7238cdf490ec321ea.json",
+					"name" : "basic",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "logd::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-logd-c5cd79786fd312b99093.json",
+					"name" : "logd",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "logf::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-logf-f3a097c32c03062df081.json",
+					"name" : "logf",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "sha256::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-sha256-3b85574c11018d8ed92a.json",
+					"name" : "sha256",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "variant::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-variant-f46488ae9e8d48f46bb1.json",
+					"name" : "variant",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/tianming/Documents/Code/Cpp/SharedCppLib2/build",
+		"source" : "/home/tianming/Documents/Code/Cpp/SharedCppLib2"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 6
+	}
+}
