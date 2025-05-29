@@ -1,2 +1,0 @@
-/usr/bin/llvm-ar-18 qc lib/libvariant.a CMakeFiles/variant.dir/variant.cpp.o
-/usr/bin/llvm-ranlib-18 lib/libvariant.a

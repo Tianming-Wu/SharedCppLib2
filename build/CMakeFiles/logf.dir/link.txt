@@ -1,2 +1,0 @@
-/usr/bin/llvm-ar-18 qc lib/liblogf.a CMakeFiles/logf.dir/logf.cpp.o
-/usr/bin/llvm-ranlib-18 lib/liblogf.a

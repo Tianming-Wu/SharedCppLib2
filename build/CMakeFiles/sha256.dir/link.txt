@@ -1,2 +1,0 @@
-/usr/bin/llvm-ar-18 qc lib/libsha256.a CMakeFiles/sha256.dir/sha256.cpp.o
-/usr/bin/llvm-ranlib-18 lib/libsha256.a
