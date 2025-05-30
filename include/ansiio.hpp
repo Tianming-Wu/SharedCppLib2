@@ -232,9 +232,9 @@ inline cursor_position get_cursor_position() {
 inline cursor_position get_terminal_size() {
     std::cout << savecursorpos;
     movecursor(999,999);
-	cursor_position pos = get_cursor_position();
+    cursor_position pos = get_cursor_position();
     std::cout << restorecursorpos;
-	return pos;
+    return pos;
 }
 
 };
