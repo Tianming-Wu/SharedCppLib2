@@ -83,6 +83,8 @@ public:
     int exec();
     static void exit(int exitcode);
 
+    inline std::stringlist args() { return m_args; }
+
     template<typename... Args>
     void metaCall(object* sender, evl_signal<Args...>* signal, std::tuple<Args...> tuple) {
         for(const meta::signal_store& store : m_signalStore) {
