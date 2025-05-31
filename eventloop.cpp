@@ -73,8 +73,7 @@ void eventloop::exit(int exitcode) {
 
 
 
-
-
+// object functions
 
 
 object::object(object* parent)
