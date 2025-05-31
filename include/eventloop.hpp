@@ -1,6 +1,21 @@
 /*
     Eventloop (eventloop.hpp) introduces an event loop system into the program.
 
+    class example:
+
+    class myObject : public evl::object
+    {
+    public:
+        myObject() : evl::object(), sigstr(this) {
+            connect(this, &sigstr, this, &myObject::slotstr);
+        
+            sigstr.emit("Hello world"!);
+        }
+
+        evl::evl_signal<const std::string&> sigstr;
+
+        void slotstr(const std::string& str) { std::cout << str; }
+    }
 */
 #pragma once
 #include <string>
@@ -169,8 +184,7 @@ protected:
                     object* receiver, void (Receiver::*slot)(SlotArgs...)) {
         if(signal->owner != sender) 
             throw std::runtime_error("connect(): Signal doesn't exist in sender");
-
-        // 使用位置索引代替类型索引
+        
         auto callable = std::make_shared<std::function<void(Args...)>>(
             [receiver, slot](Args... args) {
                 if constexpr (sizeof...(SlotArgs) == 0) {
