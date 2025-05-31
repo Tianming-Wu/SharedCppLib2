@@ -27,13 +27,14 @@ add_library(basic STATIC bytearray.cpp)
 add_library(logd STATIC logd.cpp)
 add_library(logf STATIC logf.cpp)
 add_library(sha256 STATIC sha256.cpp)
+add_library(eventloop STATIC eventloop.cpp)
 
 # 库依赖关系
 target_link_libraries(logd PUBLIC variant)
 target_link_libraries(logf PUBLIC logd)
 
 # 安装目标
-install(TARGETS variant logd logf sha256 basic
+install(TARGETS variant logd logf sha256 basic eventloop
     EXPORT SharedCppLib2Targets
     ARCHIVE DESTINATION ${INSTALL_LIBDIR}
     LIBRARY DESTINATION ${INSTALL_LIBDIR}
