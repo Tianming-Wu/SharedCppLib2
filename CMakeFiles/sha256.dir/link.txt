@@ -1,2 +1,0 @@
-/data/data/com.termux/files/usr/bin/llvm-ar qc lib/libsha256.a CMakeFiles/sha256.dir/sha256.cpp.o
-/data/data/com.termux/files/usr/bin/llvm-ranlib lib/libsha256.a

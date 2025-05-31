@@ -1,2 +1,0 @@
-/data/data/com.termux/files/usr/bin/llvm-ar qc lib/libvariant.a CMakeFiles/variant.dir/variant.cpp.o
-/data/data/com.termux/files/usr/bin/llvm-ranlib lib/libvariant.a
