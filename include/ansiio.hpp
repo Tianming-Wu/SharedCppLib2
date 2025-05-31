@@ -52,6 +52,7 @@ enum colors {
 	tBlack = 30, tRed, tGreen, tYellow, tBlue, tPurple, tCyan, tWhite,
 	bBlack = 40, bRed, bGreen, bYellow, bBlue, bPurple, bCyan, bWhite,
 	tLightBlack = 90, tLightRed, tLightGreen, tLightYellow, tLightBlue, tLightPurple, tLightCyan, tLightWhite,
+    nullColor = 0
 };
 // 黑、红、绿、黄、蓝、洋红、青、白
 

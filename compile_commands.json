@@ -1,0 +1,32 @@
+[
+{
+  "directory": "/data/data/com.termux/files/home/code/github/SharedCppLib2",
+  "command": "/data/data/com.termux/files/usr/bin/c++  -I/data/data/com.termux/files/home/code/github/SharedCppLib2/include -O2 -g -DNDEBUG -std=gnu++23 -o CMakeFiles/variant.dir/variant.cpp.o -c /data/data/com.termux/files/home/code/github/SharedCppLib2/variant.cpp",
+  "file": "/data/data/com.termux/files/home/code/github/SharedCppLib2/variant.cpp",
+  "output": "CMakeFiles/variant.dir/variant.cpp.o"
+},
+{
+  "directory": "/data/data/com.termux/files/home/code/github/SharedCppLib2",
+  "command": "/data/data/com.termux/files/usr/bin/c++  -I/data/data/com.termux/files/home/code/github/SharedCppLib2/include -O2 -g -DNDEBUG -std=gnu++23 -o CMakeFiles/basic.dir/bytearray.cpp.o -c /data/data/com.termux/files/home/code/github/SharedCppLib2/bytearray.cpp",
+  "file": "/data/data/com.termux/files/home/code/github/SharedCppLib2/bytearray.cpp",
+  "output": "CMakeFiles/basic.dir/bytearray.cpp.o"
+},
+{
+  "directory": "/data/data/com.termux/files/home/code/github/SharedCppLib2",
+  "command": "/data/data/com.termux/files/usr/bin/c++  -I/data/data/com.termux/files/home/code/github/SharedCppLib2/include -O2 -g -DNDEBUG -std=gnu++23 -o CMakeFiles/logd.dir/logd.cpp.o -c /data/data/com.termux/files/home/code/github/SharedCppLib2/logd.cpp",
+  "file": "/data/data/com.termux/files/home/code/github/SharedCppLib2/logd.cpp",
+  "output": "CMakeFiles/logd.dir/logd.cpp.o"
+},
+{
+  "directory": "/data/data/com.termux/files/home/code/github/SharedCppLib2",
+  "command": "/data/data/com.termux/files/usr/bin/c++  -I/data/data/com.termux/files/home/code/github/SharedCppLib2/include -O2 -g -DNDEBUG -std=gnu++23 -o CMakeFiles/logf.dir/logf.cpp.o -c /data/data/com.termux/files/home/code/github/SharedCppLib2/logf.cpp",
+  "file": "/data/data/com.termux/files/home/code/github/SharedCppLib2/logf.cpp",
+  "output": "CMakeFiles/logf.dir/logf.cpp.o"
+},
+{
+  "directory": "/data/data/com.termux/files/home/code/github/SharedCppLib2",
+  "command": "/data/data/com.termux/files/usr/bin/c++  -I/data/data/com.termux/files/home/code/github/SharedCppLib2/include -O2 -g -DNDEBUG -std=gnu++23 -o CMakeFiles/sha256.dir/sha256.cpp.o -c /data/data/com.termux/files/home/code/github/SharedCppLib2/sha256.cpp",
+  "file": "/data/data/com.termux/files/home/code/github/SharedCppLib2/sha256.cpp",
+  "output": "CMakeFiles/sha256.dir/sha256.cpp.o"
+}
+]

@@ -1,0 +1,2 @@
+/data/data/com.termux/files/usr/bin/llvm-ar qc lib/liblogf.a CMakeFiles/logf.dir/logf.cpp.o
+/data/data/com.termux/files/usr/bin/llvm-ranlib lib/liblogf.a

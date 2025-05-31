@@ -1,0 +1,2 @@
+/data/data/com.termux/files/usr/bin/llvm-ar qc lib/liblogd.a CMakeFiles/logd.dir/logd.cpp.o
+/data/data/com.termux/files/usr/bin/llvm-ranlib lib/liblogd.a
