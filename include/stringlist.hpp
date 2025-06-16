@@ -195,6 +195,27 @@ public:
         return l;
     }
 
+    // note that this keeps the binding character
+    static stringlist xsplit(const string &s, const string &delim, const char binding) {
+        if(s.length() < 3) return stringlist(s);
+        stringlist result = split(s, delim);
+        bool inside = false; auto previous = result.begin();
+        for(auto it = result.begin(); it != result.end();) {
+            if(!inside) {
+                if((*it)[0] == binding) {
+                    inside = true;
+                    previous = it;
+                }
+                ++it;
+            } else {
+                (*previous) += delim + (*it);
+                if((*it)[(*it).length()-1] == binding) inside = false;
+                it = result.erase(it);
+            }
+        }
+        return result;
+    }
+
     stringlist& operator=(const stringlist& l) {
         vector<string>::operator=(l);
         return *this;
