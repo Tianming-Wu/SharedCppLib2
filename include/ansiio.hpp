@@ -17,35 +17,6 @@ struct cursor_position {
 	int rows, cols;
 };
 
-// template<typename _CharT, typename _Traits>
-// 	inline basic_ostream<_CharT, _Traits>&
-// 		operator<<(basic_ostream<_CharT, _Traits>& __os, __ansiio_streamObject __c)
-// 		{
-// 			__os << __c.content;
-// 			return __os;
-// 		}
-
-// template<typename _CharT, typename _Traits>
-// 	inline basic_ostringstream<_CharT, _Traits>&
-// 		operator<<(basic_ostringstream<_CharT, _Traits>& __os, __ansiio_streamObject __c)
-// 		{
-// 			__os << __c.content;
-// 			return __os;
-// 		}
-
-// template<typename _CharT, typename _Traits>
-// 	inline basic_stringstream<_CharT, _Traits>&
-// 		operator<<(basic_stringstream<_CharT, _Traits>& __os, __ansiio_streamObject __c)
-// 		{
-// 			__os << __c.content;
-// 			return __os;
-// 		}
-
-// inline void ansiio(__ansiio_streamObject o) {
-// 	std::cout << o;
-// }
-
-
 /// @brief Predefined Color Patterns.
 /// @attention t means Text, and b means Background. Do not mix them!
 enum colors {
@@ -133,55 +104,15 @@ inline string wuri(string content, string tip = "", string protocol = "http") no
     return string("\033]8;;" + protocol + "://" + content + "\007" + (tip.empty() ? content : tip) + "\033]8;;\007");
 }
 
-
-void progress_bar_colored(double progress, int length = 140, int color = colors::tGreen) {
-    int pos = static_cast<int>(length * progress); // 计算进度条的填充长度
-    std::cout << std::color(color); // 填充绿色
-    for (int i = 0; i < pos; ++i) std::cout << " ";
-	std::cout << std::clearcolor; // 清除颜色
-	for (int i = pos; i < length; ++i) std::cout << " ";
-    // 输出右侧百分比
-    std::cout << "] " << std::fixed << std::setprecision(1) << (progress * 100) << "%";
-    std::flush(std::cout); // 刷新输出
-}
-
-void progress_bar_texted(double progress, int length = 140) {
-    int pos = static_cast<int>(length * progress); // 计算进度条的填充长度
-    std::cout << "\r[";
-    for (int i = 0; i < pos; ++i) std::cout << "=";
-	for (int i = pos; i < length; ++i) std::cout << " ";
-    // 输出右侧百分比
-    std::cout << "] " << std::fixed << std::setprecision(1) << (progress * 100) << "%";
-    std::flush(std::cout); // 刷新输出
-}
-
+void progress_bar_colored(double progress, int length = 140, int color = colors::tGreen);
+void progress_bar_texted(double progress, int length = 140);
 /**
  * @brief Show a progress bar using ansi colors.
  * @param current the current count
  * @param all the overall count
  */
-void progress_bar_colored(int current, int all, int length = 140, int color = colors::tGreen) {
-    double progress = static_cast<double>(current) / all;
-    int pos = static_cast<int>(length * progress); // 计算进度条的填充长度
-    std::cout << std::color(color); // 填充绿色
-    for (int i = 0; i < pos; ++i) std::cout << " ";
-	std::cout << std::clearcolor; // 清除颜色
-	for (int i = pos; i < length; ++i) std::cout << " ";
-    // 输出右侧百分比
-    std::cout << "] " << current << "/" << all << " " << std::fixed << std::setprecision(1) << (progress * 100) << "%";
-    std::flush(std::cout); // 刷新输出
-}
-
-void progress_bar_texted(int current, int all, int length = 140) {
-    double progress = static_cast<double>(current) / all;
-    int pos = static_cast<int>(length * progress); // 计算进度条的填充长度
-    std::cout << "\r[";
-    for (int i = 0; i < pos; ++i) std::cout << "=";
-	for (int i = pos; i < length; ++i) std::cout << " ";
-    // 输出右侧百分比
-    std::cout << "] " << current << "/" << all << " " << std::fixed << std::setprecision(1) << (progress * 100) << "%";
-    std::flush(std::cout); // 刷新输出
-}
+void progress_bar_colored(int current, int all, int length = 140, int color = colors::tGreen);
+void progress_bar_texted(int current, int all, int length = 140);
 
 /** @brief Move the cursor to a specified position.
  * @param row The row number to move to (1-based).

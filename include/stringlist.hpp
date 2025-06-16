@@ -38,8 +38,8 @@ public:
         return re;
     }
 
-    string join(int begin, int size = -1, string i = " ") const {
-        string re = ""; int j = begin;
+    string join(size_t begin, size_t size = -1, string i = " ") const {
+        string re = ""; size_t j = begin;
         if(size == -1) size = this->size();
         for(; j < size; j++) {
             const string &s = this->at(j);

@@ -15,36 +15,37 @@ public:
         ByteArray
     };
 
-    // 构造函数
+    // Constructors
     variant();
     variant(bool value);
     variant(int value);
     variant(const std::string& value);
-    variant(const char* value); // 委托给string构造函数
+    variant(const char* value);
     variant(const std::stringlist& value);
     variant(const ByteArray& value);
     variant(const variant& other);
     variant(variant&& other) noexcept;
+    
     ~variant();
 
-    // 类型查询
+    // query
     Type type() const { return m_type; }
 
-    // 转换方法
+    // conversion methods
     bool toBool() const;
     int toInt() const;
     std::string toString() const;
     std::stringlist toStringList() const;
     ByteArray toByteArray() const;
 
-    // 序列化与反序列化
+    // serualization and deserialization
     std::string serialize() const;
     static variant deserialize(const std::string& data);
 
     variant& operator=(const variant& other);
     variant& operator=(variant&& other) noexcept;
 
-    // 流操作符
+    // stream operators
     friend std::ostream& operator<<(std::ostream& os, const variant& var);
     friend std::istream& operator>>(std::istream& is, variant& var);
 
@@ -58,5 +59,5 @@ private:
         ByteArray byteArrayValue;
     };
 
-    void cleanup(); // 清理union中的非POD类型
+    void cleanup(); // cleanup none-POD types
 };

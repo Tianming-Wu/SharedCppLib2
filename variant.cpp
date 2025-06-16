@@ -47,7 +47,7 @@ variant::variant(variant&& other) noexcept : m_type(other.m_type) {
         case Type::ByteArray: new (&byteArrayValue) ByteArray(std::move(other.byteArrayValue)); break;
         default: break;
     }
-    other.m_type = Type::Invalid; // 置空原对象
+    other.m_type = Type::Invalid; // set other to invalid state
 }
 
 variant::~variant() {
@@ -57,7 +57,7 @@ variant::~variant() {
 void variant::cleanup() {
     switch (m_type) {
         case Type::String:
-            stringValue.~basic_string(); // 显式调用析构
+            stringValue.~basic_string(); // call destructor explicitly
             break;
         case Type::StringList:
             stringListValue.~stringlist();
@@ -68,7 +68,10 @@ void variant::cleanup() {
         default:
             break;
     }
-    m_type = Type::Invalid; // 重置类型
+    m_type = Type::Invalid; // reset type to Invalid
+    // Note: bool and int do not require explicit cleanup as they are POD types
+    // and their destructors do not need to be called.
+    // The union will automatically clean up the active member when it goes out of scope.
 }
 
 bool variant::toBool() const {
@@ -107,7 +110,7 @@ ByteArray variant::toByteArray() const {
     return byteArrayValue;
 }
 
-// 转义特殊字符（逗号、反斜杠）
+// escape special characters in strings
 std::string escapeString(const std::string& s) {
     std::ostringstream oss;
     for (char c : s) {
@@ -117,7 +120,7 @@ std::string escapeString(const std::string& s) {
     return oss.str();
 }
 
-// 反转义
+// unescape special characters in strings
 std::string unescapeString(const std::string& s) {
     std::ostringstream oss;
     bool escape = false;
@@ -152,21 +155,21 @@ std::string variant::serialize() const {
 }
 
 variant variant::deserialize(const std::string& data) {
-    // 尝试解析为Bool
+    // try to parse as Bool
     if (data == "true") return variant(true);
     if (data == "false") return variant(false);
 
-    // 尝试解析为Int
+    // try to parse as Int
     try {
         return variant(std::stoi(data));
     } catch (...) {}
 
-    // 尝试解析为ByteArray（偶数长度且全为十六进制字符）
+    // try to parse as ByteArray
     if (data.size() % 2 == 0 && std::all_of(data.begin(), data.end(), ::isxdigit)) {
         return variant(ByteArray::fromHex(data));
     }
 
-    // 尝试解析为StringList
+    // try to parse as StringList
     std::stringlist list;
     std::string current;
     bool escape = false;
@@ -190,12 +193,12 @@ variant variant::deserialize(const std::string& data) {
         return variant(list);
     }
 
-    // 默认为String
+    // by default, treat as String
     return variant(unescapeString(data));
 }
 
 variant& variant::operator=(const variant& other) {
-    if (this == &other) return *this; // 自赋值检查
+    if (this == &other) return *this; // self-assignment check
 
     cleanup();
 
@@ -247,8 +250,8 @@ std::ostream& operator<<(std::ostream& os, const variant& var) {
 inline std::istream& operator>>(std::istream& is, variant& var) {
     std::string data;
     is >> data;
-    variant temp = variant::deserialize(data); // 构造临时对象
-    var.cleanup();                            // 清理原对象
-    var = std::move(temp);                    // 使用移动赋值（需定义移动语义）
+    variant temp = variant::deserialize(data); // construct a temporary variant from the input
+    var.cleanup();                            // cleanup current variant
+    var = std::move(temp);                    // use move assignment to transfer the temporary variant's state
     return is;
 }

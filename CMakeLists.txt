@@ -23,22 +23,42 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 # 定义所有库
 add_library(variant STATIC variant.cpp)
-add_library(basic STATIC bytearray.cpp)
+add_library(basic STATIC bytearray.cpp ansiio.cpp)
 add_library(logd STATIC logd.cpp)
 add_library(logf STATIC logf.cpp)
 add_library(sha256 STATIC sha256.cpp)
-add_library(eventloop STATIC eventloop.cpp)
 
 # 库依赖关系
 target_link_libraries(logd PUBLIC variant)
 target_link_libraries(logf PUBLIC logd)
 
 # 安装目标
-install(TARGETS variant logd logf sha256 basic eventloop
+install(TARGETS variant logd logf sha256 basic
     EXPORT SharedCppLib2Targets
     ARCHIVE DESTINATION ${INSTALL_LIBDIR}
     LIBRARY DESTINATION ${INSTALL_LIBDIR}
     INCLUDES DESTINATION ${INSTALL_INCLUDEDIR}
+)
+
+target_include_directories(variant PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_include_directories(basic PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_include_directories(logd PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_include_directories(logf PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_include_directories(sha256 PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
 )
 
 # 安装头文件
@@ -46,6 +66,7 @@ install(DIRECTORY include/
     DESTINATION ${INSTALL_INCLUDEDIR}
     FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
 )
+set(INSTALL_INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/SharedCppLib2)
 
 # 安装导出文件
 install(EXPORT SharedCppLib2Targets

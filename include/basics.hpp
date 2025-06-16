@@ -18,5 +18,26 @@ inline string itos(int d)
 	return stl;
 }
 
+#ifndef lower
+inline std::string lower(const std::string& orig) {
+    constexpr int offset = 'a' - 'A';
+    std::string result = orig;
+    for(char& c : result) {
+        if(c <= 'Z' && c >= 'A') c += offset;
+    }
+    return result;
+}
+#endif
+
+#ifndef upper
+inline std::string upper(const std::string& orig) {
+    constexpr int offset = 'A' - 'a';
+    std::string result = orig;
+    for(char& c : result) {
+        if(c <= 'z' && c >= 'a') c += offset;
+    }
+    return result;
+}
+#endif
 
 }; // namespace std
