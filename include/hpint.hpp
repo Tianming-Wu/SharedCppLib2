@@ -25,6 +25,7 @@ public:
     hpislot(uint8_t v) : value(v) {}
 
     uint8_t apply() { uint8_t t = value; value = 0; return t; }
+    uint8_t data() const { return value; }
 
     hpislot& operator=(const hpislot& _comp) {
         value = _comp.value;
@@ -293,7 +294,7 @@ public:
         if(special == hpcalc::Infinite) return "inf";
         if(special == hpcalc::Nan) return "nan";
         for(size_t i = length(); i > 0; i--) {
-            result += std::to_string(at(i-1).apply());
+            result += std::to_string(at(i-1).data());
         }
         return result;
     }
