@@ -53,7 +53,7 @@ std::string decode(std::string input) {
 	int k=0;
 	std::string output_str="";
 	for (unsigned int i=0;i<input.size();i++) {
-		input_char[k++]=indexOfCode(input[i]);
+		input_char[k++]=index(input[i]);
 		if (k==4) {
 			output_num= ((int)input_char[0]<<18)+((int)input_char[1]<<12)+((int)input_char[2]<<6)+((int)input_char[3]);
 			output_char[0]=(unsigned char)((output_num & 0x00FF0000)>> 16) ;

@@ -10,6 +10,7 @@
 #include <functional>
 #include <unordered_set>
 
+#include "basics.hpp"
 #include "stream.h"
 #include "bytearray.h"
 
@@ -67,6 +68,16 @@ public:
         push_back(s);
     }
     
+    std::stringlist subarr(size_t pos, size_t len = 0) {
+        std::stringlist result;
+        if(len == 0) len = max_size();
+        size_t end = std::min(size(), pos+len);
+        for(size_t p = pos; p < end; p++) {
+            result.push_back((*this)[p]);
+        }
+        return result;
+    }
+
     void from(int size, char** content, int begin = 0, int end = -1) {
         clear();
         if(end == -1 || end >= size) end = size;
@@ -195,21 +206,24 @@ public:
         return l;
     }
 
-    // note that this keeps the binding character
-    static stringlist xsplit(const string &s, const string &delim, const char binding) {
+    static stringlist xsplit(const string &s, const string &delim, const string bindings) {
         if(s.length() < 3) return stringlist(s);
         stringlist result = split(s, delim);
-        bool inside = false; auto previous = result.begin();
+        bool inside = false;
+        auto previous = result.begin();
         for(auto it = result.begin(); it != result.end();) {
             if(!inside) {
-                if((*it)[0] == binding) {
+                if(cmatch((*it)[0], bindings)) {
                     inside = true;
                     previous = it;
                 }
                 ++it;
             } else {
                 (*previous) += delim + (*it);
-                if((*it)[(*it).length()-1] == binding) inside = false;
+                if(cmatch((*it)[(*it).length()-1], bindings)) {
+                    inside = false;
+                    (*previous) = (*previous).substr(1, (*previous).length()-2); // remove the binding
+                }
                 it = result.erase(it);
             }
         }

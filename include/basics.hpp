@@ -40,4 +40,9 @@ inline std::string upper(const std::string& orig) {
 }
 #endif
 
+bool cmatch(char c, std::string ms) {
+    for(char cs : ms) if(c == cs) return true;
+    return false;
+}
+
 }; // namespace std
