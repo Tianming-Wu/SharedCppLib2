@@ -268,10 +268,10 @@ public:
         push_back(str);
     }
 
-    explicit stringlist(const char* s)
+    stringlist(const char* s)
         : vector<string>()
     {
-        push_back(s);
+        *this = split(string(s), string(" "));
     }
 
     explicit stringlist(const string &s, const string &delim)
