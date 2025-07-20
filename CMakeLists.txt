@@ -15,11 +15,14 @@ include(GNUInstallDirs)
 set(INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR})
 set(INSTALL_INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/SharedCppLib2)
 
+# 添加调试后缀
+set(CMAKE_DEBUG_POSTFIX "d")
+
 # 头文件目录
 include_directories("include")
 
 # 构建输出目录
-set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
+# set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 # 定义所有库
 add_library(variant STATIC variant.cpp)

@@ -75,7 +75,7 @@ public:
 public:
     explicit stringlist();
     explicit stringlist(int size, char** content, int begin = 0, int end = -1);
-    explicit stringlist(initializer_list<string> build);
+    stringlist(initializer_list<string> build);
     stringlist(const stringlist& l);
     explicit stringlist(const string& s);
     explicit stringlist(char s);
