@@ -213,14 +213,14 @@ public:
         auto previous = result.begin();
         for(auto it = result.begin(); it != result.end();) {
             if(!inside) {
-                if(cmatch((*it)[0], bindings)) {
+                if(charmatch((*it)[0], bindings)) {
                     inside = true;
                     previous = it;
                 }
                 ++it;
             } else {
                 (*previous) += delim + (*it);
-                if(cmatch((*it)[(*it).length()-1], bindings)) {
+                if(charmatch((*it)[(*it).length()-1], bindings)) {
                     inside = false;
                     (*previous) = (*previous).substr(1, (*previous).length()-2); // remove the binding
                 }
