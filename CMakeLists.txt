@@ -23,7 +23,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 # 定义所有库
 add_library(variant STATIC variant.cpp)
-add_library(basic STATIC bytearray.cpp ansiio.cpp)
+add_library(basic STATIC bytearray.cpp ansiio.cpp stringlist.cpp basics.cpp)
 add_library(logd STATIC logd.cpp)
 add_library(logf STATIC logf.cpp)
 add_library(sha256 STATIC sha256.cpp)

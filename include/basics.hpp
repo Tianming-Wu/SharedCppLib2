@@ -40,7 +40,7 @@ inline std::string upper(const std::string& orig) {
 }
 #endif
 
-bool charmatch(char c, std::string ms) {
+inline bool charmatch(char c, std::string ms) {
     for(char cs : ms) if(c == cs) return true;
     return false;
 }
