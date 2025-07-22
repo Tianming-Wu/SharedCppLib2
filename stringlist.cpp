@@ -2,7 +2,7 @@
 
 namespace std {
 
-string stringlist::join(string i) const {
+string stringlist::join(const string &i) const {
     string re = "";
     for(const string &s : *this) {
         re += (re.empty()?"":i) + s;
@@ -10,12 +10,22 @@ string stringlist::join(string i) const {
     return re;
 }
 
-string stringlist::join(size_t begin, size_t size, string i) const {
+string stringlist::join(size_t begin, size_t size, const string &i) const {
     string re = ""; size_t j = begin;
     if(size == -1) size = this->size();
     for(; j < size; j++) {
         const string &s = this->at(j);
         re += (re.empty()?"":i) + s;
+    }
+    return re;
+}
+
+string stringlist::xjoin(const string &i, const char binding) const {
+    string re = "";
+    for(const string &s : *this) {
+        std::string add = s;
+        if(s.contains(i)) add = binding + s + binding;
+        re += (re.empty()?"":i) + add;
     }
     return re;
 }
@@ -39,7 +49,7 @@ void stringlist::append(const string &s) {
     push_back(s);
 }
 
-std::stringlist stringlist::subarr(size_t pos, size_t len) {
+std::stringlist stringlist::subarr(size_t pos, size_t len) const {
     std::stringlist result;
     if(len == 0) len = max_size();
     size_t end = std::min(size(), pos+len);
@@ -167,7 +177,7 @@ stringlist stringlist::split(const string &s, const stringlist &delims) {
     return l;
 }
 
-stringlist stringlist::xsplit(const string &s, const string &delim, const string bindings) {
+stringlist stringlist::xsplit(const string &s, const string &delim, const string &bindings) {
     if(s.length() < 3) return stringlist(s);
     stringlist result = split(s, delim);
     bool inside = false;
@@ -183,12 +193,50 @@ stringlist stringlist::xsplit(const string &s, const string &delim, const string
             (*previous) += delim + (*it);
             if(charmatch((*it)[(*it).length()-1], bindings)) {
                 inside = false;
-                (*previous) = (*previous).substr(1, (*previous).length()-2); // remove the binding
+                (*previous) = (*previous).substr(1, (*previous).length()-2); // remove the binding character
             }
             it = result.erase(it);
         }
     }
     return result;
+}
+
+stringlist stringlist::exsplit(const string &s, const string &delim, const string &begin_bind, string end_bind)
+{
+    if(s.length() < 3) return stringlist(s);
+    if(end_bind.empty()) end_bind = begin_bind;
+
+    stringlist result = split(s, delim);
+    size_t bind_id, tpbind_id;
+    bool inside = false;
+    auto previous = result.begin();
+    
+    for(auto it = result.begin(); it != result.end();) {
+        if(!inside) {
+            if((tpbind_id = begin_bind.find((*it)[0])) != std::string::npos) {
+                bind_id = tpbind_id;
+                inside = true;
+                previous = it;
+            }
+            ++it;
+        } else {
+            (*previous) += delim + (*it);
+            if((*it).find(end_bind[bind_id]) != std::string::npos) {
+                inside = false;
+                (*previous) = (*previous).substr(1, (*previous).length()-2); // remove the binding character
+            }
+            it = result.erase(it);
+        }
+    }
+    return result;
+}
+
+string stringlist::pack() const {
+    return xjoin();
+}
+
+stringlist stringlist::unpack(const std::string &s) {
+    return xsplit(s, " ", "\"");
 }
 
 stringlist& stringlist::operator=(const stringlist& l) {

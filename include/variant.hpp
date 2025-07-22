@@ -2,7 +2,7 @@
 #include <string>
 #include <stdexcept>
 #include "stringlist.hpp"
-#include "bytearray.h"
+#include "bytearray.hpp"
 
 class variant {
 public:
@@ -22,7 +22,7 @@ public:
     variant(const std::string& value);
     variant(const char* value);
     variant(const std::stringlist& value);
-    variant(const ByteArray& value);
+    variant(const std::bytearray& value);
     variant(const variant& other);
     variant(variant&& other) noexcept;
     
@@ -36,7 +36,7 @@ public:
     int toInt() const;
     std::string toString() const;
     std::stringlist toStringList() const;
-    ByteArray toByteArray() const;
+    std::bytearray toByteArray() const;
 
     // serualization and deserialization
     std::string serialize() const;
@@ -56,7 +56,7 @@ private:
         int intValue;
         std::string stringValue;
         std::stringlist stringListValue;
-        ByteArray byteArrayValue;
+        std::bytearray byteArrayValue;
     };
 
     void cleanup(); // cleanup none-POD types

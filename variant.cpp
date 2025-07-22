@@ -23,8 +23,8 @@ variant::variant(const std::stringlist& value) : m_type(Type::StringList) {
     new (&stringListValue) std::stringlist(value);
 }
 
-variant::variant(const ByteArray& value) : m_type(Type::ByteArray) {
-    new (&byteArrayValue) ByteArray(value);
+variant::variant(const std::bytearray& value) : m_type(Type::ByteArray) {
+    new (&byteArrayValue) std::bytearray(value);
 }
 
 variant::variant(const variant& other) : m_type(other.m_type) {
@@ -33,7 +33,7 @@ variant::variant(const variant& other) : m_type(other.m_type) {
         case Type::Int: new (&intValue) int(other.intValue); break;
         case Type::String: new (&stringValue) std::string(other.stringValue); break;
         case Type::StringList: new (&stringListValue) std::stringlist(other.stringListValue); break;
-        case Type::ByteArray: new (&byteArrayValue) ByteArray(other.byteArrayValue); break;
+        case Type::ByteArray: new (&byteArrayValue) std::bytearray(other.byteArrayValue); break;
         default: break;
     }
 }
@@ -44,7 +44,7 @@ variant::variant(variant&& other) noexcept : m_type(other.m_type) {
         case Type::Int: new (&intValue) int(other.intValue); break;
         case Type::String: new (&stringValue) std::string(std::move(other.stringValue)); break;
         case Type::StringList: new (&stringListValue) std::stringlist(std::move(other.stringListValue)); break;
-        case Type::ByteArray: new (&byteArrayValue) ByteArray(std::move(other.byteArrayValue)); break;
+        case Type::ByteArray: new (&byteArrayValue) std::bytearray(std::move(other.byteArrayValue)); break;
         default: break;
     }
     other.m_type = Type::Invalid; // set other to invalid state
@@ -63,7 +63,7 @@ void variant::cleanup() {
             stringListValue.~stringlist();
             break;
         case Type::ByteArray:
-            byteArrayValue.~ByteArray();
+            byteArrayValue.~bytearray();
             break;
         default:
             break;
@@ -105,7 +105,7 @@ std::stringlist variant::toStringList() const {
     return stringListValue;
 }
 
-ByteArray variant::toByteArray() const {
+std::bytearray variant::toByteArray() const {
     if (m_type != Type::ByteArray) throw std::runtime_error("Not a ByteArray");
     return byteArrayValue;
 }
@@ -166,7 +166,7 @@ variant variant::deserialize(const std::string& data) {
 
     // try to parse as ByteArray
     if (data.size() % 2 == 0 && std::all_of(data.begin(), data.end(), ::isxdigit)) {
-        return variant(ByteArray::fromHex(data));
+        return variant(std::bytearray::fromHex(data));
     }
 
     // try to parse as StringList
@@ -217,7 +217,7 @@ variant& variant::operator=(const variant& other) {
             new (&stringListValue) std::stringlist(other.stringListValue);
             break;
         case Type::ByteArray:
-            new (&byteArrayValue) ByteArray(other.byteArrayValue);
+            new (&byteArrayValue) std::bytearray(other.byteArrayValue);
             break;
         default:
             break;

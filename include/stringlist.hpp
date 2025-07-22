@@ -12,7 +12,7 @@
 
 #include "basics.hpp"
 #include "stream.h"
-#include "bytearray.h"
+#include "bytearray.hpp"
 
 namespace std {
 
@@ -31,15 +31,17 @@ public:
     static const size_t npos = -1;
     static constexpr point npoint = std::make_pair(npos, npos);
 
-    string join(string i = " ") const;
-    string join(size_t begin, size_t size = -1, string i = " ") const;
+    string join(const string &i = " ") const;
+    string join(size_t begin, size_t size = -1, const string &i = " ") const;
+    string xjoin(const string &i = " ", const char binding = '\"') const;
 
     string dbgjoin(string i = "'") const;
 
     void append(const stringlist &l);
     void append(const string &s);
     
-    std::stringlist subarr(size_t pos, size_t len = 0);
+    std::stringlist subarr(size_t pos, size_t len = 0) const;
+    
     void from(int size, char** content, int begin = 0, int end = -1);
 
     /// @brief Return the string at position p, or v if p doesn't exist.
@@ -68,7 +70,16 @@ public:
 
     static stringlist split(const string &s, const string &delim);
     static stringlist split(const string &s, const stringlist &delims);
-    static stringlist xsplit(const string &s, const string &delim, const string bindings);
+
+    /// @brief 
+    /// @param s string to split
+    /// @param delim delimiter
+    /// @param bindings a series of chars that is treated as combinitions
+    static stringlist xsplit(const string &s, const string &delim, const string &bindings);
+    static stringlist exsplit(const string &s, const string &delim, const string &begin_bind, string end_bind = "");
+
+    string pack() const;
+    static stringlist unpack(const std::string &s);
 
     stringlist& operator=(const stringlist& l);
 
@@ -79,25 +90,11 @@ public:
     stringlist(const stringlist& l);
     explicit stringlist(const string& s);
     explicit stringlist(char s);
-    stringlist(const char* s);
+    explicit stringlist(const char* s);
     explicit stringlist(const string &s, const string &delim);
     explicit stringlist(const string &s, const stringlist &delim);
     explicit stringlist(const vector<string>& v);
 };
-
-inline ostream& operator<<(ostream& os, const ByteArray& ba) {
-    if (os.flags() & ios_base::hex) {
-        ios_base::fmtflags original_flags = os.flags();
-        os << hex << setfill('0');
-        for (const auto& b : ba) {
-            os << setw(2) << static_cast<int>(b);
-        }
-        os.flags(original_flags);
-    } else {
-        os << ba.tostdstring();
-    }
-    return os;
-}
 
 class stringist_split{
 public:
