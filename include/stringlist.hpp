@@ -74,14 +74,20 @@ public:
     /// @brief 
     /// @param s string to split
     /// @param delim delimiter
-    /// @param bindings a series of chars that is treated as combinitions
-    static stringlist xsplit(const string &s, const string &delim, const string &bindings);
-    static stringlist exsplit(const string &s, const string &delim, const string &begin_bind, string end_bind = "");
+    /// @param begin_bind a series of chars that is treated as combinitions
+    /// @param end_bind paired one-by-one to the @c begin_bind , and will be the same as it if left empty
+    static stringlist xsplit(const string &s, const string &delim, const string &begin_bind, string end_bind = "", bool remove_binding = true);
+
+    /// @brief almost the same as xsplit, while it supports binding characters to be found inside the string
+    static stringlist exsplit(const string &s, const string &delim, const string &begin_bind, string end_bind = "", bool remove_binding = false, bool strict = false);
+
 
     string pack() const;
     static stringlist unpack(const std::string &s);
 
     stringlist& operator=(const stringlist& l);
+
+    size_t all_size();
 
 public:
     explicit stringlist();

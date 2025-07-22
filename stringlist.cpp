@@ -1,5 +1,7 @@
 #include "stringlist.hpp"
 
+#include <stack>
+
 namespace std {
 
 string stringlist::join(const string &i) const {
@@ -177,34 +179,10 @@ stringlist stringlist::split(const string &s, const stringlist &delims) {
     return l;
 }
 
-stringlist stringlist::xsplit(const string &s, const string &delim, const string &bindings) {
-    if(s.length() < 3) return stringlist(s);
-    stringlist result = split(s, delim);
-    bool inside = false;
-    auto previous = result.begin();
-    for(auto it = result.begin(); it != result.end();) {
-        if(!inside) {
-            if(charmatch((*it)[0], bindings)) {
-                inside = true;
-                previous = it;
-            }
-            ++it;
-        } else {
-            (*previous) += delim + (*it);
-            if(charmatch((*it)[(*it).length()-1], bindings)) {
-                inside = false;
-                (*previous) = (*previous).substr(1, (*previous).length()-2); // remove the binding character
-            }
-            it = result.erase(it);
-        }
-    }
-    return result;
-}
-
-stringlist stringlist::exsplit(const string &s, const string &delim, const string &begin_bind, string end_bind)
-{
+stringlist stringlist::xsplit(const string &s, const string &delim, const string &begin_bind, string end_bind, bool remove_binding) {
     if(s.length() < 3) return stringlist(s);
     if(end_bind.empty()) end_bind = begin_bind;
+    else if(begin_bind.length() != end_bind.length()) throw std::runtime_error("xsplit: binding charset length mismatch");
 
     stringlist result = split(s, delim);
     size_t bind_id, tpbind_id;
@@ -221,13 +199,91 @@ stringlist stringlist::exsplit(const string &s, const string &delim, const strin
             ++it;
         } else {
             (*previous) += delim + (*it);
-            if((*it).find(end_bind[bind_id]) != std::string::npos) {
+            if((*it)[(*it).length()-1] == end_bind[bind_id]) {
                 inside = false;
-                (*previous) = (*previous).substr(1, (*previous).length()-2); // remove the binding character
+                if(remove_binding) (*previous) = (*previous).substr(1, (*previous).length()-2); // remove the binding character
             }
             it = result.erase(it);
         }
     }
+    return result;
+}
+
+///BUG: don't work on already-connected strings like "already"
+// stringlist stringlist::_exsplit(const string &s, const string &delim, const string &begin_bind, string end_bind, bool remove_binding) {
+//     if(s.length() < 3) return stringlist(s);
+//     if(end_bind.empty()) end_bind = begin_bind;
+//     else if(begin_bind.length() != end_bind.length()) throw std::runtime_error("exsplit: binding charset length mismatch");
+
+//     stringlist result = split(s, delim);
+//     size_t bind_id, tpbind_id;
+//     bool inside = false;
+//     auto previous = result.begin();
+    
+//     for(auto it = result.begin(); it != result.end();) {
+//         if(!inside) {
+//             if((tpbind_id = [&]{
+//                 for(size_t pbc = 0; pbc < begin_bind.length(); pbc++) {
+//                     if((*it).find(begin_bind[pbc]) != std::string::npos)
+//                         return pbc;
+//                 }
+//                 return std::string::npos;
+//             }()) != std::string::npos) {
+//                 bind_id = tpbind_id;
+//                 inside = true;
+//                 previous = it;
+//             }
+//             ++it;
+//         } else {
+//             (*previous) += delim + (*it);
+//             if((*it).find(end_bind[bind_id]) != std::string::npos) {
+//                 inside = false;
+//                 if(remove_binding) {
+//                     size_t erpos = (*previous).find_first_of(begin_bind[bind_id]);
+//                     (*previous).erase(erpos, 1);
+//                     erpos = (*previous).find_last_of(end_bind[bind_id]);
+//                     (*previous).erase(erpos, 1);
+//                 }
+//             }
+//             it = result.erase(it);
+//         }
+//     }
+//     return result;
+// }
+
+stringlist stringlist::exsplit(const string &s, const string &delim, const string &begin_bind, string end_bind, bool remove_binding, bool strict) {
+    if(s.length() < 3) return stringlist(s);
+    if(end_bind.empty()) end_bind = begin_bind;
+    else if(begin_bind.length() != end_bind.length()) throw std::runtime_error("exsplit: binding charset length mismatch");
+
+    stringlist result;
+    /*stack<size_t> bind_id;*/ size_t tpbind_id;
+    vector<size_t> bind_id;
+
+    int depth = 0;
+    std::string buffer;
+    size_t idx = 0;
+    for(; idx < s.length(); ) {
+        if((tpbind_id = begin_bind.find(s[idx])) != std::string::npos) {
+            // bind_id.push(tpbind_id);
+            bind_id.push_back(tpbind_id);
+            depth++;
+            if(!remove_binding) buffer += s[idx++];
+        // } else if(depth != 0 && s[idx] == end_bind[bind_id.top()]) {
+        } else if(depth != 0 && s[idx] == end_bind[bind_id.back()]) {
+            // bind_id.pop();
+            bind_id.pop_back();
+            depth--;
+            if(!remove_binding) buffer += s[idx++];
+        } else if(depth == 0 && s.substr(idx, delim.length()) == delim) {
+            result.push_back(buffer);
+            buffer.clear();
+            idx += delim.length();
+        } else {
+            buffer += s[idx++];
+        }
+    }
+    if(!buffer.empty()) result.push_back(buffer);
     return result;
 }
 
@@ -295,5 +351,13 @@ stringlist::stringlist(const string &s, const stringlist &delim)
 
 stringlist::stringlist(const vector<string>& v) : vector<string>(v)
 {}
+
+size_t stringlist::all_size() {
+    size_t result = 0;
+    for(const std::string &s : *this) {
+        result += s.size();
+    }
+    return result;
+}
 
 } // namespace std
