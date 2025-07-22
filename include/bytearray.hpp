@@ -36,7 +36,7 @@ public:
 
 
     template<typename _T>
-    requires (std::is_aggregate_v<_T>)
+    // requires (std::is_aggregate_v<_T>)
     _T convert_to() const {
         static_assert(std::is_trivially_copyable_v<_T>, "Type must be trivially copyable");
         if (size() != sizeof(_T)) throw std::runtime_error("bytearray::convert_to: type size mismatch");
