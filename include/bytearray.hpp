@@ -48,7 +48,7 @@ public:
     inline size_t rawSize() const { return size(); }
 
     byte at(size_t i) const;
-    byte vat(size_t p, const byte &v = byte('0')) const;
+    byte vat(size_t p, const byte &v = byte('\0')) const;
 
     void append(const bytearray &ba);
     void append(const byte &b);
