@@ -5,5 +5,5 @@
 #include "variant.hpp"
 #include "io.h"
 #include "stream.h"
-#include "bytearray.h"
+#include "bytearray.hpp"
 // #include ""
