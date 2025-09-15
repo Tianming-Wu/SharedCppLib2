@@ -45,4 +45,28 @@ inline bool charmatch(char c, std::string ms) {
     return false;
 }
 
+inline size_t numberof(char c, std::string ms) {
+    size_t result;
+    for(char cs: ms) if(c == cs) result ++;
+    return result;
+}
+
+// #define runOnce(FN_NAME) static int FN_NAME##_runonce = FN_NAME()
+
+
 }; // namespace std
+
+
+#ifdef ENABLE_RUNONCE_X
+#include <functional>
+
+template<typename _T, typename ..._Args>
+class __runOnce {
+    inline __runOnce(std::function<_T(_Args)> fn, ..._Args args) {
+        fn(args...);
+    }
+};
+
+#define runOnce(FN,...) static __runOnce ___runOnce(FN);
+
+#endif

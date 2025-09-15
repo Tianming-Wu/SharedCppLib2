@@ -209,48 +209,6 @@ stringlist stringlist::xsplit(const string &s, const string &delim, const string
     return result;
 }
 
-///BUG: don't work on already-connected strings like "already"
-// stringlist stringlist::_exsplit(const string &s, const string &delim, const string &begin_bind, string end_bind, bool remove_binding) {
-//     if(s.length() < 3) return stringlist(s);
-//     if(end_bind.empty()) end_bind = begin_bind;
-//     else if(begin_bind.length() != end_bind.length()) throw std::runtime_error("exsplit: binding charset length mismatch");
-
-//     stringlist result = split(s, delim);
-//     size_t bind_id, tpbind_id;
-//     bool inside = false;
-//     auto previous = result.begin();
-    
-//     for(auto it = result.begin(); it != result.end();) {
-//         if(!inside) {
-//             if((tpbind_id = [&]{
-//                 for(size_t pbc = 0; pbc < begin_bind.length(); pbc++) {
-//                     if((*it).find(begin_bind[pbc]) != std::string::npos)
-//                         return pbc;
-//                 }
-//                 return std::string::npos;
-//             }()) != std::string::npos) {
-//                 bind_id = tpbind_id;
-//                 inside = true;
-//                 previous = it;
-//             }
-//             ++it;
-//         } else {
-//             (*previous) += delim + (*it);
-//             if((*it).find(end_bind[bind_id]) != std::string::npos) {
-//                 inside = false;
-//                 if(remove_binding) {
-//                     size_t erpos = (*previous).find_first_of(begin_bind[bind_id]);
-//                     (*previous).erase(erpos, 1);
-//                     erpos = (*previous).find_last_of(end_bind[bind_id]);
-//                     (*previous).erase(erpos, 1);
-//                 }
-//             }
-//             it = result.erase(it);
-//         }
-//     }
-//     return result;
-// }
-
 stringlist stringlist::exsplit(const string &s, const string &delim, const string &begin_bind, string end_bind, bool remove_binding, bool strict) {
     if(s.length() < 3) return stringlist(s);
     if(end_bind.empty()) end_bind = begin_bind;
