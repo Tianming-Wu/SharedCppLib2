@@ -1,5 +1,11 @@
 # Changelog
 
+### v1.12.0
+- New class indexer for convenient indexing
+
+### v1.11.0
+- Brand new `exsplit()` for command line parsing, now supports binding characters. 
+
 ### v1.10.1
 - New "hpint.hpp" for regular high-precision calculation. (Not tested)
 - New "hpalgo.hpp" for algorithms, and "hparray.hpp" for number arrays.

@@ -10,7 +10,7 @@
 #include <thread>
 #include <atomic>
 #include <exception>
-#include "strlinglist.hpp"
+#include "stringlist.hpp"
 
 namespace pipeline {
 

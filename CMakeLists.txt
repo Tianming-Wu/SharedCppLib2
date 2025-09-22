@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(SharedCppLib2
-    VERSION 1.10.1
+    VERSION 1.12.0
     LANGUAGES CXX
 )
 
@@ -30,13 +30,14 @@ add_library(basic STATIC bytearray.cpp ansiio.cpp stringlist.cpp basics.cpp)
 add_library(logd STATIC logd.cpp)
 add_library(logf STATIC logf.cpp)
 add_library(sha256 STATIC sha256.cpp)
+add_library(indexer STATIC indexer.cpp)
 
 # 库依赖关系
 target_link_libraries(logd PUBLIC variant)
 target_link_libraries(logf PUBLIC logd)
 
 # 安装目标
-install(TARGETS variant logd logf sha256 basic
+install(TARGETS variant logd logf sha256 basic indexer
     EXPORT SharedCppLib2Targets
     ARCHIVE DESTINATION ${INSTALL_LIBDIR}
     LIBRARY DESTINATION ${INSTALL_LIBDIR}
@@ -60,6 +61,10 @@ target_include_directories(logf PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 target_include_directories(sha256 PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_include_directories(indexer PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )

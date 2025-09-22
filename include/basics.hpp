@@ -62,7 +62,7 @@ inline size_t numberof(char c, std::string ms) {
 
 template<typename _T, typename ..._Args>
 class __runOnce {
-    inline __runOnce(std::function<_T(_Args)> fn, ..._Args args) {
+    inline __runOnce(std::function<_T(_Args)> fn, ..._Args args) {                                                                                                                        
         fn(args...);
     }
 };
