@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# 安装路径配置
+# 安装路径配置  
 include(GNUInstallDirs)
 set(INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR})
 set(INSTALL_INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/SharedCppLib2)
@@ -25,12 +25,12 @@ include_directories("include")
 # set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 # 定义所有库
-add_library(variant STATIC variant.cpp)
-add_library(basic STATIC bytearray.cpp ansiio.cpp stringlist.cpp basics.cpp)
-add_library(logd STATIC logd.cpp)
-add_library(logf STATIC logf.cpp)
-add_library(sha256 STATIC sha256.cpp)
-add_library(indexer STATIC indexer.cpp)
+add_library(variant STATIC src/variant.cpp)
+add_library(basic STATIC src/bytearray.cpp src/ansiio.cpp src/stringlist.cpp src/basics.cpp)
+add_library(logd STATIC src/logd.cpp)
+add_library(logf STATIC src/logf.cpp)
+add_library(sha256 STATIC src/sha256.cpp)
+add_library(indexer STATIC src/indexer.cpp)
 
 # 库依赖关系
 target_link_libraries(logd PUBLIC variant)
