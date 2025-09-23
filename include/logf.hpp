@@ -6,6 +6,7 @@ namespace fs = std::filesystem;
 #include <ctime>
 #include <cstdio>
 #include <fstream>
+#include <format>
 
 #include "logd.hpp"
 

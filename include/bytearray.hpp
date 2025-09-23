@@ -7,6 +7,7 @@
 #include <cctype>
 #include <iomanip>
 #include <bit>
+#include <cstdint>
 
 namespace std {
 class stringlist;
