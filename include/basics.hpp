@@ -58,15 +58,16 @@ inline size_t numberof(char c, std::string ms) {
 
 
 #ifdef ENABLE_RUNONCE_X
-#include <functional>
+#include <mutex>
 
-template<typename _T, typename ..._Args>
-class __runOnce {
-    inline __runOnce(std::function<_T(_Args)> fn, ..._Args args) {                                                                                                                        
-        fn(args...);
+class RunOnce {
+public:
+    template<typename Func, typename... Args>
+    static void execute(Func&& fn, Args&&... args) {
+        static std::once_flag flag;
+        std::call_once(flag, std::forward<Func>(fn), std::forward<Args>(args)...);
     }
 };
 
-#define runOnce(FN,...) static __runOnce ___runOnce(FN);
-
+#define RUN_ONCE(FN, ...) RunOnce::execute(FN, ##__VA_ARGS__)
 #endif
