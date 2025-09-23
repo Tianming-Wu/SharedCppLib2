@@ -1,5 +1,9 @@
 # Changelog
 
+### v1.13.0
+- Changed: std::color() to std::textcolor().
+- Allow user to easily colorize string using a compressed syntax.
+
 ### v1.12.0
 - New class indexer for convenient indexing
 
@@ -24,7 +28,7 @@
 - Modified Base64 to support more cases.
 
 ### v1.1.0
-- 
+- Minor bug fixes
 
 ### v1.0.0
 - Introduce ansiio for ANSI Featured output.

@@ -38,11 +38,11 @@ bool Sha256::encrypt(const std::vector<uint8_t>& input_message,
         std::vector<uint8_t> message = input_message;
         preprocessing(&message);
 
-        //! ???????????????64Byte??§³???????
+        //! ???????????????64Byte??ï¿½ï¿½???????
         std::vector<std::vector<uint8_t>> chunks;
         breakTextInto64ByteChunks(message, &chunks);
 
-        //! ??64Byte??§³??????ï…?????64??4Byte??§³????????????????????
+        //! ??64Byte??ï¿½ï¿½??????ï¿½?????64??4Byte??ï¿½ï¿½????????????????????
         std::vector<uint32_t> message_digest(initial_message_digest_); // ??????????
 
         std::vector<uint32_t> words;
@@ -92,6 +92,19 @@ std::string Sha256::getHexMessageDigest(const std::string& message)
     }
 }
 
+std::vector<uint8_t> Sha256::getMessageDigest(std::vector<uint8_t> message) {
+    if (!message.empty())
+    {
+        std::vector<uint8_t> digest;
+        encrypt(message, &digest);
+        return digest;
+    }
+    else
+    {
+        return std::vector<uint8_t>();
+    }
+}
+
 bool Sha256::preprocessing(std::vector<uint8_t>* _message) const
 {
     if (_message)
@@ -102,7 +115,7 @@ bool Sha256::preprocessing(std::vector<uint8_t>* _message) const
         size_t remainder = _message->size() % 64;
         if (remainder < 56)
         {
-            _message->push_back(0x80); // ox80 == 10000000
+            _message->push_back(0x80); // 0x80 == 10000000
             for (size_t i = 1; i < 56 - remainder; ++i)
             {
                 _message->push_back(0x00);

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(SharedCppLib2
-    VERSION 1.12.0
+    VERSION 1.13.0
     LANGUAGES CXX
 )
 

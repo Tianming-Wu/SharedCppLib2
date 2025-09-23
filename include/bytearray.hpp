@@ -35,7 +35,6 @@ public:
         insert(end(), src, src + sizeof(_Any));
     }
 
-
     template<typename _T>
     // requires (std::is_aggregate_v<_T>)
     _T convert_to() const {

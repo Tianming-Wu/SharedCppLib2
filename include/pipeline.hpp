@@ -17,7 +17,7 @@ namespace pipeline {
 class splitter
 {
 public:
-    splitter(const char* command)
+    splitter(const std::string &command)
         : pipe(popen(command.c_str(), "r"), pclose)
     {
         if (!pipe) {
@@ -53,7 +53,7 @@ public:
 
 private:
     // size_t m_bufferSize;
-    std::strling m_rest;
+    std::string m_rest;
     std::unique_ptr<FILE, decltype(&pclose)> pipe;
 };
 

@@ -29,6 +29,7 @@ public:
     @return: 十六进制表示的信息摘要（数字指纹）
     */
     std::string getHexMessageDigest(const std::string& message);
+    std::vector<uint8_t> getMessageDigest(std::vector<uint8_t> message);
 
 protected:
     /// SHA256算法中定义的6种逻辑运算 ///

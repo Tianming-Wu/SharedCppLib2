@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <string>
 #include <sstream>
+#include <cstdint>
+#include <vector>
 
 #include "basics.hpp"
 
@@ -18,7 +20,7 @@ struct cursor_position {
 };
 
 /// @brief Predefined Color Patterns.
-/// @attention t means Text, and b means Background. Do not mix them!
+/// @attention t means Text, and b means Background. Do not misuse!
 enum colors {
 	tBlack = 30, tRed, tGreen, tYellow, tBlue, tPurple, tCyan, tWhite,
 	bBlack = 40, bRed, bGreen, bYellow, bBlue, bPurple, bCyan, bWhite,
@@ -26,6 +28,29 @@ enum colors {
     nullColor = 0
 };
 // 黑、红、绿、黄、蓝、洋红、青、白
+
+enum builtin_colors {
+    biWhite, biRed, biOrange, biYellow, biGreen, biCyan, biBlue, biPurple, biBlack
+};
+
+class colorctl {
+public:
+    enum cctltype {cctlt_builtin,cctlt_console,cctlt_rgba,cctlt_cmyk};
+    uint8_t type, v1, v2, v3, v4;
+
+    inline colorctl(): type(cctlt_builtin), v1(builtin_colors::biWhite) {}
+    inline colorctl(colors cid): type(cctlt_console),v1(cid) {}
+    inline colorctl(builtin_colors bcid): type(cctlt_builtin), v1(bcid) {}
+    inline colorctl(int r, int g, int b, int a = 255): type(cctlt_rgba),v1(r),v2(g),v3(b),v4(a) {}
+    inline colorctl cmyk(int c, int m, int y, int k) {
+        ///TODO: Complete convertion.
+    }
+};
+
+/** @brief Decompress a specially formatted string into colorinfo arrays.
+ * See the document for more info.
+ */
+std::vector<colorctl> decompress(const std::string& input);
 
 /** @brief Outputs Ansi Color Control Pattern (Text (and background)).
  * @param text Color of the Text, in colors::tXXXX
@@ -36,7 +61,7 @@ enum colors {
  * 
  * To change background color only, use bgcolor() instead
 */
-inline string color(int text, int background = 0)
+inline string textcolor(int text, int background = 0)
 {
 	string _text = itos(text), _background = background?(itos(background)):"";
 	return string("\033[1;" + _text + (background?";":"") + _background + "m");
