@@ -147,4 +147,36 @@ bytearray bytearray::fromRaw(const char* raw, size_t size) {
     return bytearray(raw, size);
 }
 
+bool bytearray::readFromStream(std::istream &is, size_t size) {
+    clear();
+    resize(size);
+    return is.read(reinterpret_cast<char*>(data()), size).good();
+}
+
+bool bytearray::readAllFromStream(std::istream &is)
+{
+    clear();
+        // move to end to determine size
+        auto current_pos = is.tellg();
+        is.seekg(0, std::ios::end);
+        auto size = is.tellg() - current_pos;
+        is.seekg(current_pos);
+        
+        if (size <= 0) return false;
+        
+        resize(size);
+        return is.read(reinterpret_cast<char*>(data()), size).good();
+}
+
+bool bytearray::readUntilDelimiter(std::istream &is, char delimiter)
+{
+    clear();
+    std::string temp;
+    if (std::getline(is, temp, delimiter)) {
+        *this = bytearray(temp);
+        return true;
+    }
+    return false;
+}
+
 } // namespace std

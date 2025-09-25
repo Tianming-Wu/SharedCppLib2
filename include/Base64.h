@@ -25,11 +25,10 @@ std::string encode(unsigned char *input , size_t input_len) {
 				output_char[0]=code[((output_num>>18) & 0x3f)];
 				output_char[1]=code[((output_num>>12) & 0x3f)];
 				output_char[2]='='; output_char[3]='='; output_char[4]='\0';
-			}
-			if (near==2) {
+			} else if (near==2) {
 				output_char[0]=code[((output_num>>18) & 0x3f)];
 				output_char[1]=code[((output_num>>12) & 0x3f)];
-				output_char[2]=code[((output_num>>6) & 0x3f)];;
+				output_char[2]=code[((output_num>>6) & 0x3f)];
 				output_char[3]='='; output_char[4]='\0';
 			}
 			output_str.append(output_char);

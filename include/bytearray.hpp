@@ -74,6 +74,10 @@ public:
     static bytearray fromHex(const std::string& hex);
     static bytearray fromRaw(const char* raw, size_t size);
 
+    bool readFromStream(std::istream& is, size_t size);
+    bool readAllFromStream(std::istream& is);
+    bool readUntilDelimiter(std::istream& is, char delimiter = '\0');
+
     inline void writeRaw(std::ostream& os) const {
         os.write(reinterpret_cast<const char*>(data()), size());
     }
@@ -102,10 +106,24 @@ inline ostream& operator<<(ostream& os, const std::bytearray& ba) {
     return os;
 }
 
-
 inline std::istream& operator>>(std::istream& is, bytearray& ba) {
     ba.clear();
-    if (is.flags() & std::ios_base::hex) {
+    
+    // check if is file stream and in binary mode
+    auto* file_stream = dynamic_cast<std::istream*>(&is);
+    if (file_stream && (file_stream->flags() & std::ios::binary)) {
+        // read the entire file content
+        file_stream->seekg(0, std::ios::end);
+        auto size = file_stream->tellg();
+        file_stream->seekg(0, std::ios::beg);
+        
+        if (size > 0) {
+            ba.resize(size);
+            file_stream->read(reinterpret_cast<char*>(ba.data()), size);
+        }
+    }
+    else if (is.flags() & std::ios_base::hex) {
+        // hex text mode
         std::string hexInput;
         is >> hexInput;
         try {
@@ -114,6 +132,7 @@ inline std::istream& operator>>(std::istream& is, bytearray& ba) {
             is.setstate(std::ios::failbit);
         }
     } else {
+        // normal text mode: read a "word"
         std::string strInput;
         is >> strInput;
         ba = bytearray(strInput);

@@ -1,5 +1,10 @@
 # Changelog
 
+
+### v1.13.1
+- Fix: stream >> operator for std::bytearray is now more reasonable.
+- New: add stream read functions for std::bytearray.
+
 ### v1.13.0
 - Changed: std::color() to std::textcolor().
 - Allow user to easily colorize string using a compressed syntax.

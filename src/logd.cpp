@@ -31,10 +31,10 @@ std::string translate(std::string src, std::initializer_list<variant> l) {
         std::string rp;
         try {
             int t = std::stoi(src.substr(pos+1, 1));
-            if(t > tmax) rp = "{exceed}";
+            if(t > tmax) rp = "{index out of bound}";
                 else rp = d[t];
         } catch(...) {
-            rp = "{exception}";
+            rp = "{exception thrown}";
         }
 
         src.replace(pos, 2, rp);
