@@ -32,7 +32,7 @@ public:
     bytearray(const _Any& in) {
         static_assert(std::is_trivially_copyable_v<_Any>,  "bytearray: T must be trivially copyable");
         const std::byte* src = reinterpret_cast<const std::byte*>(&in);
-        insert(end(), src, src + sizeof(_Any));
+        ::std::vector<std::byte>::insert(end(), src, src + sizeof(_Any));
     }
 
     template<typename _T>

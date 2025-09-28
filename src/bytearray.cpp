@@ -4,7 +4,7 @@
 namespace std {
 
 byte bytearray::at(size_t i) const{
-    return std::vector<byte>::at(i);
+    return ::std::vector<byte>::at(i);
 }
 
 byte bytearray::vat(size_t p, const byte &v) const {
@@ -56,7 +56,7 @@ std::bytearray &bytearray::replace(size_t pos, size_t len, const bytearray &ba)
     if (pos + len > this->size()) len = this->size() - pos; // adjust len to fit within bounds
 
     this->erase(this->begin() + pos, this->begin() + pos + len);
-    this->::std::vector<std::byte>::insert(this->begin() + pos, ba.begin(), ba.end());
+    this->::std::vector<::std::byte>::insert(this->begin() + pos, ba.begin(), ba.end());
 
     return *this;
 }
@@ -64,7 +64,7 @@ std::bytearray &bytearray::replace(size_t pos, size_t len, const bytearray &ba)
 std::bytearray &bytearray::insert(size_t pos, const bytearray &ba)
 {
     if (pos > this->size()) throw std::out_of_range("bytearray::insert: position out of range");
-    this->::std::vector<std::byte>::insert(this->begin() + pos, ba.begin(), ba.end());
+    this->::std::vector<::std::byte>::insert(this->begin() + pos, ba.begin(), ba.end());
     return *this;
 }
 

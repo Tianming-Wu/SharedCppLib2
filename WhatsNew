@@ -1,5 +1,7 @@
 # Changelog
 
+### v1.14.2
+- Fix: std::bytearray construction failed when parsing type "Any".
 
 ### v1.14.1
 - New: insert and replace function for std::bytearray
