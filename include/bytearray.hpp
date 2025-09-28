@@ -61,6 +61,9 @@ public:
     void swap(bytearray &ba);
     void swap(size_t a, size_t b, size_t size = 1);
 
+    std::bytearray& replace(size_t pos, size_t len, const bytearray &ba);
+    std::bytearray& insert(size_t pos, const bytearray &ba);
+
     bytearray subarr(size_t begin, size_t size = -1) const;
 
     std::string tostdstring() const;

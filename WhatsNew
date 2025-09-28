@@ -1,6 +1,9 @@
 # Changelog
 
 
+### v1.14.1
+- New: insert and replace function for std::bytearray
+
 ### v1.13.1
 - Fix: stream >> operator for std::bytearray is now more reasonable.
 - New: add stream read functions for std::bytearray.

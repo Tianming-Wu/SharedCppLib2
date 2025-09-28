@@ -50,6 +50,24 @@ void bytearray::swap(size_t a, size_t b, size_t size) {
     }
 }
 
+std::bytearray &bytearray::replace(size_t pos, size_t len, const bytearray &ba)
+{
+    if (pos > this->size()) throw std::out_of_range("bytearray::replace: position out of range");
+    if (pos + len > this->size()) len = this->size() - pos; // adjust len to fit within bounds
+
+    this->erase(this->begin() + pos, this->begin() + pos + len);
+    this->::std::vector<std::byte>::insert(this->begin() + pos, ba.begin(), ba.end());
+
+    return *this;
+}
+
+std::bytearray &bytearray::insert(size_t pos, const bytearray &ba)
+{
+    if (pos > this->size()) throw std::out_of_range("bytearray::insert: position out of range");
+    this->::std::vector<std::byte>::insert(this->begin() + pos, ba.begin(), ba.end());
+    return *this;
+}
+
 bytearray bytearray::subarr(size_t begin, size_t size) const {
     bytearray re;
     if(size == -1) size = this->size();
