@@ -1,5 +1,8 @@
 # Changelog
 
+### v1.15.1
+- New: regexfilter providing blacklist and whitelist.
+
 ### v1.14.2
 - Fix: std::bytearray construction failed when parsing type "Any".
 

@@ -6,4 +6,5 @@
 #include "io.h"
 #include "stream.h"
 #include "bytearray.hpp"
+#include "regexfilter.hpp"
 // #include ""
