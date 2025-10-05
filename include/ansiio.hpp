@@ -67,6 +67,12 @@ inline string textcolor(int text, int background = 0)
 	return string("\033[1;" + _text + (background?";":"") + _background + "m");
 }
 
+inline wstring wtextcolor(int text, int background = 0)
+{
+	wstring _text = itows(text), _background = background?(itows(background)):L"";
+	return wstring(L"\033[1;" + _text + (_background.empty()?L"":L";" + _background) + L"m");
+}
+
 /** @brief Outputs Ansi Color Control Pattern (Background).
  * @param background Color of the background, in colors::bXXXX
  * 
@@ -76,6 +82,11 @@ inline string textcolor(int text, int background = 0)
 inline string bgcolor(int background)
 {
 	return string("\033[1;" + itos(background) + "m");
+}
+
+inline wstring wbgcolor(int background)
+{
+    return wstring(L"\033[1;" + itows(background) + L"m");
 }
 
 inline string coloredtext(string content, int text, int background = 0)
@@ -94,6 +105,7 @@ inline string bcoloredtext(bool enabled, string content, int text, int textDisab
 /// @brief The Reset Ansi Color Control Pattern.
 const string clearcolor { "\033[0m" };
 
+const wstring wclearcolor { L"\033[0m" };
 
 /** @brief Generate a clickable URI.
  * @param content The actual URI to be executed.

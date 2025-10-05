@@ -18,12 +18,27 @@ inline string itos(int d)
 	return stl;
 }
 
+inline wstring itows(int d)
+{
+	wstringstream ss; wstring stl;
+	ss << d; ss >> stl;
+	return stl;
+}
+
 #ifndef lower
 inline std::string lower(const std::string& orig) {
     constexpr int offset = 'a' - 'A';
     std::string result = orig;
     for(char& c : result) {
         if(c <= 'Z' && c >= 'A') c += offset;
+    }
+    return result;
+}
+inline std::wstring lower(const std::wstring& orig) {
+    constexpr int offset = L'a' - L'A';
+    std::wstring result = orig;
+    for(wchar_t& c : result) {
+        if(c <= L'Z' && c >= L'A') c += offset;
     }
     return result;
 }
@@ -38,6 +53,14 @@ inline std::string upper(const std::string& orig) {
     }
     return result;
 }
+inline std::wstring upper(const std::wstring& orig) {
+    constexpr int offset = L'A' - L'a';
+    std::wstring result = orig;
+    for(wchar_t& c : result) {
+        if(c <= L'z' && c >= L'a') c += offset;
+    }
+    return result;
+}
 #endif
 
 inline bool charmatch(char c, std::string ms) {
@@ -45,9 +68,20 @@ inline bool charmatch(char c, std::string ms) {
     return false;
 }
 
+inline bool charmatch(wchar_t c, std::wstring ms) {
+    for(wchar_t cs : ms) if(c == cs) return true;
+    return false;
+}
+
 inline size_t numberof(char c, std::string ms) {
     size_t result;
     for(char cs: ms) if(c == cs) result ++;
+    return result;
+}
+
+inline size_t numberof(wchar_t c, std::wstring ms) {
+    size_t result = 0;
+    for(wchar_t cs: ms) if(c == cs) result ++;
     return result;
 }
 
