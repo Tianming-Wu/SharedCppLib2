@@ -1,5 +1,10 @@
 # Changelog
 
+### v1.16.3
+- New: logc for colorize logt output.
+- Com: colorctl in ansiio. still working on it.
+- Fix: logt corrected sequence for filter.
+
 ### v1.16.2
 - Fix: logt now uses thread-safe localtime_s/localtime_r.
 - Opt: migrate function bodies from logt.hpp to logt.cpp.
