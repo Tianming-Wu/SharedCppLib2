@@ -22,7 +22,7 @@ struct cursor_position {
 /// @brief Predefined Color Patterns.
 /// @attention t means Text, and b means Background. Do not misuse!
 enum colors {
-	tBlack = 30, tRed, tGreen, tYellow, tBlue, tPurple, tCyan, tWhite,
+	tBlack = 30, tRed, tGreen, tYellow, tBlue, tPurple, tCyan, tWhite, tOrange = 208,
 	bBlack = 40, bRed, bGreen, bYellow, bBlue, bPurple, bCyan, bWhite,
 	tLightBlack = 90, tLightRed, tLightGreen, tLightYellow, tLightBlue, tLightPurple, tLightCyan, tLightWhite,
     nullColor = 0
@@ -45,6 +45,10 @@ public:
     inline colorctl cmyk(int c, int m, int y, int k) {
         ///TODO: Complete convertion.
     }
+
+    std::string to_ansi_code() const;
+private:
+    std::string map_builtin_to_ansi() const;
 };
 
 /** @brief Decompress a specially formatted string into colorinfo arrays.
@@ -67,6 +71,11 @@ inline string textcolor(int text, int background = 0)
 	return string("\033[1;" + _text + (background?";":"") + _background + "m");
 }
 
+inline string rgbtext(int r, int g, int b)
+{
+    return "\033[38;2;" + itos(r) + ";" + itos(g) + ";" + itos(b) + "m";
+}
+
 inline wstring wtextcolor(int text, int background = 0)
 {
 	wstring _text = itows(text), _background = background?(itows(background)):L"";
@@ -82,6 +91,11 @@ inline wstring wtextcolor(int text, int background = 0)
 inline string bgcolor(int background)
 {
 	return string("\033[1;" + itos(background) + "m");
+}
+
+inline string rgbbg(int r, int g, int b)
+{
+    return "\033[48;2;" + itos(r) + ";" + itos(g) + ";" + itos(b) + "m";
 }
 
 inline wstring wbgcolor(int background)

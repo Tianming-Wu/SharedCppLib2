@@ -33,16 +33,19 @@ add_library(sha256 STATIC src/sha256.cpp)
 add_library(indexer STATIC src/indexer.cpp)
 add_library(regexfilter STATIC src/regexfilter.cpp)
 add_library(logt STATIC src/logt.cpp)
+add_library(logc STATIC src/logc.cpp)
 
 # 库依赖关系
 target_link_libraries(logd PUBLIC variant)
 target_link_libraries(logf PUBLIC logd)
+target_link_libraries(logc PUBLIC logt)
 
 # basic 库依赖关系
 target_link_libraries(regexfilter PUBLIC basic)
+target_link_libraries(logc PUBLIC basic)
 
 # 安装目标
-install(TARGETS variant logd logf sha256 basic indexer regexfilter logt
+install(TARGETS variant logd logf sha256 basic indexer regexfilter logt logc
     EXPORT SharedCppLib2Targets
     ARCHIVE DESTINATION ${INSTALL_LIBDIR}
     LIBRARY DESTINATION ${INSTALL_LIBDIR}
@@ -78,6 +81,10 @@ target_include_directories(regexfilter PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 target_include_directories(logt PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_include_directories(logc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )

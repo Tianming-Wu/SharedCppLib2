@@ -1,7 +1,34 @@
 #include "ansiio.hpp"
+#include <unordered_map>
 
 namespace std
 {
+
+string colorctl::to_ansi_code() const {
+    switch(type) {
+        case cctlt_console:
+            return "\033[1;" + std::to_string(v1) + "m";
+        case cctlt_rgba:
+            return "\033[38;2;" + std::to_string(v1) + ";" 
+                    + std::to_string(v2) + ";" + std::to_string(v3) + "m";
+        case cctlt_builtin:
+            // 将内置颜色映射到具体 ANSI 值
+            return map_builtin_to_ansi();
+        default:
+            return "\033[0m";
+    }
+}
+
+std::string colorctl::map_builtin_to_ansi() const {
+    static const std::unordered_map<int, int> builtin_map = {
+        {biWhite, tWhite}, {biRed, tRed}, {biOrange, tOrange}, // 208 是橙色
+        {biYellow, tYellow}, {biGreen, tGreen}, {biCyan, tCyan},
+        {biBlue, tBlue}, {biPurple, tPurple}, {biBlack, tBlack}
+    };
+    auto it = builtin_map.find(v1);
+    return it != builtin_map.end() ? 
+        "\033[1;" + std::to_string(it->second) + "m" : "\033[0m";
+}
 
 std::vector<colorctl> decompress(const std::string& input) {
     // 语法：

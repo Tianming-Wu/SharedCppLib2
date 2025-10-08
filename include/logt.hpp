@@ -1,3 +1,12 @@
+/*
+
+Log Threaded (logt) - A simple asynchronous logging library for C++23
+
+Note: to output to console with colors, include logc.hpp and use logt::install_preprocessor(logc::logPreprocessor);
+
+*/
+
+
 #pragma once
 
 #include <iostream>
@@ -12,18 +21,29 @@
 #include <sstream>
 #include <unordered_map>
 #include <chrono>
+#include <functional>
+
+enum class LogLevel {
+    QUIET = -1, // For not logging anything
+    DEBUG =  0,
+    INFO  =  1,
+    WARN  =  2,
+    ERROR =  3,
+    FATAL =  4
+};
 
 struct logt_message {
+    LogLevel level;
     std::chrono::system_clock::time_point timestamp;
     std::string content;
     
     logt_message() = default;
-    logt_message(std::string msg);
+    logt_message(std::string msg, LogLevel level);
 };
 
 class logt_eventbus {
 public:
-    static void push(const std::string& s);
+    static void push(const std::string& s, LogLevel level);
     static bool pop(logt_message& result);
     static void stop();
 
@@ -34,12 +54,9 @@ private:
     static std::atomic<bool> stopped_;
 };
 
-enum class LogLevel {
-    INFO,
-    WARN,
-    ERROR,
-    DEBUG
-};
+
+
+typedef std::function<bool(logt_message&)> preprocessor_t;
 
 class logt {
 public:
@@ -66,16 +83,25 @@ public:
     // 静态配置方法
     static void file(const std::string& filename);
     static void setostream(std::ostream& os);
+    static void stdcout();
     static void claim(const std::string& name);
     static void closefile();
+    inline static void setFilterLevel(LogLevel level) { filter_level_ = level; }
 
     // 静态关闭方法
+    /// @brief Shutdown the logging system, ensuring all messages are processed.
     static void shutdown();
+
+    /** @brief Install preprocessor function to process log messages.
+     * @param preprocessor A function that takes a logt_message reference and returns a bool.
+     */
+    static void install_preprocessor(preprocessor_t preprocessor);
 
     // 快捷方法 - 返回临时对象用于流式输出
     inline static logt info()  {  return logt(LogLevel::INFO);  }
     inline static logt warn()  {  return logt(LogLevel::WARN);  }
     inline static logt error() {  return logt(LogLevel::ERROR); }
+    inline static logt fatal() {  return logt(LogLevel::FATAL); }
     inline static logt debug() {  return logt(LogLevel::DEBUG); }
 
 private:
@@ -86,13 +112,17 @@ private:
     static void write_message(const logt_message& message);
     static std::string format_timestamp(const std::chrono::system_clock::time_point& tp);
 
-
     std::stringstream ss_;
+    LogLevel level_;
 
     // 静态成员
+    static LogLevel filter_level_;
+
     static std::ofstream log_file_;
     static std::ostream* output_stream_;
     static bool use_file_;
+
+    static preprocessor_t preprocessor_;
     
     static std::mutex file_mutex_;
     static std::mutex thread_mutex_;
@@ -110,4 +140,5 @@ inline logt tLog() { return logt(); }
 inline logt tInfo() { return logt::info(); }
 inline logt tWarn() { return logt::warn(); }
 inline logt tError() { return logt::error(); }
+inline logt tFatal() { return logt::fatal(); }
 inline logt tDebug() { return logt::debug(); }

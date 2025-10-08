@@ -8,9 +8,11 @@ std::atomic<bool> logt_eventbus::stopped_{false};
 
 
 // 静态成员定义
+LogLevel logt::filter_level_ = LogLevel::INFO;
 std::ofstream logt::log_file_;
 std::ostream* logt::output_stream_ = &std::cout;
 bool logt::use_file_ = false;
+preprocessor_t logt::preprocessor_;
 std::mutex logt::file_mutex_;
 std::mutex logt::thread_mutex_;
 std::unordered_map<std::thread::id, std::string> logt::thread_names_;
@@ -18,24 +20,26 @@ std::thread logt::worker_;
 std::once_flag logt::worker_flag_;
 
 const char* logt::level_labels_[] = {
+    "[DEBUG]",
     "[INFO]",
     "[WARN]",
     "[ERROR]",
-    "[DEBUG]"
+    "[FATAL]",
 };
 
 
 
 // ------ function bodies ------
 
-logt_message::logt_message(std::string msg) 
+logt_message::logt_message(std::string msg, LogLevel level) 
 : timestamp(std::chrono::system_clock::now())
-, content(std::move(msg)) {}
+, content(std::move(msg))
+, level(level) {}
 
 
-void logt_eventbus::push(const std::string& s) {
+void logt_eventbus::push(const std::string& s, LogLevel level) {
     std::unique_lock<std::mutex> lock(mutex_);
-    queue_.push(logt_message(s));
+    queue_.push(logt_message(s, level));
     cond_.notify_one();
 }
 
@@ -64,6 +68,7 @@ logt::logt(LogLevel level) {
     
     // 日志标签
     ss_ << level_labels_[static_cast<int>(level)] << " ";
+    level_ = level;
 
     // 自动添加线程标识
     auto thread_name = get_thread_name();
@@ -76,7 +81,9 @@ logt::logt(LogLevel level) {
 
 logt::~logt()  {
     // 析构时自动推送完整日志（自动换行）
-    logt_eventbus::push(ss_.str());
+    if(level_ >= filter_level_) {
+        logt_eventbus::push(ss_.str(), level_);
+    }
 }
 
 void logt::file(const std::string& filename) {
@@ -92,6 +99,10 @@ void logt::setostream(std::ostream& os) {
     std::unique_lock<std::mutex> lock(file_mutex_);
     output_stream_ = &os;
     use_file_ = false;
+}
+
+void logt::stdcout() {
+    setostream(std::cout);
 }
 
 void logt::claim(const std::string& name) {
@@ -117,6 +128,12 @@ void logt::shutdown() {
     }
 }
 
+void logt::install_preprocessor(preprocessor_t preprocessor)
+{
+    preprocessor_ = std::move(preprocessor);
+}
+
+
 std::string logt::get_thread_name() {
     std::unique_lock<std::mutex> lock(thread_mutex_);
     auto it = thread_names_.find(std::this_thread::get_id());
@@ -126,6 +143,10 @@ std::string logt::get_thread_name() {
 void logt::worker_thread() {
     logt_message message;
     while (logt_eventbus::pop(message)) {
+        if(preprocessor_) {
+            preprocessor_(message);
+            // return value was originally designed to undo changes, but now it is ignored.
+        }
         write_message(message);
     }
 }
