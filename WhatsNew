@@ -1,5 +1,9 @@
 # Changelog
 
+### v1.16.2
+- Fix: logt now uses thread-safe localtime_s/localtime_r.
+- Opt: migrate function bodies from logt.hpp to logt.cpp.
+
 ### v1.16.1
 - New: logt for sub-threaded logging.
 
