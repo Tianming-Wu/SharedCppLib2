@@ -1,5 +1,8 @@
 # Changelog
 
+### v1.16.1
+- New: logt for sub-threaded logging.
+
 ### v1.15.1
 - New: regexfilter providing blacklist and whitelist.
 

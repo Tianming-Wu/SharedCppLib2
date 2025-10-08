@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(SharedCppLib2
-    VERSION 1.15.1
+    VERSION 1.16.1
     LANGUAGES CXX
 )
 
@@ -32,6 +32,7 @@ add_library(logf STATIC src/logf.cpp)
 add_library(sha256 STATIC src/sha256.cpp)
 add_library(indexer STATIC src/indexer.cpp)
 add_library(regexfilter STATIC src/regexfilter.cpp)
+add_library(logt STATIC src/logt.cpp)
 
 # 库依赖关系
 target_link_libraries(logd PUBLIC variant)
@@ -41,7 +42,7 @@ target_link_libraries(logf PUBLIC logd)
 target_link_libraries(regexfilter PUBLIC basic)
 
 # 安装目标
-install(TARGETS variant logd logf sha256 basic indexer regexfilter
+install(TARGETS variant logd logf sha256 basic indexer regexfilter logt
     EXPORT SharedCppLib2Targets
     ARCHIVE DESTINATION ${INSTALL_LIBDIR}
     LIBRARY DESTINATION ${INSTALL_LIBDIR}
@@ -73,6 +74,10 @@ target_include_directories(indexer PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 target_include_directories(regexfilter PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_include_directories(logt PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
