@@ -2,11 +2,10 @@
 
 Log Threaded (logt) - A simple asynchronous logging library for C++23
 
-Note: to output to console with colors, include logc.hpp and use logt::install_preprocessor(logc::logPreprocessor);
+Note: to output to console with colors, include logc.hpp and use `logt::install_preprocessor(logc::logPreprocessor);`
+Doesn't work well in file mode, disable by yourself.
 
 */
-
-
 #pragma once
 
 #include <iostream>

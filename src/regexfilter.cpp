@@ -1,6 +1,5 @@
 #include "regexfilter.hpp"
 
-
 namespace rf {
 
 base_list::base_list(const std::stringlist &patterns)

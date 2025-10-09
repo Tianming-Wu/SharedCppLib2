@@ -11,6 +11,7 @@ struct rect {
     rect(int x, int y, int w, int h) : x(x), y(y), w(w), h(h) {}
 };
 
+[[deprecated]]
 inline string itos(int d)
 {
 	stringstream ss; string stl;
@@ -18,6 +19,7 @@ inline string itos(int d)
 	return stl;
 }
 
+[[deprecated]]
 inline wstring itows(int d)
 {
 	wstringstream ss; wstring stl;

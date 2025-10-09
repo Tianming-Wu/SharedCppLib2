@@ -73,6 +73,7 @@ private:
 
 class hpint {
 public:
+    hpint() {}
     hpint(int32_t integer) { make(std::to_string(integer)); }
     hpint(uint32_t integer) { make(std::to_string(integer)); }
     hpint(hpcalc::specialState state) : special(state), negative(false) {}
@@ -333,6 +334,9 @@ public:
     hpfloat(int32_t integer) : integer(integer), fraction(0) {}
     hpfloat(const hpint& integer, const hpint& fraction) : integer(integer), fraction(fraction) {}
     hpfloat(const hpint& integer) : integer(integer), fraction(0) {}
+
+    hpfloat(float value) { make(std::to_string(value)); }
+    hpfloat(double value) { make(std::to_string(value)); }
 
     hpfloat(hpcalc::specialState state) : integer(state), fraction(state), negative(false) {}
 

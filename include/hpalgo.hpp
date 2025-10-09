@@ -105,12 +105,46 @@ hpint truncate(const hpfloat& _ref) {
 
 /// @brief 自然对数函数
 hpfloat ln(const hpfloat& _ref) {
-    if (_ref.isNan() || _ref<= 0) throw std::runtime_error("hpfloat::ln: invalid argument");
+    if (_ref.isNan() || _ref <= 0) throw std::runtime_error("hpfloat::ln: invalid argument");
     if (_ref.isInfinite()) return hpfloat(hpcalc::Infinite);
+    if (_ref == hpfloat(1)) return hpfloat(0); // ln(1) = 0
 
-    // 简单占位实现，实际需要数值方法
-    hpfloat result(0);
-    // TODO: 实现自然对数的数值计算
+    // 使用泰勒级数展开计算自然对数
+    // ln(x) = 2 * [ (x-1)/(x+1) + 1/3 * ((x-1)/(x+1))^3 + 1/5 * ((x-1)/(x+1))^5 + ... ]
+    
+    hpfloat x = _ref;
+    
+    // 如果 x 不在 [0.5, 2] 范围内，先进行缩放
+    int scale = 0;
+    while (x > hpfloat(2)) {
+        x = x / hpfloat(2);
+        scale++;
+    }
+    while (x < hpfloat(0.5)) {
+        x = x * hpfloat(2);
+        scale--;
+    }
+    
+    // 现在 x 在 [0.5, 2] 范围内，计算 ln(x)
+    hpfloat term = (x - hpfloat(1)) / (x + hpfloat(1));
+    hpfloat term_sq = term * term;
+    hpfloat current_term = term;
+    hpfloat result = current_term;
+    
+    // 泰勒级数展开
+    const int iterations = 50; // 迭代次数，可根据精度需求调整
+    for (int n = 1; n < iterations; n++) {
+        current_term = current_term * term_sq;
+        hpfloat denominator = hpfloat(2 * n + 1);
+        result = result + current_term / denominator;
+    }
+    
+    result = result * hpfloat(2);
+    
+    // 加上缩放因子: ln(x * 2^scale) = ln(x) + scale * ln(2)
+    hpfloat ln2 = hpfloat::from_string("0.6931471805599453094172321214581765680755001343602552541206800094933936219696947156058633269964186875");
+    result = result + (hpfloat(scale) * ln2);
+    
     return result;
 }
 
@@ -125,13 +159,31 @@ hpfloat log(const hpfloat& _ref, const hpfloat& base) {
     return ln(_ref) / ln(base);
 }
 
-/// @brief 指数函数
+/// @brief 指数函数（补全实现）
 hpfloat exp(const hpfloat& _ref) {
     if (_ref.isNan()) return hpfloat(hpcalc::Nan);
-    if (_ref.isInfinite()) return hpfloat(hpcalc::Infinite);
-
-    // 简单占位实现，实际需要数值方法
-    hpfloat result(0);
+    if (_ref.isInfinite()) {
+        if (_ref.isNegative()) return hpfloat(0); // exp(-∞) = 0
+        return hpfloat(hpcalc::Infinite); // exp(+∞) = +∞
+    }
+    
+    // 使用泰勒级数展开: exp(x) = 1 + x + x^2/2! + x^3/3! + ...
+    hpfloat result(1);
+    hpfloat term(1);
+    hpfloat x = _ref;
+    
+    const int iterations = 50; // 迭代次数
+    for (int n = 1; n < iterations; n++) {
+        term = term * x / hpfloat(n);
+        result = result + term;
+        
+        // 如果项变得很小，提前终止
+        if (abs(term) < hpfloat::from_string("0.00000000000000000000000000000000000000000000000001")) {
+            break;
+        }
+    }
+    
+    return result;
 }
 
 hpfloat abs(const hpfloat& _ref) {

@@ -67,18 +67,18 @@ std::vector<colorctl> decompress(const std::string& input);
 */
 inline string textcolor(int text, int background = 0)
 {
-	string _text = itos(text), _background = background?(itos(background)):"";
+	string _text = std::to_string(text), _background = background?(std::to_string(background)):"";
 	return string("\033[1;" + _text + (background?";":"") + _background + "m");
 }
 
 inline string rgbtext(int r, int g, int b)
 {
-    return "\033[38;2;" + itos(r) + ";" + itos(g) + ";" + itos(b) + "m";
+    return "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
 }
 
 inline wstring wtextcolor(int text, int background = 0)
 {
-	wstring _text = itows(text), _background = background?(itows(background)):L"";
+	wstring _text = std::to_wstring(text), _background = background?(std::to_wstring(background)):L"";
 	return wstring(L"\033[1;" + _text + (_background.empty()?L"":L";" + _background) + L"m");
 }
 
@@ -90,29 +90,29 @@ inline wstring wtextcolor(int text, int background = 0)
 */ 
 inline string bgcolor(int background)
 {
-	return string("\033[1;" + itos(background) + "m");
+	return string("\033[1;" + std::to_string(background) + "m");
 }
 
 inline string rgbbg(int r, int g, int b)
 {
-    return "\033[48;2;" + itos(r) + ";" + itos(g) + ";" + itos(b) + "m";
+    return "\033[48;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
 }
 
 inline wstring wbgcolor(int background)
 {
-    return wstring(L"\033[1;" + itows(background) + L"m");
+    return wstring(L"\033[1;" + std::to_wstring(background) + L"m");
 }
 
 inline string coloredtext(string content, int text, int background = 0)
 {
-	string _text = itos(text), _background = background?(itos(background)):"";
+	string _text = std::to_string(text), _background = background?(std::to_string(background)):"";
 	return string("\033[1;" + _text + (background?";":"") + _background + "m" + content + "\033[0m");
 }
 
 inline string bcoloredtext(bool enabled, string content, int text, int textDisabled = tWhite, int background = 0, int backgroundDisabled = 0)
 {
-	string _text = enabled?itos(text):itos(textDisabled),
-		   _background = enabled?(background?(itos(background)):""):(backgroundDisabled?(itos(backgroundDisabled)):"");
+	string _text = enabled?std::to_string(text):std::to_string(textDisabled),
+		   _background = enabled?(background?(std::to_string(background)):""):(backgroundDisabled?(std::to_string(backgroundDisabled)):"");
 	return string("\033[1;" + _text + (background?";":"") + _background + "m" + content + "\033[0m");
 }
 
@@ -174,7 +174,7 @@ void progress_bar_texted(int current, int all, int length = 140);
  */
 inline string movecursor(int row, int col)
 {
-    return string("\033[" + itos(row) + ";" + itos(col) + "H");
+    return string("\033[" + std::to_string(row) + ";" + std::to_string(col) + "H");
 }
 
 /// @brief Hide the cursor.
@@ -194,6 +194,8 @@ const string restorecursorpos { "\033[u" };
  * 
  * This function uses ANSI escape codes to get the current cursor
  * position and returns a struct containing the number of rows and columns.
+ * 
+ * @warning uses sscanf which is unsafe. Will be fixed in a newer release.
  */
 inline cursor_position get_cursor_position() {
     std::cout << "\033[6n";
