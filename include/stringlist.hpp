@@ -1,7 +1,3 @@
-/* stringlist version 3.22.5
-
-*/
-
 #pragma once
 
 #include <string>
