@@ -102,26 +102,6 @@ private:
 class logt {
     friend class logt_sso;
 public:
-    // 流式日志对象
-    logt(LogLevel level = LogLevel::l_INFO);
-
-    ~logt();
-
-    // 禁止拷贝
-    logt(const logt&) = delete;
-    logt& operator=(const logt&) = delete;
-    
-    // 支持移动
-    logt(logt&&) = default;
-    logt& operator=(logt&&) = default;
-
-    // 流输出操作符
-    template<typename T>
-    logt& operator<<(const T& value) {
-        ss_ << value;
-        return *this;
-    }
-
     // 静态配置方法
     static void file(const std::string& filename);
     static void setostream(std::ostream& os);
@@ -139,6 +119,14 @@ public:
      */
     static void install_preprocessor(preprocessor_t preprocessor);
 
+    inline static void enableSuperTimestamp(bool enabled) { 
+        super_timestamp_enabled_ = enabled; 
+    }
+    
+    inline static bool isSuperTimestampEnabled() { 
+        return super_timestamp_enabled_; 
+    }
+
 private:
     static std::string get_thread_name();
     static void worker_thread();
@@ -146,9 +134,6 @@ private:
 
     static void write_message(const logt_message& message);
     static std::string format_timestamp(const std::chrono::system_clock::time_point& tp);
-
-    std::stringstream ss_;
-    LogLevel level_;
 
     // 静态成员
     static LogLevel filter_level_;
@@ -166,9 +151,9 @@ private:
     static std::thread worker_;
     static std::once_flag worker_flag_;
 
-    static const char* level_labels_[];
+    static std::atomic<bool> super_timestamp_enabled_;
 
-    static logt_sig global_sig(const std::string& name);
+    static const char* level_labels_[];
 };
 
 
