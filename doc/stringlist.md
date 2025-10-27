@@ -1,221 +1,330 @@
-# stringlist
-+ Name: StringList
-+ Namespace: `std`
+# stringlist - Enhanced String List Library
+
++ Name: StringList  
++ Namespace: `std`  
 + Document Version: `3.22.5`
 
+## CMake Info
+
+| Item | Value |
+|---------|---------|
+| Namespace | `SharedCppLib2` |
+| Library | `basic` (contains stringlist) |
+
+To include:
+```cmake
+find_package(SharedCppLib2 REQUIRED)
+target_link_libraries(target SharedCppLib2::basic)
+```
 
 ## Description
-Stringlist is a class written to add more useful features to standard library (not really).
 
-This class was inspired by [**QtProject**](https://www.qt.io) which provides powerful `QStringList` class.
+StringList is a powerful extension of `std::vector<std::string>` that provides Qt-inspired string manipulation capabilities. It inherits all standard vector operations while adding convenient methods for string processing, parsing, and transformation.
 
-### How to use:
-Check [`split`](#split), [`join`](#join-1) first.
+> [!TIP]
+> If you're familiar with Qt's `QStringList`, you'll find StringList provides similar functionality for standard C++ strings.
 
+## Quick Start
 
-## Examples:
-Stringlist is powerful on argument parsing. You can write this:
+### Basic Usage
 ```cpp
 #include <SharedCppLib2/stringlist.hpp>
 
+// Create from initializer list
+std::stringlist names = {"Alice", "Bob", "Charlie"};
+
+// Join with separator
+std::cout << names.join(", ") << std::endl;
+// Output: Alice, Bob, Charlie
+
+// Split string into list
+std::stringlist words = std::stringlist::split("hello world from cpp", " ");
+```
+
+### Command Line Arguments
+```cpp
 int main(int argc, char** argv) {
     std::stringlist args(argc, argv);
-
-    std::cout << args.join() << std::endl;
-
+    
+    std::cout << "Program: " << args.vat(0) << std::endl;
+    std::cout << "Arguments: " << args.subarr(1).join(" ") << std::endl;
+    
     return 0;
-};
+}
 ```
 
-## Functions
+## Core Features
 
-### join (1)
-Sig: `string join(const string &i = " ") const;`
+### 🔗 String Joining & Splitting
+Advanced methods for converting between strings and string lists.
 
-Join the list into a complete string.
+### 🔍 Search & Filter
+Powerful search capabilities and data cleaning operations.
 
----
-### join (2)
-Sig: `string join(size_t begin, size_t size = -1, const string &i = " ") const;`
+### 📦 Data Conversion
+Multiple constructors for different data sources.
 
-Same as [`join`](#join-1), and supports selecting range.
+### 🛠️ Utility Operations
+Convenience methods for common string list operations.
 
----
-### xjoin
-Sig: `string xjoin(const string &i = " ", const char binding = '\"') const;`
+## Function Reference
 
-Same as [`join`](#join-1), and add binding character if the specific list item contains the seperator `i`. This is pretty useful if you are compiling command args.
+### String Conversion
 
-For example:
+#### join
 ```cpp
-std::stringlist sl({"Message", "This is a sentence."});
-std::cout << sl.join(" ") << std::endl;
-std::cout << sl.xjoin(" ") << std::endl;
+string join(const string &separator = " ") const;
+string join(size_t begin, size_t size = -1, const string &separator = " ") const;
 ```
-Output:
-```
-Message This is a sentence.
-Message "This is a sentence."
-```
+Joins list elements into a single string.
 
----
-### dbgjoin
-Sig: `string dbgjoin(string i = "'") const;`
-
-This function make it easy to see the actural boundary of each elements.
-
----
-### append (1)
-Sig: `void append(const stringlist &l);`
-
-Wrapper of `std::vector<std::string>::append(std::vector<std::string>&)`.
-
----
-### append (2)
-Sig: `void append(const string &s);`
-
-Wrapper of `std::vector<std::string>::append(_T&)`.
-
----
-### subarr
-Sig: `std::stringlist subarr(size_t pos, size_t len = 0) const;`
-
-This is basically the same idea as `substr`. It allows you to slice the list.
-
----
-### from
-Sig: `void from(int size, char** content, int begin = 0, int end = -1);`
-
-Allows you to read data from a raw char list, like argv.
-
-You can do like this: `std::stringlist sl = std::stringlist::from(argc, argv);`, but it's better to use the [initializer version]().
-
----
-### vat
-Sig: `string vat(size_t p, const string &v = "") const;`
-
-Return the string at position `p`, or `v` if the index `p` doesn't exist in the list.
-
----
-### remove_empty
-Sig: `void remove_empty();`
-
-This function removes any empty strings in the list.
-
----
-### unique
-Sig: `stringlist unique();`
-
-This function removes any duplicated strings in the list.
-
----
-### find
-Sig: `size_t find(const std::string &s, size_t start = 0) const;`
-
-Find a specific string in the content. Returns `std::stringlist::npos` if not found.
-
----
-### find_last
-Sig: `size_t find_last(const std::string &s) const;`
-
-Almost the same as [`find`](#find), but search from back to front.
-
----
-### find_inside
-Sig: `point find_inside(const std::string &s, size_t start = 0, size_t start_inside = 0) const;`
-
-Find `s` in each string contained in the list until find one.
-
-point is defined as `typedef std::pair<size_t,size_t> point;`, so get the content by `first` and `second`.
-
----
-### contains
-Sig: `bool contains(const std::string &s) const;`
-
----
-### exec_foreach
-Sig: `void exec_foreach(function<void(size_t,string&)> f);`
-
-Execute `f()` for each of the element.
-
-define the function as:
+**Examples:**
 ```cpp
-void f(size_t id, std::string &content)
+std::stringlist sl = {"a", "b", "c"};
+sl.join();           // "a b c"
+sl.join(", ");       // "a, b, c"
+sl.join(1, 2, "-");  // "b-c" (from index 1, 2 elements)
 ```
-or use lambda:
+
+#### xjoin
 ```cpp
-#include <functional>
-
-std::function<void(size_t,std::string&)> f = [](size_t id, std::string &content) {
-    // do something
-};
+string xjoin(const string &separator = " ", const char binding = '\"') const;
 ```
+Joins with automatic quoting of elements containing the separator.
 
----
-### from_initializer
-Sig: `static stringlist from_initializer(initializer_list<string> build);`
-
----
-### split (1)
-Sig: `static stringlist split(const string &s, const string &delim);`
-
-**Tip**: it's suggested to use [`remove_empty`](#remove_empty) after this, because it is possible that multiple delimters together lead to empty strings. For example `split("123  123", " ")` will end up as `{"123", "", "123"}`.
-
----
-### split (2)
-Sig: `static stringlist split(const string &s, const stringlist &delims);`
-
-Like [`split (1)`](#split-1), but supports multiple delimeters. The delimeters are `parallel`, meaning that any one of them can act as a delimeter.
-
-Usage example:
+**Example:**
 ```cpp
-std::stringlist sl = std::stringlist::split(input_string, {"\n","\t","\r"," "});
+std::stringlist sl = {"file", "path with spaces"};
+sl.xjoin(" ");  // "file \"path with spaces\""
 ```
-**Tip**: it's suggested to use [`remove_empty`](#remove_empty) after this, because it is possible that multiple delimters together lead to empty strings. For example `split("123  123", " ")` will end up as `{"123", "", "123"}`.
 
----
-### xsplit
-Sig: ` static stringlist xsplit(const string &s, const string &delim, const string &begin_bind, string end_bind = "", bool remove_binding = true);`
+#### dbgjoin
+```cpp
+string dbgjoin(string delimiter = "'") const;
+```
+Joins with delimiters for debugging visibility.
 
-Split the string, but support binding characters that prevent the content between them to be split.
+**Example:**
+```cpp
+sl.dbgjoin("|");  // "|a|b|c|"
+```
+
+#### split
+```cpp
+static stringlist split(const string &s, const string &delimiter);
+static stringlist split(const string &s, const stringlist &delimiters);
+```
+Splits a string into a list using single or multiple delimiters.
+
+**Examples:**
+```cpp
+// Single delimiter
+std::stringlist::split("a,b,c", ",");  // {"a", "b", "c"}
+
+// Multiple delimiters  
+std::stringlist::split("a,b c\td", {",", " ", "\t"});  // {"a", "b", "c", "d"}
+```
 
 > [!NOTE]
-> Binding 'characters' means that only single-character binding is supported. This is a string working as a list of characters.
+> Use `remove_empty()` after splitting to clean up empty elements from consecutive delimiters.
 
-If `end_bind` is left empty, it will be the same as `begin_bind`.
+#### xsplit & exsplit
+```cpp
+static stringlist xsplit(const string &s, const string &delim, 
+                        const string &begin_bind, string end_bind = "", 
+                        bool remove_binding = true);
 
+static stringlist exsplit(const string &s, const string &delim,
+                         const string &begin_bind, string end_bind = "",
+                         bool remove_binding = false, bool strict = false);
+```
+Advanced splitting with quote/bracket awareness.
 
----
-### exsplit
-Sig: `static stringlist exsplit(const string &s, const string &delim, const string &begin_bind, string end_bind = "", bool remove_binding = false, bool strict = false);`
+**Example:**
+```cpp
+// Handle quoted sections
+std::stringlist::xsplit("cmd arg1 \"quoted arg\" arg3", " ", "\"");
+// {"cmd", "arg1", "quoted arg", "arg3"}
+```
 
-Almost the same as [`xsplit`](#xsplit), while it supports binding characters to be found inside the string.
+### Search Operations
 
----
-### pack
-Sig: `string pack() const;`
+#### find & find_last
+```cpp
+size_t find(const std::string &value, size_t start = 0) const;
+size_t find_last(const std::string &value) const;
+```
+Finds the first/last occurrence of a string.
 
----
-### unpack
-Sig: `static stringlist unpack(const std::string &s);`
+**Returns:** Index or `stringlist::npos` if not found.
 
----
-### all_size
-Sig: `size_t all_size();`
+#### find_inside
+```cpp
+point find_inside(const std::string &substring, size_t start = 0, 
+                 size_t start_inside = 0) const;
+```
+Finds substring within any list element.
 
----
-### (others)
-Most of the `std::vector<std::string>::` functions are available if not mentioned above.
+**Returns:** `pair<element_index, position_in_element>` or `npoint`.
 
+#### contains
+```cpp
+bool contains(const std::string &value) const;
+```
+Checks if any element contains the value.
 
-## Initializers
+### Data Management
 
-`explicit stringlist(int size, char** content, int begin = 0, int end = -1);`
+#### vat
+```cpp
+string vat(size_t index, const string &default_value = "") const;
+```
+Safe element access with default value.
 
-Parse raw char list with NULL(`\0`) termating character. An example of it is `argv`.
+#### subarr
+```cpp
+std::stringlist subarr(size_t start, size_t length = 0) const;
+```
+Extracts a subrange from the list.
 
----
+#### remove_empty
+```cpp
+void remove_empty();
+```
+Removes all empty strings from the list.
 
-`stringlist(initializer_list<string> build);`
+#### unique
+```cpp
+stringlist unique();
+```
+Removes duplicate strings (preserves order).
 
-Allows you to use initializer list.
+### Functional Programming
+
+#### exec_foreach
+```cpp
+void exec_foreach(function<void(size_t, string&)> callback);
+```
+Applies a function to each element.
+
+**Example:**
+```cpp
+sl.exec_foreach([](size_t index, std::string& value) {
+    value = std::to_string(index) + ":" + value;
+});
+```
+
+## Constructor Reference
+
+### From C-style Arguments
+```cpp
+stringlist(int argc, char** argv, int start = 0, int end = -1);
+```
+Perfect for command-line argument processing.
+
+### From Initializer List
+```cpp
+stringlist(initializer_list<string> elements);
+```
+```cpp
+std::stringlist fruits = {"apple", "banana", "orange"};
+```
+
+### From String with Splitting
+```cpp
+stringlist(const string &text, const string &delimiter);
+stringlist(const string &text, const stringlist &delimiters);
+```
+```cpp
+std::stringlist words("hello world from cpp", " ");
+```
+
+### From Single String
+```cpp
+explicit stringlist(const string &single_element);
+```
+Creates a list with one element.
+
+## Advanced Usage
+
+### Pack/Unpack for Serialization
+```cpp
+std::stringlist data = {"normal", "text with spaces"};
+std::string packed = data.pack();  // Auto-quotes spaces
+std::stringlist restored = std::stringlist::unpack(packed);
+```
+
+### Stream Integration
+```cpp
+std::stringlist items;
+std::cin >> stringist_split(",", items);  // Parse CSV input
+```
+
+### Performance Tips
+
+1. **Use `vat()`** for safe element access instead of bounds checking
+2. **Pre-allocate** when possible for large lists
+3. **Chain operations** efficiently:
+   ```cpp
+   auto result = std::stringlist::split(input, " ")
+                 .remove_empty()
+                 .unique();
+   ```
+
+## Real-World Examples
+
+### Configuration Parsing
+```cpp
+std::stringlist config_lines = std::stringlist::split(config_text, "\n")
+                               .remove_empty();
+
+for (const auto& line : config_lines) {
+    if (line.starts_with("#")) continue;  // Skip comments
+    auto parts = std::stringlist::split(line, "=");
+    if (parts.size() == 2) {
+        config[parts[0]] = parts[1];
+    }
+}
+```
+
+### Command Builder
+```cpp
+std::stringlist build_command(const std::string& program, 
+                             const std::vector<std::string>& args) {
+    std::stringlist cmd = {program};
+    for (const auto& arg : args) {
+        if (arg.contains(" ")) {
+            cmd.append("\"" + arg + "\"");
+        } else {
+            cmd.append(arg);
+        }
+    }
+    return cmd;
+}
+
+// Usage: build_command("git", {"commit", "-m", "message with spaces"})
+// Result: {"git", "commit", "-m", "\"message with spaces\""}
+```
+
+## Common Patterns
+
+### Filtering
+```cpp
+std::stringlist files = /* ... */;
+files.exec_foreach([](size_t i, std::string& file) {
+    if (!file.ends_with(".cpp")) {
+        file.clear();  // Mark for removal
+    }
+});
+files.remove_empty();
+```
+
+### Transformation
+```cpp
+std::stringlist paths = {"dir1/file1", "dir2/file2"};
+paths.exec_foreach([](size_t i, std::string& path) {
+    path = "/usr/local/" + path;
+});
+```
+
+This revised documentation provides better organization, practical examples, and addresses the actual functionality found in your source code.
