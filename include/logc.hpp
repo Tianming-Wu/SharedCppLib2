@@ -11,13 +11,13 @@ struct color_standard {
     colorctl debug, info, warn, error, fatal;
     inline colorctl get(LogLevel level) {
         switch(level) {
-            case LogLevel::DEBUG: return debug;
-            case LogLevel::INFO: return info;
-            case LogLevel::WARN: return warn;
-            case LogLevel::ERROR: return error;
-            case LogLevel::FATAL: return fatal;
+            case LogLevel::l_DEBUG: return debug;
+            case LogLevel::l_INFO: return info;
+            case LogLevel::l_WARN: return warn;
+            case LogLevel::l_ERROR: return error;
+            case LogLevel::l_FATAL: return fatal;
 
-            case LogLevel::QUIET: // invalid
+            case LogLevel::l_QUIET: // invalid
             default: return colorctl();
         }
     }

@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 
+# if(POLICY CMP0111)
+#     cmake_policy(SET CMP0111 NEW)
+# endif()
+
 project(SharedCppLib2
     VERSION 1.16.3
     LANGUAGES CXX
@@ -34,6 +38,7 @@ add_library(indexer STATIC src/indexer.cpp)
 add_library(regexfilter STATIC src/regexfilter.cpp)
 add_library(logt STATIC src/logt.cpp)
 add_library(logc STATIC src/logc.cpp)
+add_library(Base64 STATIC src/Base64.cpp)
 
 # 库依赖关系
 target_link_libraries(logd PUBLIC variant)
@@ -44,57 +49,43 @@ target_link_libraries(logc PUBLIC logt)
 target_link_libraries(regexfilter PUBLIC basic)
 target_link_libraries(logc PUBLIC basic)
 
+# 库列表
+set(TARGET_LIST variant logd logf sha256 basic indexer regexfilter logt logc Base64)
+
 # 安装目标
-install(TARGETS variant logd logf sha256 basic indexer regexfilter logt logc
+install(TARGETS ${TARGET_LIST}
     EXPORT SharedCppLib2Targets
     ARCHIVE DESTINATION ${INSTALL_LIBDIR}
     LIBRARY DESTINATION ${INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${INSTALL_BINDIR}
     INCLUDES DESTINATION ${INSTALL_INCLUDEDIR}
 )
 
-target_include_directories(variant PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-target_include_directories(basic PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-target_include_directories(logd PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-target_include_directories(logf PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-target_include_directories(sha256 PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-target_include_directories(indexer PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-target_include_directories(regexfilter PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-target_include_directories(logt PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-target_include_directories(logc PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
+# 为每个目标设置导出属性
+foreach(target_name ${TARGET_LIST})
+    # 设置不同配置的库文件位置
+    # set_property(TARGET ${target_name} PROPERTY 
+    #     ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG}")
+    # set_property(TARGET ${target_name} PROPERTY 
+    #     ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE}")
+    # set_property(TARGET ${target_name} PROPERTY 
+    #     ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO}")
+    # set_property(TARGET ${target_name} PROPERTY 
+    #     ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL}")
+
+    target_include_directories(${target_name} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+
+endforeach()
+
 
 # 安装头文件
 install(DIRECTORY include/
     DESTINATION ${INSTALL_INCLUDEDIR}
     FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
 )
-set(INSTALL_INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/SharedCppLib2)
 
 # 安装导出文件
 install(EXPORT SharedCppLib2Targets
@@ -107,16 +98,22 @@ install(EXPORT SharedCppLib2Targets
 include(CMakePackageConfigHelpers)
 configure_package_config_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/SharedCppLib2ConfigVersion.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/SharedCppLib2Config.cmake
     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
 )
 
 # 安装配置文件
-install(EXPORT SharedCppLib2Targets
-    FILE SharedCppLib2Config.cmake
-    NAMESPACE SharedCppLib2::
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/SharedCppLib2Config.cmake  # 安装生成的配置文件
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
 )
+
+# 安装配置文件
+# install(EXPORT SharedCppLib2Targets
+#     FILE SharedCppLib2Config.cmake
+#     NAMESPACE SharedCppLib2::
+#     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
+# )
 
 # 生成版本文件
 write_basic_package_version_file(
