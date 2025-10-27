@@ -35,22 +35,35 @@ This is a series of useful cpp classes for multiple purposes.
 
 ## How to install
 ### 1. Get source from github:
-```
-git pull https://github.com/Tianming-Wu/SharedCppLib2
+```bash
+git clone https://github.com/Tianming-Wu/SharedCppLib2
 ```
 
 ### 2. Install using CMake (Debug):
-```
+```bash
 cd SharedCppLib2
-cmake -B build -S .
+# Configure Project
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cd build
-cmake --install . --config Debug
+# Build and install
+cmake --build build --config Debug
+cmake --install build --config Debug
 ```
+
+#### Or install Release version:
+```bash
+cd SharedCppLib2
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release  
+cmake --install build --config Release
+```
+
 > [!NOTE]
 > If you are on Windows, you may need to configure cmake path first, otherwise run in an Administrator prompt, or use `sudo` introduced in the newest Windows 11.
 
 > [!NOTE]
-> `--config` May not work on the newest version of CMake. Hasn't found out why.
+> The `--config` parameter is only needed for multi-configuration generators (like Visual Studio). 
+> For single-config generators (like Makefiles, Ninja), use `-DCMAKE_BUILD_TYPE=Debug/Release` instead.
 
 ### 3. Add to your project's CMakeLists.txt:
 ```
