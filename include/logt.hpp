@@ -57,7 +57,50 @@ private:
 
 typedef std::function<bool(logt_message&)> preprocessor_t;
 
+class logt_sso {
+public:
+    logt_sso(LogLevel level, const std::string& signature = "");
+    ~logt_sso();
+    
+    // 禁止拷贝
+    logt_sso(const logt_sso&) = delete;
+    logt_sso& operator=(const logt_sso&) = delete;
+    
+    // 支持移动
+    logt_sso(logt_sso&&) = default;
+    logt_sso& operator=(logt_sso&&) = default;
+    
+    // 流输出操作符
+    template<typename T>
+    logt_sso& operator<<(const T& value) {
+        ss_ << value;
+        return *this;
+    }
+    
+private:
+    std::stringstream ss_;
+    LogLevel level_;
+};
+
+
+class logt_sig {
+public:
+    logt_sig(const std::string& name) : name_(name) {}
+    
+    const std::string& name() const { return name_; }
+
+    logt_sso info() const { return logt_sso(LogLevel::l_INFO, name_); }
+    logt_sso warn() const { return logt_sso(LogLevel::l_WARN, name_); }
+    logt_sso error() const { return logt_sso(LogLevel::l_ERROR, name_); }
+    logt_sso fatal() const { return logt_sso(LogLevel::l_FATAL, name_); }
+    logt_sso debug() const { return logt_sso(LogLevel::l_DEBUG, name_); }
+    
+private:
+    std::string name_;
+};
+
 class logt {
+    friend class logt_sso;
 public:
     // 流式日志对象
     logt(LogLevel level = LogLevel::l_INFO);
@@ -96,13 +139,6 @@ public:
      */
     static void install_preprocessor(preprocessor_t preprocessor);
 
-    // 快捷方法 - 返回临时对象用于流式输出
-    inline static logt info()  {  return logt(LogLevel::l_INFO);  }
-    inline static logt warn()  {  return logt(LogLevel::l_WARN);  }
-    inline static logt error() {  return logt(LogLevel::l_ERROR); }
-    inline static logt fatal() {  return logt(LogLevel::l_FATAL); }
-    inline static logt debug() {  return logt(LogLevel::l_DEBUG); }
-
 private:
     static std::string get_thread_name();
     static void worker_thread();
@@ -131,13 +167,27 @@ private:
     static std::once_flag worker_flag_;
 
     static const char* level_labels_[];
+
+    static logt_sig global_sig(const std::string& name);
 };
 
 
-// 全局函数，类似 qDebug() 的用法
-inline logt tLog() { return logt(); }
-inline logt tInfo() { return logt::info(); }
-inline logt tWarn() { return logt::warn(); }
-inline logt tError() { return logt::error(); }
-inline logt tFatal() { return logt::fatal(); }
-inline logt tDebug() { return logt::debug(); }
+#define LOGT_DECLARE \
+private: \
+    static ::logt_sig logt;
+
+// 类外签名定义宏
+#define LOGT_DEFINE(Class, Name) \
+    ::logt_sig Class::logt(Name)
+
+// 全局模块签名 - 在全局或命名空间作用域使用
+#define LOGT_MODULE(Name) \
+    static ::logt_sig logt(Name)
+
+// 函数内局部签名 - 在函数作用域使用
+#define LOGT_LOCAL(Name) \
+    static ::logt_sig logt(Name)
+
+// 临时签名（用于一次性使用）
+#define LOGT_TEMP(Name) \
+    ::logt_sig(Name)

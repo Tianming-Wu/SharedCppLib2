@@ -63,6 +63,36 @@ void logt_eventbus::stop() {
 
 
 
+logt_sso::logt_sso(LogLevel level, const std::string& signature) 
+    : level_(level)
+{
+    logt::ensure_worker_started();
+
+    // 添加级别标签
+    ss_ << logt::level_labels_[static_cast<int>(level)] << " ";
+    
+    // 添加签名（如果有）
+    if (!signature.empty()) {
+        ss_ << "[" << signature << "] ";
+    }
+    
+    // 添加线程标识
+    auto thread_name = logt::get_thread_name();
+    if (!thread_name.empty()) {
+        ss_ << "[" << thread_name << "] ";
+    } else {
+        ss_ << "[" << std::this_thread::get_id() << "] ";
+    }
+}
+
+logt_sso::~logt_sso() {
+    // 析构时自动推送完整日志
+    if (level_ >= logt::filter_level_) {
+        logt_eventbus::push(ss_.str(), level_);
+    }
+}
+
+
 logt::logt(LogLevel level) {
     ensure_worker_started();
     
@@ -192,4 +222,8 @@ void logt::ensure_worker_started() {
     std::call_once(worker_flag_, []() {
         worker_ = std::thread(worker_thread);
     });
+}
+
+logt_sig logt::global_sig(const std::string& name) {
+    return logt_sig(name);
 }
