@@ -289,21 +289,19 @@ for (const auto& line : config_lines) {
 
 ### Command Builder
 ```cpp
-std::stringlist build_command(const std::string& program, 
-                             const std::vector<std::string>& args) {
+std::string build_command(const std::string& program, 
+                         const std::vector<std::string>& args) {
     std::stringlist cmd = {program};
-    for (const auto& arg : args) {
-        if (arg.contains(" ")) {
-            cmd.append("\"" + arg + "\"");
-        } else {
-            cmd.append(arg);
-        }
-    }
-    return cmd;
+    cmd.append(args);  // add the entire vector
+    return cmd.xjoin(" ");  // automatically manage args with space(s).
 }
 
-// Usage: build_command("git", {"commit", "-m", "message with spaces"})
-// Result: {"git", "commit", "-m", "\"message with spaces\""}
+// or single line version：
+std::string build_command(const std::string& program, 
+                         const std::vector<std::string>& args) {
+    return std::stringlist{program}.append(args).xjoin(" ");
+}
+
 ```
 
 ## Common Patterns
