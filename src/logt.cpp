@@ -8,7 +8,7 @@ std::atomic<bool> logt_eventbus::stopped_{false};
 
 
 // 静态成员定义
-LogLevel logt::filter_level_ = LogLevel::INFO;
+LogLevel logt::filter_level_ = LogLevel::l_INFO;
 std::ofstream logt::log_file_;
 std::ostream* logt::output_stream_ = &std::cout;
 bool logt::use_file_ = false;

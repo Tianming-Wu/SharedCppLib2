@@ -23,12 +23,12 @@ Doesn't work well in file mode, disable by yourself.
 #include <functional>
 
 enum class LogLevel {
-    QUIET = -1, // For not logging anything
-    DEBUG =  0,
-    INFO  =  1,
-    WARN  =  2,
-    ERROR =  3,
-    FATAL =  4
+    l_QUIET = -1, // For not logging anything
+    l_DEBUG =  0,
+    l_INFO  =  1,
+    l_WARN  =  2,
+    l_ERROR =  3,
+    l_FATAL =  4
 };
 
 struct logt_message {
@@ -60,7 +60,7 @@ typedef std::function<bool(logt_message&)> preprocessor_t;
 class logt {
 public:
     // 流式日志对象
-    logt(LogLevel level = LogLevel::INFO);
+    logt(LogLevel level = LogLevel::l_INFO);
 
     ~logt();
 
@@ -97,11 +97,11 @@ public:
     static void install_preprocessor(preprocessor_t preprocessor);
 
     // 快捷方法 - 返回临时对象用于流式输出
-    inline static logt info()  {  return logt(LogLevel::INFO);  }
-    inline static logt warn()  {  return logt(LogLevel::WARN);  }
-    inline static logt error() {  return logt(LogLevel::ERROR); }
-    inline static logt fatal() {  return logt(LogLevel::FATAL); }
-    inline static logt debug() {  return logt(LogLevel::DEBUG); }
+    inline static logt info()  {  return logt(LogLevel::l_INFO);  }
+    inline static logt warn()  {  return logt(LogLevel::l_WARN);  }
+    inline static logt error() {  return logt(LogLevel::l_ERROR); }
+    inline static logt fatal() {  return logt(LogLevel::l_FATAL); }
+    inline static logt debug() {  return logt(LogLevel::l_DEBUG); }
 
 private:
     static std::string get_thread_name();

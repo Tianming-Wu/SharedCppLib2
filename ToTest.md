@@ -1,7 +1,26 @@
-[ ] [ansiio.hpp] ansiio::decompress() syntax parsing
-[ ] [basics.hpp] RunOnce
+## ansiio
+[ ] ansiio::decompress()
 
-
+## basic
+[ ] runonce
 
 ## logt
-[ ] complete 
+[ ] efficiency test
+
+## logc
+[x] Colorize
+[ ] Customize color profile
+
+## hpalgo
+[ ] class hpint
+[ ] class hpfloat
+[ ] ln()
+[ ] exp()
+
+## variant
+[ ] class
+
+
+## regexfilter
+[ ] blacklist
+[ ] whitelist
