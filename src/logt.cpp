@@ -18,6 +18,7 @@ std::mutex logt::thread_mutex_;
 std::unordered_map<std::thread::id, std::string> logt::thread_names_;
 std::thread logt::worker_;
 std::once_flag logt::worker_flag_;
+std::atomic<bool> logt::super_timestamp_enabled_{false};
 
 const char* logt::level_labels_[] = {
     "[DEBUG]",
@@ -71,17 +72,17 @@ logt_sso::logt_sso(LogLevel level, const std::string& signature)
     // 添加级别标签
     ss_ << logt::level_labels_[static_cast<int>(level)] << " ";
     
-    // 添加签名（如果有）
-    if (!signature.empty()) {
-        ss_ << "[" << signature << "] ";
-    }
-    
     // 添加线程标识
     auto thread_name = logt::get_thread_name();
     if (!thread_name.empty()) {
         ss_ << "[" << thread_name << "] ";
     } else {
         ss_ << "[" << std::this_thread::get_id() << "] ";
+    }
+    
+    // 添加签名（如果有）
+    if (!signature.empty()) {
+        ss_ << "[" << signature << "] ";
     }
 }
 
@@ -93,28 +94,6 @@ logt_sso::~logt_sso() {
 }
 
 
-logt::logt(LogLevel level) {
-    ensure_worker_started();
-    
-    // 日志标签
-    ss_ << level_labels_[static_cast<int>(level)] << " ";
-    level_ = level;
-
-    // 自动添加线程标识
-    auto thread_name = get_thread_name();
-    if (!thread_name.empty()) {
-        ss_ << "[" << thread_name << "] ";
-    } else {
-        ss_ << "[" << std::this_thread::get_id() << "] ";
-    }
-}
-
-logt::~logt()  {
-    // 析构时自动推送完整日志（自动换行）
-    if(level_ >= filter_level_) {
-        logt_eventbus::push(ss_.str(), level_);
-    }
-}
 
 void logt::file(const std::string& filename) {
     ensure_worker_started();
@@ -207,23 +186,35 @@ void logt::write_message(const logt_message& message) {
 std::string logt::format_timestamp(const std::chrono::system_clock::time_point& tp) {
     std::time_t currentTime = std::chrono::system_clock::to_time_t(tp);
     std::tm localTime;
-# ifdef _WIN32
+#ifdef _WIN32
     localtime_s(&localTime, &currentTime);
-# else
-    localtime_r(&currentTime, &localTime);  // Linux 的线程安全版本
-# endif
-    return std::format("[{:04d}/{:02d}/{:02d} {:02d}:{:02d}:{:02d}]",
-        localTime.tm_year+1900, localTime.tm_mon+1, localTime.tm_mday,
-        localTime.tm_hour, localTime.tm_min, localTime.tm_sec
-    );
+#else
+    localtime_r(&currentTime, &localTime);
+#endif
+    
+    if (super_timestamp_enabled_) {
+        // 高精度时间戳：包含毫秒和微秒
+        auto since_epoch = tp.time_since_epoch();
+        auto seconds = std::chrono::duration_cast<std::chrono::seconds>(since_epoch);
+        auto micros = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch - seconds);
+        
+        int milliseconds = micros.count() / 1000;
+        int microseconds = micros.count() % 1000;
+        
+        return std::format("[{:04d}/{:02d}/{:02d} {:02d}:{:02d}:{:02d}.{:03d}.{:03d}]",
+            localTime.tm_year+1900, localTime.tm_mon+1, localTime.tm_mday,
+            localTime.tm_hour, localTime.tm_min, localTime.tm_sec,
+            milliseconds, microseconds);
+    } else {
+        // 普通时间戳
+        return std::format("[{:04d}/{:02d}/{:02d} {:02d}:{:02d}:{:02d}]",
+            localTime.tm_year+1900, localTime.tm_mon+1, localTime.tm_mday,
+            localTime.tm_hour, localTime.tm_min, localTime.tm_sec);
+    }
 }
 
 void logt::ensure_worker_started() {
     std::call_once(worker_flag_, []() {
         worker_ = std::thread(worker_thread);
     });
-}
-
-logt_sig logt::global_sig(const std::string& name) {
-    return logt_sig(name);
 }
