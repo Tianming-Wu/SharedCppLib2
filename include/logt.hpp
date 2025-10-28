@@ -22,6 +22,12 @@ Doesn't work well in file mode, disable by yourself.
 #include <chrono>
 #include <functional>
 
+#ifdef LOGT_WCHAR_SUPPORT
+    #include <locale>
+    #include <codecvt>
+    #include <type_traits>
+#endif
+
 enum class LogLevel {
     l_QUIET = -1, // For not logging anything
     l_DEBUG =  0,
@@ -72,10 +78,22 @@ public:
     
     // 流输出操作符
     template<typename T>
+    requires requires(T t, std::stringstream& ss) {
+        ss << t;  // 必须支持 stringstream 的 << 操作符
+    }
     logt_sso& operator<<(const T& value) {
         ss_ << value;
         return *this;
     }
+
+#ifdef LOGT_WCHAR_SUPPORT
+    logt_sso& operator<<(const std::wstring& value) {
+        // 宽字符串转多字节字符串
+        std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+        ss_ << converter.to_bytes(value);
+        return *this;
+    }
+#endif
     
 private:
     std::stringstream ss_;
