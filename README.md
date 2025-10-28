@@ -17,12 +17,12 @@ but if you do so I will appreciate.
 This is a series of useful cpp classes for multiple purposes.
 
 - `ansiio` for ANSI output features.
-- `stringlist`
+- [`stringlist`](doc/stringlist.md) for string list manipulation capabilities.
 - `Base64` Base64 encode/decode.
 - `bytearray`
 - `sha256` for encryption (incomplete).
-- `logt` Sub-threaded logging.
-- `logc` Provides colored logging (ansi features).
+- [`logt`](doc/logt.md) Sub-threaded logging.
+- [`logc`](doc/logc.md) Provides colored logging (ansi features).
 - `indexer` for data indexing.
 - `logd` simple console logger. (DO NOT USE)
 - `logf` simple file logger. (DO NOT USE)
@@ -76,6 +76,7 @@ Available target names can be found in [CMakeLists.txt](CMakeLists.txt):
 ```
 # 安装目标
 install(TARGETS variant logd logf sha256 basic indexer regexfilter logt logc
+...
 ```
 
 ### 4. In your code
