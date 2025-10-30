@@ -66,8 +66,7 @@ inline bool set_env(const std::string& name, const std::string& value) {
 // platform::windows
 namespace windows {
 
-inline std::string TranslateLastError() {
-    DWORD errorCode = GetLastError();
+inline std::string TranslateError(DWORD errorCode) {
     if (errorCode == 0) {
         return "";
     }
@@ -106,6 +105,10 @@ inline std::string TranslateLastError() {
     }
 
     return result;
+}
+
+inline std::string TranslateLastError() {
+    return TranslateError(GetLastError());
 }
 
 
