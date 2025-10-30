@@ -39,6 +39,7 @@ add_library(regexfilter STATIC src/regexfilter.cpp)
 add_library(logt STATIC src/logt.cpp)
 add_library(logc STATIC src/logc.cpp)
 add_library(Base64 STATIC src/Base64.cpp)
+add_library(platform STATIC src/platform.cpp)
 
 # 库依赖关系
 target_link_libraries(logd PUBLIC variant)
@@ -51,7 +52,7 @@ target_link_libraries(logc PUBLIC basic)
 target_link_libraries(sha256 PUBLIC basic)
 
 # 库列表
-set(TARGET_LIST variant logd logf sha256 basic indexer regexfilter logt logc Base64)
+set(TARGET_LIST variant logd logf sha256 basic indexer regexfilter logt logc Base64 platform)
 
 # 安装目标
 install(TARGETS ${TARGET_LIST}
