@@ -21,6 +21,7 @@ Doesn't work well in file mode, disable by yourself.
 #include <unordered_map>
 #include <chrono>
 #include <functional>
+#include <filesystem>
 
 #ifdef LOGT_WCHAR_SUPPORT
     #include <locale>
@@ -121,7 +122,7 @@ class logt {
     friend class logt_sso;
 public:
     // 静态配置方法
-    static void file(const std::string& filename);
+    static void file(const std::filesystem::path& filename);
     static void setostream(std::ostream& os);
     static void stdcout();
     static void claim(const std::string& name);

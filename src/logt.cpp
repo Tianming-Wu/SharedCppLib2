@@ -95,7 +95,7 @@ logt_sso::~logt_sso() {
 
 
 
-void logt::file(const std::string& filename) {
+void logt::file(const std::filesystem::path& filename) {
     ensure_worker_started();
     std::unique_lock<std::mutex> lock(file_mutex_);
     if (log_file_.is_open()) log_file_.close();

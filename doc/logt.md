@@ -90,7 +90,7 @@ void send_data() {
 
 #### file
 ```cpp
-static void file(const std::string& filename);
+static void file(const std::filesystem::path& filename);
 ```
 Sets log output to specified file. The file will be opened in append mode.
 
