@@ -33,7 +33,12 @@ void bytearray::append(const char* str, size_t size) {
 }
 
 void bytearray::append(const char* str) {
+    if(str == nullptr) return;
     append(str, std::string(str).length());
+}
+
+void bytearray::append(uint8_t val) {
+    append(static_cast<std::byte>(val));
 }
 
 void bytearray::reverse() {

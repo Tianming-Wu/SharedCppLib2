@@ -55,6 +55,7 @@ public:
     void append(const byte* pb, size_t size);
     void append(const char* str, size_t size);
     void append(const char* str);
+    void append(uint8_t val);
 
     void reverse();
 
