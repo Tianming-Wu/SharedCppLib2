@@ -172,33 +172,54 @@ bytearray bytearray::fromRaw(const char* raw, size_t size) {
 
 bool bytearray::readFromStream(std::istream &is, size_t size) {
     clear();
+    if (size == 0) return true;
+    
     resize(size);
-    return is.read(reinterpret_cast<char*>(data()), size).good();
+    is.read(reinterpret_cast<char*>(data()), size);
+    size_t bytes_read = static_cast<size_t>(is.gcount());
+    
+    if (bytes_read < size) {
+        resize(bytes_read);
+    }
+    
+    return bytes_read > 0 || size == 0;
 }
 
 bool bytearray::readAllFromStream(std::istream &is)
 {
     clear();
-        // move to end to determine size
-        auto current_pos = is.tellg();
-        is.seekg(0, std::ios::end);
-        auto size = is.tellg() - current_pos;
-        is.seekg(current_pos);
-        
-        if (size <= 0) return false;
-        
-        resize(size);
-        return is.read(reinterpret_cast<char*>(data()), size).good();
+    auto current_pos = is.tellg();
+    
+    is.seekg(0, std::ios::end);
+    auto total_size = is.tellg();
+    
+    is.seekg(current_pos, std::ios::beg);
+    
+    auto remaining_size = total_size - current_pos;
+    
+    if (remaining_size <= 0) return false;
+    
+    resize(remaining_size);
+    return static_cast<std::streamsize>(is.read(reinterpret_cast<char*>(data()), remaining_size).gcount()) == remaining_size;
 }
 
 bool bytearray::readUntilDelimiter(std::istream &is, char delimiter)
 {
     clear();
+    
+    if (!is.good()) return false;
+    
     std::string temp;
-    if (std::getline(is, temp, delimiter)) {
+    char ch;
+    while (is.get(ch) && ch != delimiter) {
+        temp += ch;
+    }
+    
+    if (!temp.empty() || (is.eof() && !temp.empty())) {
         *this = bytearray(temp);
         return true;
     }
+    
     return false;
 }
 
