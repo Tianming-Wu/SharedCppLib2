@@ -45,15 +45,15 @@ inline uint32_t small_sigma1(uint32_t x) { return (x >> 17 | x << 15) ^ (x >> 19
 @param[in][out] _message: 待处理的信息
 @return: 是否成功
 */
-bool preprocessing(std::vector<uint8_t>* _message);
+bool preprocessing(std::bytearray* _message);
 
 /** @brief: 将信息分解成连续的64Byte大小的数据块
 @param[in] message: 输入信息，长度为64Byte的倍数
 @param[out] _chunks: 输出数据块
 @return: 是否成功
 */
-bool breakTextInto64ByteChunks(const std::vector<uint8_t>& message, 
-                                std::vector<std::vector<uint8_t> >* _chunks);
+bool breakTextInto64ByteChunks(const std::bytearray& message, 
+                                std::vector<std::bytearray >* _chunks);
 
 /** @brief: 由64Byte大小的数据块，构造出64个4Byte大小的字。
 构造算法：前16个字直接由数据块分解得到，其余的字由如下迭代公式得到：
@@ -62,7 +62,7 @@ bool breakTextInto64ByteChunks(const std::vector<uint8_t>& message,
 @param[out] _words: 输出字
 @return: 是否成功
 */
-bool structureWords(const std::vector<uint8_t>& chunk, 
+bool structureWords(const std::bytearray& chunk, 
                     std::vector<uint32_t>* _words);
 
 /** @breif: 基于64个4Byte大小的字，进行64次循环加密
@@ -79,20 +79,20 @@ bool transform(const std::vector<uint32_t>& words,
 @return: 是否成功
 */
 bool produceFinalHashValue(const std::vector<uint32_t>& input,
-                            std::vector<uint8_t>* _output);
+                            std::bytearray* _output);
 
 
-bool encrypt(const std::vector<uint8_t>& input_message, 
-                     std::vector<uint8_t>* _digest)
+bool encrypt(const std::bytearray& input_message, 
+                     std::bytearray* _digest)
 {
     if (!input_message.empty() && _digest)
     {
         //! ????????
-        std::vector<uint8_t> message = input_message;
+        std::bytearray message = input_message;
         preprocessing(&message);
 
         //! ???????????????64Byte??��???????
-        std::vector<std::vector<uint8_t>> chunks;
+        std::vector<std::bytearray> chunks;
         breakTextInto64ByteChunks(message, &chunks);
 
         //! ??64Byte??��??????�?????64??4Byte??��????????????????????
@@ -120,13 +120,13 @@ std::string getHexMessageDigest(const std::string& message)
 {
     if (!message.empty())
     {
-        std::vector<uint8_t> __message;
+        std::bytearray __message;
         for (auto it = message.begin(); it != message.end(); ++it)
         {
-            __message.push_back(static_cast<uint8_t>(*it));
+            __message.push_back(static_cast<std::byte>(*it));
         }
 
-        std::vector<uint8_t> digest;
+        std::bytearray digest;
         encrypt(__message, &digest);
 
         std::ostringstream o_s;
@@ -145,20 +145,20 @@ std::string getHexMessageDigest(const std::string& message)
     }
 }
 
-std::vector<uint8_t> getMessageDigest(std::vector<uint8_t> message) {
+std::bytearray getMessageDigest(std::bytearray message) {
     if (!message.empty())
     {
-        std::vector<uint8_t> digest;
+        std::bytearray digest;
         encrypt(message, &digest);
         return digest;
     }
     else
     {
-        return std::vector<uint8_t>();
+        return std::bytearray();
     }
 }
 
-bool preprocessing(std::vector<uint8_t>* _message)
+bool preprocessing(std::bytearray* _message)
 {
     if (_message)
     {
@@ -168,34 +168,34 @@ bool preprocessing(std::vector<uint8_t>* _message)
         size_t remainder = _message->size() % 64;
         if (remainder < 56)
         {
-            _message->push_back(0x80); // 0x80 == 10000000
+            _message->append(0x80); // 0x80 == 10000000
             for (size_t i = 1; i < 56 - remainder; ++i)
             {
-                _message->push_back(0x00);
+                _message->append(std::byte{0x00});
             }
         }
         else if (remainder == 56)
         {
-            _message->push_back(0x80);
+            _message->append(0x80);
             for (size_t i = 1; i < 64; ++i)
             {
-                _message->push_back(0x00);
+                _message->append(std::byte{0x00});
             }
         }
         else
         {
-            _message->push_back(0x80);
+            _message->append(0x80);
             for (size_t i = 1; i < 64 - remainder + 56; ++i)
             {
-                _message->push_back(0x00);
+                _message->append(std::byte{0x00});
             }
         }
 
         //! ???????????????
         for (int i = 1; i <= 8; ++i)
         {
-            uint8_t c = static_cast<uint8_t>(original_bit_size >> (64 - 8 * i));
-            _message->push_back(c);
+            std::byte c = static_cast<std::byte>(original_bit_size >> (64 - 8 * i));
+            _message->append(c);
         }
 
         return true;
@@ -206,8 +206,8 @@ bool preprocessing(std::vector<uint8_t>* _message)
     }
 }
 
-bool breakTextInto64ByteChunks(const std::vector<uint8_t>& message, 
-                                       std::vector<std::vector<uint8_t>>* _chunks)
+bool breakTextInto64ByteChunks(const std::bytearray& message, 
+                                       std::vector<std::bytearray>* _chunks)
 {
     if (_chunks && 0 == message.size() % 64)
     {
@@ -216,7 +216,7 @@ bool breakTextInto64ByteChunks(const std::vector<uint8_t>& message,
         size_t quotient = message.size() / 64;
         for (size_t i = 0; i < quotient; ++i)
         {
-            std::vector<uint8_t> temp(message.begin() + i * 64, message.begin() + (i + 1) * 64);
+            std::bytearray temp(message.begin() + i * 64, message.begin() + (i + 1) * 64);
             _chunks->push_back(temp);
         }
         return true;
@@ -227,7 +227,7 @@ bool breakTextInto64ByteChunks(const std::vector<uint8_t>& message,
     }
 }
 
-bool structureWords(const std::vector<uint8_t>& chunk, 
+bool structureWords(const std::bytearray& chunk, 
                             std::vector<uint32_t>* _words)
 {
     if (_words && 64 == chunk.size())
@@ -293,7 +293,7 @@ bool transform(const std::vector<uint32_t>& words,
 }
 
 bool produceFinalHashValue(const std::vector<uint32_t>& input, 
-                                   std::vector<uint8_t>* _output)
+                                   std::bytearray* _output)
 {
     if (_output)
     {
@@ -303,7 +303,7 @@ bool produceFinalHashValue(const std::vector<uint32_t>& input,
         {
             for (int i = 0; i < 4; i++)
             {
-                _output->push_back(static_cast<uint8_t>((*it) >> (24 - 8 * i)));
+                _output->append(static_cast<std::byte>((*it) >> (24 - 8 * i)));
             }
         }
         return true;

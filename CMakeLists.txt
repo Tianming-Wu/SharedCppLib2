@@ -48,6 +48,7 @@ target_link_libraries(logc PUBLIC logt)
 # basic 库依赖关系
 target_link_libraries(regexfilter PUBLIC basic)
 target_link_libraries(logc PUBLIC basic)
+target_link_libraries(sha256 PUBLIC basic)
 
 # 库列表
 set(TARGET_LIST variant logd logf sha256 basic indexer regexfilter logt logc Base64)
