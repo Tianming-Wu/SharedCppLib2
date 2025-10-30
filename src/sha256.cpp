@@ -8,16 +8,18 @@
 
 namespace fs = std::filesystem;
 
-namespace shaunit {
+namespace sha256 {
 
-std::vector<uint32_t> Sha256::initial_message_digest_ = 
+// 在SHA256算法中的初始信息摘要，这些常量是对自然数中前8个质数的平方根的小数部分取前32bit而来。
+std::vector<uint32_t> initial_message_digest_ = 
 { 
     0x6a09e667, 0xbb67ae85, 0x3c6ef372,
     0xa54ff53a, 0x510e527f, 0x9b05688c,
     0x1f83d9ab, 0x5be0cd19 
 };
 
-std::vector<uint32_t> Sha256::add_constant_ = 
+// 在SHA256算法中，用到64个常量，这些常量是对自然数中前64个质数的立方根的小数部分取前32bit而来。
+std::vector<uint32_t> add_constant_ = 
 {
     0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
     0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
@@ -29,7 +31,58 @@ std::vector<uint32_t> Sha256::add_constant_ =
     0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 };
 
-bool Sha256::encrypt(const std::vector<uint8_t>& input_message, 
+// 内联函数&模版函数的定义 /
+inline uint32_t ch(uint32_t x, uint32_t y, uint32_t z) { return (x & y) ^ ((~x) & z); }
+inline uint32_t maj(uint32_t x, uint32_t y, uint32_t z) { return (x & y) ^ (x & z) ^ (y & z); }
+inline uint32_t big_sigma0(uint32_t x) { return (x >> 2 | x << 30) ^ (x >> 13 | x << 19) ^ (x >> 22 | x << 10); }
+inline uint32_t big_sigma1(uint32_t x) { return (x >> 6 | x << 26) ^ (x >> 11 | x << 21) ^ (x >> 25 | x << 7); }
+inline uint32_t small_sigma0(uint32_t x) { return (x >> 7 | x << 25) ^ (x >> 18 | x << 14) ^ (x >> 3); }
+inline uint32_t small_sigma1(uint32_t x) { return (x >> 17 | x << 15) ^ (x >> 19 | x << 13) ^ (x >> 10); }
+
+/** @brief: SHA256算法对输入信息的预处理，包括“附加填充比特”和“附加长度值”
+附加填充比特: 在报文末尾进行填充，先补第一个比特为1，然后都补0，直到长度满足对512取模后余数是448。需要注意的是，信息必须进行填充。
+附加长度值: 用一个64位的数据来表示原始消息（填充前的消息）的长度，并将其补到已经进行了填充操作的消息后面。
+@param[in][out] _message: 待处理的信息
+@return: 是否成功
+*/
+bool preprocessing(std::vector<uint8_t>* _message);
+
+/** @brief: 将信息分解成连续的64Byte大小的数据块
+@param[in] message: 输入信息，长度为64Byte的倍数
+@param[out] _chunks: 输出数据块
+@return: 是否成功
+*/
+bool breakTextInto64ByteChunks(const std::vector<uint8_t>& message, 
+                                std::vector<std::vector<uint8_t> >* _chunks);
+
+/** @brief: 由64Byte大小的数据块，构造出64个4Byte大小的字。
+构造算法：前16个字直接由数据块分解得到，其余的字由如下迭代公式得到：
+        W[t] = small_sigma1(W[t-2]) + W[t-7] + small_sigma0(W[t-15]) + W[t-16]
+@param[in] chunk: 输入数据块，大小为64Byte
+@param[out] _words: 输出字
+@return: 是否成功
+*/
+bool structureWords(const std::vector<uint8_t>& chunk, 
+                    std::vector<uint32_t>* _words);
+
+/** @breif: 基于64个4Byte大小的字，进行64次循环加密
+@param[in] words: 64个4Byte大小的字
+@param[in][out] _message_digest: 信息摘要
+@return: 是否成功
+*/
+bool transform(const std::vector<uint32_t>& words, 
+                std::vector<uint32_t>* _message_digest);
+
+/** @brief: 输出最终的哈希值（数字指纹）
+@param[in] input: 步长为32bit的哈希值
+@param[out] _output: 步长为8bit的哈希值
+@return: 是否成功
+*/
+bool produceFinalHashValue(const std::vector<uint32_t>& input,
+                            std::vector<uint8_t>* _output);
+
+
+bool encrypt(const std::vector<uint8_t>& input_message, 
                      std::vector<uint8_t>* _digest)
 {
     if (!input_message.empty() && _digest)
@@ -63,7 +116,7 @@ bool Sha256::encrypt(const std::vector<uint8_t>& input_message,
     }
 }
 
-std::string Sha256::getHexMessageDigest(const std::string& message)
+std::string getHexMessageDigest(const std::string& message)
 {
     if (!message.empty())
     {
@@ -92,7 +145,7 @@ std::string Sha256::getHexMessageDigest(const std::string& message)
     }
 }
 
-std::vector<uint8_t> Sha256::getMessageDigest(std::vector<uint8_t> message) {
+std::vector<uint8_t> getMessageDigest(std::vector<uint8_t> message) {
     if (!message.empty())
     {
         std::vector<uint8_t> digest;
@@ -105,7 +158,7 @@ std::vector<uint8_t> Sha256::getMessageDigest(std::vector<uint8_t> message) {
     }
 }
 
-bool Sha256::preprocessing(std::vector<uint8_t>* _message) const
+bool preprocessing(std::vector<uint8_t>* _message)
 {
     if (_message)
     {
@@ -153,8 +206,8 @@ bool Sha256::preprocessing(std::vector<uint8_t>* _message) const
     }
 }
 
-bool Sha256::breakTextInto64ByteChunks(const std::vector<uint8_t>& message, 
-                                       std::vector<std::vector<uint8_t>>* _chunks) const
+bool breakTextInto64ByteChunks(const std::vector<uint8_t>& message, 
+                                       std::vector<std::vector<uint8_t>>* _chunks)
 {
     if (_chunks && 0 == message.size() % 64)
     {
@@ -174,8 +227,8 @@ bool Sha256::breakTextInto64ByteChunks(const std::vector<uint8_t>& message,
     }
 }
 
-bool Sha256::structureWords(const std::vector<uint8_t>& chunk, 
-                            std::vector<uint32_t>* _words) const
+bool structureWords(const std::vector<uint8_t>& chunk, 
+                            std::vector<uint32_t>* _words)
 {
     if (_words && 64 == chunk.size())
     {
@@ -204,8 +257,8 @@ bool Sha256::structureWords(const std::vector<uint8_t>& chunk,
     }
 }
 
-bool Sha256::transform(const std::vector<uint32_t>& words, 
-                       std::vector<uint32_t>* _message_digest) const
+bool transform(const std::vector<uint32_t>& words, 
+                       std::vector<uint32_t>* _message_digest)
 {
     if (_message_digest && 8 == _message_digest->size() && 64 == words.size())
     {
@@ -239,8 +292,8 @@ bool Sha256::transform(const std::vector<uint32_t>& words,
     }
 }
 
-bool Sha256::produceFinalHashValue(const std::vector<uint32_t>& input, 
-                                   std::vector<uint8_t>* _output) const
+bool produceFinalHashValue(const std::vector<uint32_t>& input, 
+                                   std::vector<uint8_t>* _output)
 {
     if (_output)
     {
