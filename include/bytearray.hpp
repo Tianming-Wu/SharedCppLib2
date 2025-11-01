@@ -10,7 +10,10 @@
 #include <cstdint>
 
 namespace std {
-class stringlist;
+
+template<typename> class basic_stringlist;
+using stringlist = basic_stringlist<char>;
+using wstringlist = basic_stringlist<wchar_t>;
 
 // #undef byte
 // typedef unsigned char byte;
@@ -44,6 +47,14 @@ public:
         return *std::bit_cast<const _T*>(data());
     }
 
+    template<typename _T, typename _Tp>
+    _T convert_to_constructer() {
+        return _T(
+        reinterpret_cast<const _Tp*>(this->data()),
+        this->size() / sizeof(_Tp)
+    );
+    }
+
     inline const byte* rawData() const { return data(); }
     inline size_t rawSize() const { return size(); }
 
@@ -69,6 +80,8 @@ public:
 
     std::string tostdstring() const;
     std::stringlist tostringlist(const std::string& split = " ") const;
+    std::wstring tostdwstring() const;
+    std::wstringlist towstringlist(const std::wstring& split = L" ") const;
     std::string tohex() const;
     std::string tohex(size_t begin, size_t size = -1) const;
     std::string toEscapedString() const;

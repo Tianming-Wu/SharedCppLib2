@@ -4,55 +4,65 @@
 
 namespace std {
 
-string stringlist::join(const string &i) const {
-    string re = "";
-    for(const string &s : *this) {
-        re += (re.empty()?"":i) + s;
+template class basic_stringlist<char>;
+template class basic_stringlist<wchar_t>;
+
+template<typename CharT>
+basic_stringlist<CharT>::string_type basic_stringlist<CharT>::join(const string_type &i) const {
+    string_type re{};
+    for(const string_type &s : *this) {
+        re += (re.empty()?string_type():i) + s;
     }
     return re;
 }
 
-string stringlist::join(size_t begin, size_t size, const string &i) const {
-    string re = ""; size_t j = begin;
+template<typename CharT>
+basic_stringlist<CharT>::string_type basic_stringlist<CharT>::join(size_t begin, size_t size, const string_type &i) const {
+    string_type re{}; size_t j = begin;
     if(size == -1) size = this->size();
     for(; j < size; j++) {
-        const string &s = this->at(j);
-        re += (re.empty()?"":i) + s;
+        const basic_stringlist<CharT>::string_type &s = this->at(j);
+        re += (re.empty()?string_type():i) + s;
     }
     return re;
 }
 
-string stringlist::xjoin(const string &i, const char binding) const {
-    string re = "";
-    for(const string &s : *this) {
-        std::string add = s;
+template<typename CharT>
+basic_stringlist<CharT>::string_type basic_stringlist<CharT>::xjoin(const basic_stringlist<CharT>::string_type &i, const CharT binding) const {
+    string_type re{};
+    for(const string_type &s : *this) {
+        basic_stringlist<CharT>::string_type add = s;
         if(s.contains(i)) add = binding + s + binding;
-        re += (re.empty()?"":i) + add;
+        re += (re.empty()?string_type():i) + add;
     }
     return re;
 }
 
-string stringlist::dbgjoin(string i) const {
-    string re = "";
-    for(const string &s : *this) {
+template<typename CharT>
+basic_stringlist<CharT>::string_type basic_stringlist<CharT>::dbgjoin(basic_stringlist<CharT>::string_type i) const {
+    string_type re{};
+    for(const string_type &s : *this) {
         re += i + s;
     }
     re += i;
     return re;
 }
 
-void stringlist::append(const stringlist &l) {
-    for(const string &s : l) {
+template<typename CharT>
+void basic_stringlist<CharT>::append(const basic_stringlist<CharT> &l) {
+    for(const basic_stringlist<CharT>::string_type &s : l) {
         push_back(s);
     }
 }
 
-void stringlist::append(const string &s) {
+template<typename CharT>
+void basic_stringlist<CharT>::append(const basic_stringlist<CharT>::string_type &s) {
     push_back(s);
 }
 
-std::stringlist stringlist::subarr(size_t pos, size_t len) const {
-    std::stringlist result;
+template<typename CharT>
+std::basic_stringlist<CharT> basic_stringlist<CharT>::subarr(size_t pos, size_t len) const {
+    std::basic_stringlist<CharT> result;
     if(len == 0) len = max_size();
     size_t end = std::min(size(), pos+len);
     for(size_t p = pos; p < end; p++) {
@@ -61,19 +71,22 @@ std::stringlist stringlist::subarr(size_t pos, size_t len) const {
     return result;
 }
 
-void stringlist::from(int size, char** content, int begin, int end) {
+template<typename CharT>
+void basic_stringlist<CharT>::from(int size, CharT** content, int begin, int end) {
     clear();
     if(end == -1 || end >= size) end = size;
     for (int t = begin; t < end; t++)
         push_back(content[t]);
 }
 
-string stringlist::vat(size_t p, const string &v) const {
+template<typename CharT>
+basic_stringlist<CharT>::string_type basic_stringlist<CharT>::vat(size_t p, const basic_stringlist<CharT>::string_type &v) const {
     return (p<size())?at(p):v;
 }
 
-void stringlist::remove_empty() {
-    stringlist::iterator it = begin();
+template<typename CharT>
+void basic_stringlist<CharT>::remove_empty() {
+    basic_stringlist<CharT>::iterator it = begin();
     while(it != end()) {
         if((*it).empty()) {
             it = erase(it);
@@ -81,27 +94,30 @@ void stringlist::remove_empty() {
     }
 }
 
-size_t stringlist::find(const std::string &s, size_t start) const {
+template<typename CharT>
+size_t basic_stringlist<CharT>::find(const string_type &s, size_t start) const {
     size_t i = start;
-    for(const string& ss : *this) {
+    for(const string_type& ss : *this) {
         if(ss == s) return i;
         i++;
     }
     return npos;
 }
 
-size_t stringlist::find_last(const std::string &s) const {
+template<typename CharT>
+size_t basic_stringlist<CharT>::find_last(const basic_stringlist<CharT>::string_type &s) const {
     size_t i = size();
-    for(const string& ss : *this) {
+    for(const string_type& ss : *this) {
         if(ss == s) return i;
         i--;
     }
     return npos;
 }
 
-stringlist stringlist::unique() {
-    std::unordered_set<std::string> seen;
-    stringlist::iterator it = begin();
+template<typename CharT>
+basic_stringlist<CharT> basic_stringlist<CharT>::unique() {
+    std::unordered_set<string_type> seen;
+    iterator it = begin();
     while (it != end()) {
         if (seen.find(*it) != seen.end()) {
             it = erase(it);
@@ -113,38 +129,43 @@ stringlist stringlist::unique() {
     return *this;
 }
 
-stringlist::point stringlist::find_inside(const std::string &s, size_t start, size_t start_inside) const {
+template<typename CharT>
+basic_stringlist<CharT>::point basic_stringlist<CharT>::find_inside(const basic_stringlist<CharT>::string_type &s, size_t start, size_t start_inside) const {
     size_t i = start, j;
-    for(const string& ss : *this) {
-        if((j = ss.find(s, start_inside)) != std::string::npos) return std::make_pair(1, j);
+    for(const string_type& ss : *this) {
+        if((j = ss.find(s, start_inside)) != string_type::npos) return std::make_pair(1, j);
         i++;
     }
     return npoint;
 }
 
-bool stringlist::contains(const std::string &s) const {
+template<typename CharT>
+bool basic_stringlist<CharT>::contains(const basic_stringlist<CharT>::string_type &s) const {
     return (find(s) != npos);
 }
 
-void stringlist::exec_foreach(function<void(size_t,string&)> f) {
+template<typename CharT>
+void basic_stringlist<CharT>::exec_foreach(function<void(size_t,string_type&)> f) {
     size_t i = 0;
-    for(string& s : *this) {
+    for(string_type& s : *this) {
         f(i++, s);
     }
 }
 
-stringlist stringlist::from_initializer(initializer_list<string> build) {
-    stringlist l;
-    for (const string& s : build)
+template<typename CharT>
+basic_stringlist<CharT> basic_stringlist<CharT>::from_initializer(initializer_list<string_type> build) {
+    basic_stringlist<CharT> l;
+    for (const string_type& s : build)
         l.push_back(s);
     return l;
 }
 
-stringlist stringlist::split(const string &s, const string &delim) {
-    if(s.length() < 3) return stringlist(s);
-    stringlist l;
+template<typename CharT>
+basic_stringlist<CharT> basic_stringlist<CharT>::split(const basic_stringlist<CharT>::string_type &s, const basic_stringlist<CharT>::string_type &delim) {
+    if(s.length() < 3) return basic_stringlist<CharT>(s);
+    basic_stringlist<CharT> l;
     size_t pos, lpos = 0, dlen = delim.length();
-    while((pos = s.find(delim, lpos)) != string::npos) {
+    while((pos = s.find(delim, lpos)) != string_type::npos) {
         l.push_back(s.substr(lpos, pos - lpos));
         lpos = pos + dlen;
     }
@@ -155,14 +176,15 @@ stringlist stringlist::split(const string &s, const string &delim) {
     return l;
 }
 
-stringlist stringlist::split(const string &s, const stringlist &delims) {
-    if(s.length() < 3) return stringlist(s);
-    stringlist l;
+template<typename CharT>
+basic_stringlist<CharT> basic_stringlist<CharT>::split(const basic_stringlist<CharT>::string_type &s, const basic_stringlist<CharT> &delims) {
+    if(s.length() < 3) return basic_stringlist<CharT>(s);
+    basic_stringlist<CharT> l;
     size_t pos, lpos = 0, mpos = s.length(), dlen = 0;
     for(;;) {
-        for(const string& delim : delims) {
+        for(const string_type& delim : delims) {
             pos = s.find(delim, lpos);
-            if(pos != string::npos) {
+            if(pos != string_type::npos) {
                 if(pos < mpos) {
                     mpos = pos;
                     dlen = delim.length();
@@ -179,19 +201,20 @@ stringlist stringlist::split(const string &s, const stringlist &delims) {
     return l;
 }
 
-stringlist stringlist::xsplit(const string &s, const string &delim, const string &begin_bind, string end_bind, bool remove_binding) {
-    if(s.length() < 3) return stringlist(s);
+template<typename CharT>
+basic_stringlist<CharT> basic_stringlist<CharT>::xsplit(const basic_stringlist<CharT>::string_type &s, const basic_stringlist<CharT>::string_type &delim, const basic_stringlist<CharT>::string_type &begin_bind, basic_stringlist<CharT>::string_type end_bind, bool remove_binding) {
+    if(s.length() < 3) return basic_stringlist<CharT>(s);
     if(end_bind.empty()) end_bind = begin_bind;
     else if(begin_bind.length() != end_bind.length()) throw std::runtime_error("xsplit: binding charset length mismatch");
 
-    stringlist result = split(s, delim);
+    basic_stringlist<CharT> result = split(s, delim);
     size_t bind_id, tpbind_id;
     bool inside = false;
     auto previous = result.begin();
     
     for(auto it = result.begin(); it != result.end();) {
         if(!inside) {
-            if((tpbind_id = begin_bind.find((*it)[0])) != std::string::npos) {
+            if((tpbind_id = begin_bind.find((*it)[0])) != string_type::npos) {
                 bind_id = tpbind_id;
                 inside = true;
                 previous = it;
@@ -209,20 +232,21 @@ stringlist stringlist::xsplit(const string &s, const string &delim, const string
     return result;
 }
 
-stringlist stringlist::exsplit(const string &s, const string &delim, const string &begin_bind, string end_bind, bool remove_binding, bool strict) {
-    if(s.length() < 3) return stringlist(s);
+template<typename CharT>
+basic_stringlist<CharT> basic_stringlist<CharT>::exsplit(const basic_stringlist<CharT>::string_type &s, const basic_stringlist<CharT>::string_type &delim, const basic_stringlist<CharT>::string_type &begin_bind, basic_stringlist<CharT>::string_type end_bind, bool remove_binding, bool strict) {
+    if(s.length() < 3) return basic_stringlist<CharT>(s);
     if(end_bind.empty()) end_bind = begin_bind;
     else if(begin_bind.length() != end_bind.length()) throw std::runtime_error("exsplit: binding charset length mismatch");
 
-    stringlist result;
+    basic_stringlist<CharT> result;
     /*stack<size_t> bind_id;*/ size_t tpbind_id;
     vector<size_t> bind_id;
 
     int depth = 0;
-    std::string buffer;
+    basic_stringlist<CharT>::string_type buffer;
     size_t idx = 0;
     for(; idx < s.length(); ) {
-        if((tpbind_id = begin_bind.find(s[idx])) != std::string::npos) {
+        if((tpbind_id = begin_bind.find(s[idx])) != string_type::npos) {
             // bind_id.push(tpbind_id);
             bind_id.push_back(tpbind_id);
             depth++;
@@ -245,74 +269,89 @@ stringlist stringlist::exsplit(const string &s, const string &delim, const strin
     return result;
 }
 
-string stringlist::pack() const {
+template<typename CharT>
+basic_stringlist<CharT>::string_type basic_stringlist<CharT>::pack() const {
     return xjoin();
 }
 
-stringlist stringlist::unpack(const std::string &s) {
-    return xsplit(s, " ", "\"");
+template<typename CharT>
+basic_stringlist<CharT> basic_stringlist<CharT>::unpack(const basic_stringlist<CharT>::string_type &s) {
+    return xsplit(s, string_type(1,' '), string_type(1,'\"'));
 }
 
-stringlist& stringlist::operator=(const stringlist& l) {
-    vector<string>::operator=(l);
+template<typename CharT>
+basic_stringlist<CharT>& basic_stringlist<CharT>::operator=(const basic_stringlist<CharT>& l) {
+    vector<string_type>::operator=(l);
     return *this;
 }
 
-stringlist::stringlist() : vector<string>()
+template<typename CharT>
+basic_stringlist<CharT>::basic_stringlist() : vector<string_type>()
 {}
 
-stringlist::stringlist(int size, char** content, int begin, int end)
-    : vector<string>()
+template<typename CharT>
+basic_stringlist<CharT>::basic_stringlist(int size, CharT** content, int begin, int end)
+    : vector<string_type>()
 {
     from(size, content, begin, end);
 }
 
-stringlist::stringlist(initializer_list<string> build) {
-    for (const string& s : build)
+template<typename CharT>
+basic_stringlist<CharT>::basic_stringlist(initializer_list<string_type> build) {
+    for (const string_type& s : build)
         push_back(s);
 }
 
-stringlist::stringlist(const stringlist& l) : vector<string>(l)
+template<typename CharT>
+basic_stringlist<CharT>::basic_stringlist(const basic_stringlist<CharT>& l) : vector<string_type>(l)
 {}
 
-stringlist::stringlist(const string& s)
-    : vector<string>()
+template<typename CharT>
+basic_stringlist<CharT>::basic_stringlist(const string_type& s)
+    : vector<string_type>()
 {
     push_back(s);
 }
 
-stringlist::stringlist(char s)
-    : vector<string>()
+template<typename CharT>
+basic_stringlist<CharT>::basic_stringlist(CharT s)
+    : vector<string_type>()
 {
-    std::string str;
+    basic_stringlist<CharT>::string_type str;
     str[0] = s;
     push_back(str);
 }
 
-stringlist::stringlist(const char* s)
-    : vector<string>()
+template<typename CharT>
+basic_stringlist<CharT>::basic_stringlist(const CharT* s)
+    : vector<string_type>()
 {
-    *this = split(string(s), string(" "));
+    *this = split(string_type(s), string_type(1, ' '));
 }
 
-stringlist::stringlist(const string &s, const string &delim)
-    : vector<string>()
-{
-    *this = split(s, delim);
-}
-
-stringlist::stringlist(const string &s, const stringlist &delim)
-    : vector<string>()
+template<typename CharT>
+basic_stringlist<CharT>::basic_stringlist(const basic_stringlist<CharT>::string_type &s, const basic_stringlist<CharT>::string_type &delim)
+    : vector<string_type>()
 {
     *this = split(s, delim);
 }
 
-stringlist::stringlist(const vector<string>& v) : vector<string>(v)
+template<typename CharT>
+basic_stringlist<CharT>::basic_stringlist(const basic_stringlist<CharT>::string_type &s, const basic_stringlist<CharT> &delim)
+    : vector<string_type>()
+{
+    *this = split(s, delim);
+}
+
+template<typename CharT>
+basic_stringlist<CharT>::basic_stringlist(const vector<basic_stringlist<CharT>::string_type>& v)
+    : vector<string_type>(v)
 {}
 
-size_t stringlist::all_size() {
+template<typename CharT>
+size_t basic_stringlist<CharT>::all_size() {
     size_t result = 0;
-    for(const std::string &s : *this) {
+    for(const basic_stringlist<CharT>::string_type &s : *this) {
         result += s.size();
     }
     return result;

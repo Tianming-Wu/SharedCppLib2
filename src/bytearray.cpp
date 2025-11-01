@@ -94,6 +94,19 @@ std::stringlist bytearray::tostringlist(const std::string& split) const {
     return std::stringlist(this->tostdstring(), split);
 }
 
+std::wstring bytearray::tostdwstring() const {
+    if (this->empty()) return std::wstring();
+
+    return std::wstring(
+        reinterpret_cast<const wchar_t*>(this->data()),
+        this->size() / sizeof(wchar_t)
+    );
+}
+
+std::wstringlist bytearray::towstringlist(const std::wstring& split) const {
+    return std::wstringlist(this->tostdwstring(), split);
+}
+
 std::string bytearray::tohex() const {
     std::ostringstream oss;
     oss << std::hex << std::setfill('0');
