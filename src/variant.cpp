@@ -60,7 +60,7 @@ void variant::cleanup() {
             stringValue.~basic_string(); // call destructor explicitly
             break;
         case Type::StringList:
-            stringListValue.~stringlist();
+            stringListValue.~basic_stringlist();
             break;
         case Type::ByteArray:
             byteArrayValue.~bytearray();

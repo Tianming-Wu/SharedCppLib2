@@ -34,6 +34,8 @@ public:
     typedef typename vector<string_type>::iterator iterator;
     typedef typename vector<string_type>::const_iterator const_iterator;
 
+    ~basic_stringlist() = default;
+
     typedef std::pair<size_t,size_t> point;
 
     static const size_t npos = -1;
