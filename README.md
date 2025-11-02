@@ -28,6 +28,7 @@ This is a series of useful cpp classes for multiple purposes.
 - `logf` simple file logger. (DO NOT USE)
 - `hpcalc` high precision calculation.
 - `regexfilter` for blacklist / whitelist filter features.
+- `atxsort` Universial sorting library.
 
 **Deprecated modules:**
 - `eventloop` (Seperated to independent project)
