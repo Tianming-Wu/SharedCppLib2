@@ -28,7 +28,7 @@ basic_stringlist<CharT>::string_type basic_stringlist<CharT>::join(size_t begin,
 }
 
 template<typename CharT>
-basic_stringlist<CharT>::string_type basic_stringlist<CharT>::xjoin(const basic_stringlist<CharT>::string_type &i, const CharT binding) const {
+basic_stringlist<CharT>::string_type basic_stringlist<CharT>::xjoin(const basic_stringlist<CharT>::string_type &i, const string_type& binding) const {
     string_type re{};
     for(const string_type &s : *this) {
         basic_stringlist<CharT>::string_type add = s;
