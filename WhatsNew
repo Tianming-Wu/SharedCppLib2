@@ -1,5 +1,10 @@
 # Changelog
 
+### v1.17.1
+- Chg: stringlist now also provides wstringlist.
+- Rmv: stringlist_split stream operator
+- New: atxsort for multiple sorting requirements.
+
 ### v1.16.3
 - New: logc for colorize logt output.
 - Com: colorctl in ansiio. still working on it.

@@ -19,7 +19,7 @@ This is a series of useful cpp classes for multiple purposes.
 - `ansiio` for ANSI output features.
 - [`stringlist`](doc/stringlist.md) for string list manipulation capabilities.
 - `Base64` Base64 encode/decode.
-- `bytearray`
+- [`bytearray`](doc/bytearray.md)
 - `sha256` for encryption (incomplete).
 - [`logt`](doc/logt.md) Sub-threaded logging.
 - [`logc`](doc/logc.md) Provides colored logging (ansi features).
