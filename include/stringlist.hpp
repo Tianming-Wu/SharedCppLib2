@@ -55,7 +55,7 @@ public:
     void from(int size, CharT** content, int begin = 0, int end = -1);
 
     /// @brief Return the string at position p, or v if p doesn't exist.
-    string_type vat(size_t p, const string_type &v = "") const;
+    string_type vat(size_t p, const string_type &v = string_type()) const;
 
     void remove_empty();
     basic_stringlist unique();
