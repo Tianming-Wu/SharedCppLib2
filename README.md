@@ -7,7 +7,7 @@
 **Project Page**: [GitHub Repository](https://github.com/Tianming-Wu/SharedCppLib2)
 
 > [!NOTE]
-> This library is a dependency for many of my projects. You need to install it first to use those projects, or utilize automatic dependency fetching.
+> This library is a dependency for many of my projects. You need to install it first to use those projects, or utilize [automatic dependency fetching](doc/cmake/autofetch.md).
 
 **Free software with NO WARRANTY.** Some modules may be incomplete.
 
