@@ -18,6 +18,7 @@ class basic_stringlist : public vector<std::basic_string<CharT>>
 public:
     typedef std::basic_string<CharT> string_type;
 
+    // linking to default vector methods
     using vector<string_type>::size;
     using vector<string_type>::max_size;
     using vector<string_type>::empty;

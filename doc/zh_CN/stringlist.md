@@ -1,98 +1,98 @@
-# stringlist - Enhanced String List Library
+# stringlist - 增强型字符串列表库
 
-+ Name: StringList  
-+ Namespace: `std`  
-+ Document Version: `3.22.5`
++ 名称: StringList  
++ 命名空间: `std`  
++ 文档版本: `3.22.5`
 
-## CMake Info
+## CMake 配置信息
 
-| Item | Value |
+| 项目 | 值 |
 |---------|---------|
-| Namespace | `SharedCppLib2` |
-| Library | `basic` (contains stringlist) |
+| 命名空间 | `SharedCppLib2` |
+| 库名称 | `basic` (包含 stringlist) |
 
-To include:
+包含方式:
 ```cmake
 find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(target SharedCppLib2::basic)
 ```
 
-## Description
+## 描述
 
-StringList is a powerful extension of `std::vector<std::string>` that provides Qt-inspired string manipulation capabilities. It inherits all standard vector operations while adding convenient methods for string processing, parsing, and transformation.
+StringList 是 `std::vector<std::string>` 的强大扩展，提供了 Qt 风格的字符串操作能力。它继承了所有标准向量操作，同时添加了方便的字符串处理、解析和转换方法。
 
 > [!TIP]
-> If you're familiar with Qt's `QStringList`, you'll find StringList provides similar functionality for standard C++ strings.
+> 如果您熟悉 Qt 的 `QStringList`，您会发现 StringList 为标准 C++ 字符串提供了类似的功能。
 
-## Quick Start
+## 快速开始
 
-### Basic Usage
+### 基本用法
 ```cpp
 #include <SharedCppLib2/stringlist.hpp>
 
-// Create from initializer list
+// 从初始化列表创建
 std::stringlist names = {"Alice", "Bob", "Charlie"};
 
-// Join with separator
+// 使用分隔符连接
 std::cout << names.join(", ") << std::endl;
-// Output: Alice, Bob, Charlie
+// 输出: Alice, Bob, Charlie
 
-// Split string into list
+// 将字符串分割为列表
 std::stringlist words = std::stringlist::split("hello world from cpp", " ");
 ```
 
-### Command Line Arguments
+### 命令行参数处理
 ```cpp
 int main(int argc, char** argv) {
     std::stringlist args(argc, argv);
     
-    std::cout << "Program: " << args.vat(0) << std::endl;
-    std::cout << "Arguments: " << args.subarr(1).join(" ") << std::endl;
+    std::cout << "程序: " << args.vat(0) << std::endl;
+    std::cout << "参数: " << args.subarr(1).join(" ") << std::endl;
     
     return 0;
 }
 ```
 
-## Core Features
+## 核心功能
 
-### 🔗 String Joining & Splitting
-Advanced methods for converting between strings and string lists.
+### 🔗 字符串连接与分割
+在字符串和字符串列表之间转换的高级方法。
 
-### 🔍 Search & Filter
-Powerful search capabilities and data cleaning operations.
+### 🔍 搜索与过滤
+强大的搜索能力和数据清理操作。
 
-### 📦 Data Conversion
-Multiple constructors for different data sources.
+### 📦 数据转换
+多种数据源的构造函数。
 
-### 🛠️ Utility Operations
-Convenience methods for common string list operations.
+### 🛠️ 实用操作
+常见字符串列表操作的便捷方法。
 
-## Function Reference
+## 函数参考
 
-### String Conversion
+### 字符串转换
 
 #### join
 ```cpp
 string join(const string &separator = " ") const;
 string join(size_t begin, size_t size = -1, const string &separator = " ") const;
 ```
-Joins list elements into a single string.
+将列表元素连接成单个字符串。
 
-**Examples:**
+**示例:**
 ```cpp
 std::stringlist sl = {"a", "b", "c"};
 sl.join();           // "a b c"
 sl.join(", ");       // "a, b, c"
-sl.join(1, 2, "-");  // "b-c" (from index 1, 2 elements)
+sl.join(1, 2, "-");  // "b-c" (从索引1开始，2个元素)
 ```
 
 #### xjoin
 ```cpp
 string xjoin(const string &separator = " ", const char binding = '\"') const;
 ```
-Joins with automatic quoting of elements containing the separator.
+使用自动引号连接包含分隔符的元素。
 
-**Example:**
+**示例:**
 ```cpp
 std::stringlist sl = {"file", "path with spaces"};
 sl.xjoin(" ");  // "file \"path with spaces\""
@@ -102,9 +102,9 @@ sl.xjoin(" ");  // "file \"path with spaces\""
 ```cpp
 string dbgjoin(string delimiter = "'") const;
 ```
-Joins with delimiters for debugging visibility.
+使用分隔符连接，便于调试查看。
 
-**Example:**
+**示例:**
 ```cpp
 sl.dbgjoin("|");  // "|a|b|c|"
 ```
@@ -114,19 +114,19 @@ sl.dbgjoin("|");  // "|a|b|c|"
 static stringlist split(const string &s, const string &delimiter);
 static stringlist split(const string &s, const stringlist &delimiters);
 ```
-Splits a string into a list using single or multiple delimiters.
+使用单个或多个分隔符将字符串分割为列表。
 
-**Examples:**
+**示例:**
 ```cpp
-// Single delimiter
+// 单个分隔符
 std::stringlist::split("a,b,c", ",");  // {"a", "b", "c"}
 
-// Multiple delimiters  
+// 多个分隔符  
 std::stringlist::split("a,b c\td", {",", " ", "\t"});  // {"a", "b", "c", "d"}
 ```
 
 > [!NOTE]
-> Use `remove_empty()` after splitting to clean up empty elements from consecutive delimiters.
+> 分割后使用 `remove_empty()` 清理连续分隔符产生的空元素。
 
 #### xsplit & exsplit
 ```cpp
@@ -138,91 +138,91 @@ static stringlist exsplit(const string &s, const string &delim,
                          const string &begin_bind, string end_bind = "",
                          bool remove_binding = false, bool strict = false);
 ```
-Advanced splitting with quote/bracket awareness.
+支持引号/括号感知的高级分割。
 
-**Example:**
+**示例:**
 ```cpp
-// Handle quoted sections
+// 处理带引号的部分
 std::stringlist::xsplit("cmd arg1 \"quoted arg\" arg3", " ", "\"");
 // {"cmd", "arg1", "quoted arg", "arg3"}
 ```
 
-### Search Operations
+### 搜索操作
 
 #### find & find_last
 ```cpp
 size_t find(const std::string &value, size_t start = 0) const;
 size_t find_last(const std::string &value) const;
 ```
-Finds the first/last occurrence of a string.
+查找字符串的第一次/最后一次出现。
 
-**Returns:** Index or `stringlist::npos` if not found.
+**返回值:** 索引或 `stringlist::npos`（如果未找到）。
 
 #### find_inside
 ```cpp
 point find_inside(const std::string &substring, size_t start = 0, 
                  size_t start_inside = 0) const;
 ```
-Finds substring within any list element.
+在任何列表元素中查找子字符串。
 
-**Returns:** `pair<element_index, position_in_element>` or `npoint`.
+**返回值:** `pair<元素索引, 元素内位置>` 或 `npoint`。
 
 #### contains
 ```cpp
 bool contains(const std::string &value) const;
 ```
-Checks if any element contains the value.
+检查是否有任何元素包含该值。
 
-### Data Management
+### 数据管理
 
 #### vat
 ```cpp
 string vat(size_t index, const string &default_value = "") const;
 ```
-Safe element access with default value.
+安全的元素访问，支持默认值。
 
 #### subarr
 ```cpp
 std::stringlist subarr(size_t start, size_t length = 0) const;
 ```
-Extracts a subrange from the list.
+从列表中提取子范围。
 
 #### remove_empty
 ```cpp
 void remove_empty();
 ```
-Removes all empty strings from the list.
+从列表中移除所有空字符串。
 
 #### unique
 ```cpp
 stringlist unique();
 ```
-Removes duplicate strings (preserves order).
+移除重复字符串（保持顺序）。
 
-### Functional Programming
+### 函数式编程
 
 #### exec_foreach
 ```cpp
 void exec_foreach(function<void(size_t, string&)> callback);
 ```
-Applies a function to each element.
+对每个元素应用函数。
 
-**Example:**
+**示例:**
 ```cpp
 sl.exec_foreach([](size_t index, std::string& value) {
     value = std::to_string(index) + ":" + value;
 });
 ```
 
-## Constructor Reference
+## 构造函数参考
 
-### From C-style Arguments
+### 从 C 风格参数
 ```cpp
 stringlist(int argc, char** argv, int start = 0, int end = -1);
 ```
-Perfect for command-line argument processing.
+非常适合命令行参数处理。
 
-### From Initializer List
+### 从初始化列表
 ```cpp
 stringlist(initializer_list<string> elements);
 ```
@@ -230,7 +230,7 @@ stringlist(initializer_list<string> elements);
 std::stringlist fruits = {"apple", "banana", "orange"};
 ```
 
-### From String with Splitting
+### 从字符串分割
 ```cpp
 stringlist(const string &text, const string &delimiter);
 stringlist(const string &text, const stringlist &delimiters);
@@ -239,47 +239,47 @@ stringlist(const string &text, const stringlist &delimiters);
 std::stringlist words("hello world from cpp", " ");
 ```
 
-### From Single String
+### 从单个字符串
 ```cpp
 explicit stringlist(const string &single_element);
 ```
-Creates a list with one element.
+创建包含一个元素的列表。
 
-## Advanced Usage
+## 高级用法
 
-### Pack/Unpack for Serialization
+### 打包/解包用于序列化
 ```cpp
 std::stringlist data = {"normal", "text with spaces"};
-std::string packed = data.pack();  // Auto-quotes spaces
+std::string packed = data.pack();  // 自动为空格添加引号
 std::stringlist restored = std::stringlist::unpack(packed);
 ```
 
-### Stream Integration
+### 流集成
 ```cpp
 std::stringlist items;
-std::cin >> stringist_split(",", items);  // Parse CSV input
+std::cin >> stringist_split(",", items);  // 解析 CSV 输入
 ```
 
-### Performance Tips
+### 性能提示
 
-1. **Use `vat()`** for safe element access instead of bounds checking
-2. **Pre-allocate** when possible for large lists
-3. **Chain operations** efficiently:
+1. **使用 `vat()`** 进行安全的元素访问，而不是边界检查
+2. **预分配** 可能的大列表
+3. **高效链式操作**:
    ```cpp
    auto result = std::stringlist::split(input, " ")
                  .remove_empty()
                  .unique();
    ```
 
-## Real-World Examples
+## 实际示例
 
-### Configuration Parsing
+### 配置解析
 ```cpp
 std::stringlist config_lines = std::stringlist::split(config_text, "\n")
                                .remove_empty();
 
 for (const auto& line : config_lines) {
-    if (line.starts_with("#")) continue;  // Skip comments
+    if (line.starts_with("#")) continue;  // 跳过注释
     auto parts = std::stringlist::split(line, "=");
     if (parts.size() == 2) {
         config[parts[0]] = parts[1];
@@ -287,48 +287,47 @@ for (const auto& line : config_lines) {
 }
 ```
 
-### Command Builder
+### 命令构建器
 ```cpp
 std::string build_command(const std::string& program, 
                          const std::vector<std::string>& args) {
     std::stringlist cmd = {program};
-    cmd.append(args);  // add the entire vector
-    return cmd.xjoin(" ");  // automatically manage args with space(s).
+    cmd.append(args);  // 添加整个向量
+    return cmd.xjoin(" ");  // 自动管理带空格的参数
 }
 
-// or single line version：
+// 或单行版本：
 std::string build_command(const std::string& program, 
                          const std::vector<std::string>& args) {
     return std::stringlist{program}.append(args).xjoin(" ");
 }
-
 ```
 
-## Common Patterns
+## 常见模式
 
-## Search & Filter
-Powerful search capabilities and data cleaning operations. For advanced regular expression-based filtering, refer to the [regexfilter library](../regexfilter.md#core-classes).
+## 搜索与过滤
+强大的搜索能力和数据清理操作。对于基于正则表达式的高级过滤，请参考 [regexfilter 库](../regexfilter.md#核心类)。
 
-## Common Patterns
+## 常见模式
 
-### Filtering
+### 过滤
 ```cpp
 std::stringlist files = /* ... */;
 
-// Method 1: Using exec_foreach and remove_empty
+// 方法1：使用 exec_foreach 和 remove_empty
 files.exec_foreach([](size_t i, std::string& file) {
     if (!file.ends_with(".cpp")) {
-        file.clear();  // Mark for removal
+        file.clear();  // 标记为移除
     }
 });
 files.remove_empty();
 
-// Method 2: Using regexfilter for advanced pattern matching
+// 方法2：使用 regexfilter 进行高级模式匹配
 #include <SharedCppLib2/regexfilter.hpp>
 rf::whitelist cpp_files({".*\\.cpp", ".*\\.hpp"});
 cpp_files.apply(files);
 
-// Method 3: Combining stringlist and regexfilter
+// 方法3：结合 stringlist 和 regexfilter
 auto result = std::stringlist::split(input, "\n")
               .remove_empty()
               .apply_filter([](const std::string& s) {
@@ -336,43 +335,41 @@ auto result = std::stringlist::split(input, "\n")
               });
 ```
 
-## Advanced Filtering
+## 高级过滤
 
-While stringlist provides basic filtering capabilities, for complex pattern matching requirements, it's recommended to use the dedicated [regexfilter library](../regexfilter.md#core-classes).
+虽然 stringlist 提供了基础的过滤功能，但对于复杂的模式匹配需求，建议使用专门的 [regexfilter 库](../regexfilter.md#核心类)。
 
-### Simple Filtering (Built-in)
+### 简单过滤（内置）
 ```cpp
-// Remove empty strings
+// 移除空字符串
 list.remove_empty();
 
-// Filter using lambda
+// 使用 lambda 过滤
 list.exec_foreach([](size_t i, std::string& item) {
     if (item.length() < 3) item.clear();
 });
 list.remove_empty();
 ```
 
-### Advanced Filtering (Using regexfilter)
+### 高级过滤（使用 regexfilter）
 ```cpp
 #include <SharedCppLib2/regexfilter.hpp>
 
-// Create whitelist filter
+// 创建白名单过滤器
 rf::whitelist valid_extensions({".*\\.txt", ".*\\.md", ".*\\.cpp"});
 valid_extensions.apply(files);
 
-// Create blacklist filter  
+// 创建黑名单过滤器  
 rf::blacklist exclude_patterns({"temp.*", ".*\\.tmp", "backup.*"});
 exclude_patterns.apply(files);
 ```
 
-For more filtering options, refer to the [regexfilter complete documentation](../regexfilter.md#advanced-usage).
+更多过滤选项请参考 [regexfilter 完整文档](../regexfilter.md#高级用法)。
 
-### Transformation
+### 转换
 ```cpp
 std::stringlist paths = {"dir1/file1", "dir2/file2"};
 paths.exec_foreach([](size_t i, std::string& path) {
     path = "/usr/local/" + path;
 });
 ```
-
-This revised documentation provides better organization, practical examples, and addresses the actual functionality found in your source code.

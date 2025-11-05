@@ -1,103 +1,103 @@
-# bytearray - Binary Data Management Library
+# bytearray - 二进制数据管理库
 
-+ Name: bytearray  
-+ Namespace: `std`  
-+ Document Version: `1.0.0`
++ 名称: bytearray  
++ 命名空间: `std`  
++ 文档版本: `1.0.0`
 
-## CMake Info
+## CMake 配置信息
 
-| Item | Value |
+| 项目 | 值 |
 |---------|---------|
-| Namespace | `SharedCppLib2` |
-| Library | `basic` (contains bytearray) |
+| 命名空间 | `SharedCppLib2` |
+| 库名称 | `basic` (包含 bytearray) |
 
-To include:
+包含方式:
 ```cmake
 find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(target SharedCppLib2::basic)
 ```
 
-## Description
+## 描述
 
-Bytearray is a powerful binary data container that extends `std::vector<std::byte>` with comprehensive utilities for binary data manipulation, stream I/O, hex conversion, and type-safe data handling. It serves as the foundation for cryptographic operations, file processing, and low-level data manipulation in SharedCppLib2.
+Bytearray 是一个强大的二进制数据容器，它扩展了 `std::vector<std::byte>`，提供了全面的二进制数据操作、流 I/O、十六进制转换和类型安全数据处理功能。它作为 SharedCppLib2 中加密操作、文件处理和低级数据操作的基础。
 
-## Quick Start
+## 快速开始
 
-### Basic Usage
+### 基本用法
 ```cpp
 #include <SharedCppLib2/bytearray.hpp>
 
-// Create from string
+// 从字符串创建
 std::bytearray data = "Hello World";
-std::cout << "Size: " << data.size() << std::endl;
+std::cout << "大小: " << data.size() << std::endl;
 
-// Convert to hex
-std::cout << "Hex: " << data.tohex() << std::endl;
+// 转换为十六进制
+std::cout << "十六进制: " << data.tohex() << std::endl;
 
-// File operations
+// 文件操作
 std::ifstream file("data.bin", std::ios::binary);
 std::bytearray file_content;
 file_content.readAllFromStream(file);
 ```
 
-### Advanced Data Handling
+### 高级数据处理
 ```cpp
-// Type conversion
+// 类型转换
 struct Point { int x, y; };
 Point p{10, 20};
-std::bytearray serialized = p;  // Automatic serialization
+std::bytearray serialized = p;  // 自动序列化
 
-Point restored = serialized.convert_to<Point>();  // Deserialization
+Point restored = serialized.convert_to<Point>();  // 反序列化
 ```
 
-## Core Features
+## 核心功能
 
-### Data Construction
+### 数据构造
 
-#### Basic Constructors
+#### 基本构造函数
 ```cpp
-bytearray();  // Empty array
-bytearray(const bytearray &ba);  // Copy
-bytearray(const std::string &str);  // From string
-bytearray(const char *raw, size_t size);  // From raw data
+bytearray();  // 空数组
+bytearray(const bytearray &ba);  // 复制
+bytearray(const std::string &str);  // 从字符串
+bytearray(const char *raw, size_t size);  // 从原始数据
 ```
 
-#### Template Constructor
+#### 模板构造函数
 ```cpp
 template<typename _Any>
 bytearray(const _Any& in);
 ```
-Serializes any trivially copyable type to bytearray.
+将任何可简单复制的类型序列化为 bytearray。
 
-**Example:**
+**示例:**
 ```cpp
 int value = 42;
-std::bytearray ba = value;  // Serializes the integer
+std::bytearray ba = value;  // 序列化整数
 ```
 
-### Data Access & Manipulation
+### 数据访问与操作
 
 #### at & vat
 ```cpp
 byte at(size_t i) const;
 byte vat(size_t p, const byte &v = byte('\0')) const;
 ```
-Safe element access with bounds checking and default value support.
+安全的元素访问，支持边界检查和默认值。
 
-**Example:**
+**示例:**
 ```cpp
 std::bytearray data = "Hello";
 std::byte b1 = data.at(0);     // 'H'
-std::byte b2 = data.vat(10, std::byte{'X'});  // 'X' (safe access)
+std::byte b2 = data.vat(10, std::byte{'X'});  // 'X' (安全访问)
 ```
 
 #### subarr
 ```cpp
 bytearray subarr(size_t begin, size_t size = -1) const;
 ```
-Extracts a subarray from the bytearray.
+从 bytearray 中提取子数组。
 
-**Example:**
+**示例:**
 ```cpp
 std::bytearray data = "Hello World";
 std::bytearray hello = data.subarr(0, 5);  // "Hello"
@@ -109,24 +109,24 @@ std::bytearray world = data.subarr(6);     // "World"
 std::bytearray& replace(size_t pos, size_t len, const bytearray &ba);
 std::bytearray& insert(size_t pos, const bytearray &ba);
 ```
-Modifies content by replacing or inserting data.
+通过替换或插入数据修改内容。
 
-### Data Conversion
+### 数据转换
 
 #### tostdstring
 ```cpp
 std::string tostdstring() const;
 ```
-Converts bytearray to std::string.
+将 bytearray 转换为 std::string。
 
 #### tohex
 ```cpp
 std::string tohex() const;
 std::string tohex(size_t begin, size_t size = -1) const;
 ```
-Converts to hexadecimal string representation.
+转换为十六进制字符串表示。
 
-**Example:**
+**示例:**
 ```cpp
 std::bytearray data = "AB";
 std::cout << data.tohex();  // "4142"
@@ -137,61 +137,61 @@ std::cout << data.tohex();  // "4142"
 std::stringlist tostringlist(const std::string& split = " ") const;
 std::wstringlist towstringlist(const std::wstring& split = L" ") const;
 ```
-Splits bytearray into string list using delimiter.
+使用分隔符将 bytearray 分割为字符串列表。
 
 #### convert_to
 ```cpp
 template<typename _T>
 _T convert_to() const;
 ```
-Deserializes bytearray back to original type.
+将 bytearray 反序列化回原始类型。
 
-**Requirements:**
-- Type must be trivially copyable
-- Bytearray size must match type size
-- Proper memory alignment
+**要求:**
+- 类型必须可简单复制
+- Bytearray 大小必须匹配类型大小
+- 正确的内存对齐
 
-**Example:**
+**示例:**
 ```cpp
 std::bytearray serialized = 3.14f;
 float value = serialized.convert_to<float>();
 ```
 
-### Stream Operations
+### 流操作
 
 #### readFromStream
 ```cpp
 bool readFromStream(std::istream& is, size_t size);
 ```
-Reads specific number of bytes from stream.
+从流中读取指定数量的字节。
 
 #### readAllFromStream
 ```cpp
 bool readAllFromStream(std::istream& is);
 ```
-Reads entire stream content (useful for files).
+读取整个流内容（适用于文件）。
 
 #### readUntilDelimiter
 ```cpp
 bool readUntilDelimiter(std::istream& is, char delimiter = '\0');
 ```
-Reads until specified delimiter is encountered.
+读取直到遇到指定的分隔符。
 
 #### writeRaw
 ```cpp
 void writeRaw(std::ostream& os) const;
 ```
-Writes raw binary data to output stream.
+将原始二进制数据写入输出流。
 
-### Static Factory Methods
+### 静态工厂方法
 
 #### fromHex
 ```cpp
 static bytearray fromHex(const std::string& hex);
 ```
-Creates bytearray from hexadecimal string.
+从十六进制字符串创建 bytearray。
 
-**Example:**
+**示例:**
 ```cpp
 std::bytearray data = std::bytearray::fromHex("48656c6c6f");
 std::cout << data.tostdstring();  // "Hello"
@@ -201,12 +201,12 @@ std::cout << data.tostdstring();  // "Hello"
 ```cpp
 static bytearray fromRaw(const char* raw, size_t size);
 ```
-Creates bytearray from raw character data.
+从原始字符数据创建 bytearray。
 
-### Utility Operations
+### 实用操作
 
 #### append
-Multiple overloads for appending various data types:
+多种重载用于追加各种数据类型：
 - `append(const bytearray &ba)`
 - `append(const byte &b)`
 - `append(const byte* pb, size_t size)`
@@ -218,67 +218,67 @@ Multiple overloads for appending various data types:
 ```cpp
 void reverse();
 ```
-Reverses the byte order in the array.
+反转数组中的字节顺序。
 
 #### swap
 ```cpp
 void swap(bytearray &ba);
 void swap(size_t a, size_t b, size_t size = 1);
 ```
-Swaps content with another bytearray or swaps ranges within array.
+与另一个 bytearray 交换内容或交换数组内的范围。
 
-## Operator Overloads
+## 操作符重载
 
-### Stream Operators
+### 流操作符
 ```cpp
 std::ostream& operator<<(std::ostream& os, const std::bytearray& ba);
 std::istream& operator>>(std::istream& is, bytearray& ba);
 ```
-Smart stream operations that automatically handle hex/text formatting.
+智能流操作，自动处理十六进制/文本格式。
 
-**Example:**
+**示例:**
 ```cpp
 std::bytearray data;
-std::cin >> std::hex >> data;  // Read hex input
-std::cout << std::hex << data; // Output as hex
+std::cin >> std::hex >> data;  // 读取十六进制输入
+std::cout << std::hex << data; // 以十六进制输出
 ```
 
-### Comparison
+### 比较
 ```cpp
 bool operator== (const bytearray &ba) const;
 ```
-Compares two bytearrays for exact binary equality.
+比较两个 bytearray 的精确二进制相等性。
 
-## Advanced Usage
+## 高级用法
 
-### Binary File Processing
+### 二进制文件处理
 ```cpp
 std::bytearray process_file(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
     std::bytearray content;
     
     if (content.readAllFromStream(file)) {
-        // Process binary data
-        content.reverse();  // Example: change endianness
+        // 处理二进制数据
+        content.reverse();  // 示例：更改字节序
         return content;
     }
-    throw std::runtime_error("Failed to read file");
+    throw std::runtime_error("读取文件失败");
 }
 ```
 
-### Network Data Handling
+### 网络数据处理
 ```cpp
 void send_packet(std::ostream& network_stream, const std::bytearray& data) {
-    // Add header
+    // 添加头部
     std::bytearray packet;
-    packet.append(static_cast<uint32_t>(data.size()));  // Size prefix
+    packet.append(static_cast<uint32_t>(data.size()));  // 大小前缀
     packet.append(data);
     
     packet.writeRaw(network_stream);
 }
 ```
 
-### Data Serialization
+### 数据序列化
 ```cpp
 struct NetworkPacket {
     uint32_t id;
@@ -287,7 +287,7 @@ struct NetworkPacket {
 };
 
 std::bytearray serialize_packet(const NetworkPacket& packet) {
-    return std::bytearray(packet);  // Automatic serialization
+    return std::bytearray(packet);  // 自动序列化
 }
 
 NetworkPacket deserialize_packet(const std::bytearray& data) {
@@ -295,23 +295,23 @@ NetworkPacket deserialize_packet(const std::bytearray& data) {
 }
 ```
 
-## Performance Tips
+## 性能提示
 
-1. **Use `reserve()`** for known data sizes to avoid reallocations
-2. **Prefer `append()` with size** for bulk data operations
-3. **Use stream operations** for large file processing
-4. **Chain operations** to minimize temporary copies
+1. **使用 `reserve()`** 为已知数据大小预分配空间，避免重新分配
+2. **优先使用带大小的 `append()`** 进行批量数据操作
+3. **使用流操作** 处理大文件
+4. **链式操作** 以减少临时拷贝
 
-## Error Handling
+## 错误处理
 
-- `at()` throws `std::out_of_range` for invalid indices
-- `convert_to()` throws `std::runtime_error` for size/alignment mismatches
-- `fromHex()` throws `std::invalid_argument` for malformed hex strings
-- Stream operations return `bool` indicating success/failure
+- `at()` 对无效索引抛出 `std::out_of_range`
+- `convert_to()` 对大小/对齐不匹配抛出 `std::runtime_error`
+- `fromHex()` 对格式错误的十六进制字符串抛出 `std::invalid_argument`
+- 流操作返回 `bool` 表示成功/失败
 
-## Integration with Other Libraries
+## 与其他库的集成
 
-### SHA256 Hashing
+### SHA256 哈希
 ```cpp
 std::bytearray compute_file_hash(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
@@ -321,9 +321,9 @@ std::bytearray compute_file_hash(const std::string& filename) {
 }
 ```
 
-### StringList Conversion
+### StringList 转换
 ```cpp
 std::bytearray config_data = "key1=value1,key2=value2";
 std::stringlist pairs = config_data.tostringlist(",");
-// Results in {"key1=value1", "key2=value2"}
+// 结果: {"key1=value1", "key2=value2"}
 ```
