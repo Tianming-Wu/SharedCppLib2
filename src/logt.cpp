@@ -137,6 +137,12 @@ void logt::shutdown() {
     }
 }
 
+void logt::exit(int exitcode)
+{
+    shutdown();
+    ::exit(exitcode);
+}
+
 void logt::install_preprocessor(preprocessor_t preprocessor)
 {
     preprocessor_ = std::move(preprocessor);

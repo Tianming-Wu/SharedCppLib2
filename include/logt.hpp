@@ -144,6 +144,9 @@ public:
     /// @brief Shutdown the logging system, ensuring all messages are processed.
     static void shutdown();
 
+    /// @brief Shutdown the logging system then close the application.
+    static void exit(int exitcode);
+
     /** @brief Install preprocessor function to process log messages.
      * @param preprocessor A function that takes a logt_message reference and returns a bool.
      */

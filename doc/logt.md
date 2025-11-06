@@ -2,7 +2,7 @@
 
 + Name: logt  
 + Namespace: none  
-+ Document Version: `1.0.0`  
++ Document Version: `1.1.0`
 
 ## CMake Info
 
@@ -19,23 +19,23 @@ target_link_libraries(target SharedCppLib2::logt)
 
 ## Description
 
-Logt stands for "log threaded" - a high-performance asynchronous logging library for C++23. It performs all log writing operations in a separate thread to prevent blocking the main application thread, making it ideal for performance-critical applications.
+Logt stands for "log threaded" - a high-performance asynchronous logging library designed for C++23. It employs a dedicated logging thread to handle all write operations, ensuring that the main application thread is never blocked by logging activities, making it ideal for performance-critical applications.
 
 > [!WARNING]
-> This library uses heavy wrapping and may be difficult to understand from source code alone. Please refer to this documentation for proper usage.
+> This library uses complex wrapping mechanisms that may be difficult to understand from source code alone. Please refer to this documentation for proper usage.
 
 ## Key Features
 
-- **Zero-blocking design**: Log operations never block the calling thread
-- **Automatic thread identification**: Each log message includes thread context
-- **Flexible output**: Support for files, std::cout, and custom streams
-- **Signature system**: Class-level and module-level log identification
-- **High-precision timestamps**: Optional microsecond-level timing
-- **Extensible**: Custom preprocessors for formatting and coloring
+- **Fully Asynchronous Design**: All logging operations are processed in a background thread with zero blocking on calling threads
+- **Intelligent Thread Identification**: Automatically captures and displays thread context information in log messages
+- **Multiple Output Support**: Flexible support for file output, standard output, and custom streams
+- **Modular Signature System**: Provides class-level, module-level, and function-level log identification
+- **High-Precision Timing**: Optional millisecond/microsecond timestamp accuracy
+- **Powerful Extensibility**: Supports custom preprocessors for formatting and colored output
 
 ## Quick Start
 
-### Basic Usage in Main Function
+### Basic Usage
 
 ```cpp
 #include <SharedCppLib2/logt.hpp>
@@ -44,13 +44,13 @@ LOGT_MODULE("Main");
 
 int main() {
     logt::stdcout();  // Output to console
-    logt::claim("MainThread");  // Set thread name
+    logt::claim("MainThread");  // Name current thread
     
-    logt.info() << "Application started";
-    logt.warn() << "This is a warning";
-    logt.error() << "Error occurred: " << error_code;
+    logt.info() << "Application initialization completed";
+    logt.warn() << "Non-critical issue detected";
+    logt.error() << "Operation failed with error code: " << error_code;
     
-    logt::shutdown();  // Always call before exit
+    logt::shutdown();  // Must be called before program exit
     return 0;
 }
 ```
@@ -63,217 +63,224 @@ class DatabaseManager {
     
 public:
     void connect() {
-        logt.info() << "Connecting to database...";
-        logt.debug() << "Connection parameters: " << params;
+        logt.info() << "Establishing database connection...";
+        logt.debug() << "Connection parameters: " << connection_params;
     }
 };
 
-// In implementation file:
+// In corresponding implementation file:
 LOGT_DEFINE(DatabaseManager, "Database");
 ```
 
-### Global Function Logging
+### Function-Level Logging
 
 ```cpp
-// network.cpp
+// network.cpp file
 LOGT_MODULE("Network");
 
 void send_data() {
-    logt.info() << "Sending data packet";
-    logt.debug() << "Packet size: " << size << " bytes";
+    logt.info() << "Starting data packet transmission";
+    logt.debug() << "Packet details - size: " << packet_size << " bytes";
 }
 ```
 
-## Core Functions
+## Core API Reference
 
-### Configuration Methods
+### System Configuration Methods
 
-#### file
+#### file - File Output
 ```cpp
 static void file(const std::filesystem::path& filename);
 ```
-Sets log output to specified file. The file will be opened in append mode.
+Sets log output to the specified file system path. The file will be opened in append mode to preserve historical logs.
 
-#### setostream
+#### setostream - Custom Stream
 ```cpp
 static void setostream(std::ostream& os);
 ```
-Redirects log output to a custom output stream.
+Redirects log output to a user-provided output stream, supporting any stream that conforms to the std::ostream interface.
 
-#### stdcout
+#### stdcout - Console Output
 ```cpp
 static void stdcout();
 ```
-Sets log output to standard output (default behavior).
+Sets log output to standard console output (std::cout). This is the default behavior of the library.
 
-#### claim
+#### claim - Thread Naming
 ```cpp
 static void claim(const std::string& name);
 ```
-Sets the name for the current thread. This name will appear in all log messages from this thread.
+Sets a readable identifier name for the current execution thread. This name will appear in all log messages produced by this thread, facilitating debugging and tracing.
 
-#### setFilterLevel
+#### setFilterLevel - Log Filtering
 ```cpp
 static void setFilterLevel(LogLevel level);
 ```
-Sets the minimum log level to output. Messages below this level will be silently ignored.
+Sets the minimum log level to be recorded. All log messages below this level will be silently discarded and not queued for processing.
 
-Available levels: `l_DEBUG`, `l_INFO`, `l_WARN`, `l_ERROR`, `l_FATAL`, `l_QUIET`
+Available levels in increasing severity: `l_DEBUG`, `l_INFO`, `l_WARN`, `l_ERROR`, `l_FATAL`, with special level `l_QUIET` for complete log suppression.
 
-#### enableSuperTimestamp
+#### enableSuperTimestamp - High-Precision Timestamps
 ```cpp
 static void enableSuperTimestamp(bool enabled);
 ```
-Enables high-precision timestamps with microsecond resolution when set to `true`.
+Enables or disables high-precision timestamp mode. When enabled, timestamps include millisecond and microsecond information for more precise time recording.
 
-#### install_preprocessor
+#### install_preprocessor - Preprocessor
 ```cpp
 static void install_preprocessor(preprocessor_t preprocessor);
 ```
-Installs a custom preprocessor function to modify log messages before output. Commonly used with `logc` for colored output.
+Installs a custom log message preprocessor function. Preprocessors can modify log messages before final output, commonly used for adding color codes, custom formatting, or filtering sensitive information. When used with the `logc` color library, it enables colored terminal output.
 
-#### shutdown
+#### shutdown - System Shutdown
 ```cpp
 static void shutdown();
 ```
-**Must be called** before program exit to ensure all log messages are processed and threads are properly joined.
+**Must be called before the logging application exits**. This method gracefully stops the logging system, ensures all queued log messages are fully processed, and properly cleans up background worker threads.
 
-### Logging Methods (via logt_sig)
+### Logging Methods
 
-#### info
+Log level methods provided through logt_sig objects:
+
+#### info - Information Level
 ```cpp
 logt_sso info() const;
 ```
-Creates an INFO level log message.
+Creates an INFO-level log message stream for recording normal application operation information.
 
-#### warn
+#### warn - Warning Level
 ```cpp
 logt_sso warn() const;
 ```
-Creates a WARN level log message.
+Creates a WARN-level log message stream for recording potentially concerning abnormal conditions.
 
-#### error
+#### error - Error Level
 ```cpp
 logt_sso error() const;
 ```
-Creates an ERROR level log message.
+Creates an ERROR-level log message stream for recording error conditions that don't prevent program continuation.
 
-#### fatal
+#### fatal - Fatal Level
 ```cpp
 logt_sso fatal() const;
 ```
-Creates a FATAL level log message.
+Creates a FATAL-level log message stream for recording critical errors that prevent program continuation.
 
-#### debug
+#### debug - Debug Level
 ```cpp
 logt_sso debug() const;
 ```
-Creates a DEBUG level log message.
+Creates a DEBUG-level log message stream for recording detailed debugging information, typically used during development.
 
-## Macros
+## Macro Reference
 
 ### LOGT_DECLARE
-Declares a static logt signature within a class. Must be placed in the private section of the class declaration.
+Declares a static log signature object inside a class declaration. Must be placed in the private access section of the class.
 
 ### LOGT_DEFINE(Class, Name)
-Defines the logt signature for a class. Must be placed in the implementation file (.cpp).
+Defines the log signature for a specific class in the implementation file. The Class parameter specifies the target class name, and the Name parameter defines the log identifier for that class.
 
 ### LOGT_MODULE(Name)
-Creates a module-level logt signature for global functions or main program.
+Creates a module-level log signature suitable for global functions, namespace scope, or main program entry points.
 
 ### LOGT_LOCAL(Name)
-Creates a function-local logt signature for temporary use within a function.
+Creates a function-scoped local log signature for temporary use within functions.
 
 ### LOGT_TEMP(Name)
-Creates a temporary logt signature for one-time use.
+Creates a temporary log signature object for one-time use scenarios that don't require persistent state.
 
-## Log Level Constants
+## Log Level Details
 
-- `l_QUIET` = -1 (suppress all logging)
-- `l_DEBUG` = 0
-- `l_INFO` = 1  
-- `l_WARN` = 2
-- `l_ERROR` = 3
-- `l_FATAL` = 4
+- `l_QUIET` = -1 - Complete silent mode, no logging
+- `l_DEBUG` = 0 - Debug level, most detailed operational information
+- `l_INFO` = 1 - Information level, normal operational status
+- `l_WARN` = 2 - Warning level, potential abnormal conditions
+- `l_ERROR` = 3 - Error level, error conditions
+- `l_FATAL` = 4 - Fatal level, critical errors
 
-## Complete Example
+## Complete Application Example
 
 ```cpp
 #include <SharedCppLib2/logt.hpp>
-#include <SharedCppLib2/logc.hpp>
 #include <thread>
 
 class DataProcessor {
     LOGT_DECLARE
 public:
     void process() {
-        logt.info() << "Starting data processing";
-        logt.debug() << "Input size: " << data_size;
+        logt.info() << "Starting data processing pipeline";
+        logt.debug() << "Input dataset size: " << input_data.size();
+        // Processing logic...
     }
 };
 
 LOGT_DEFINE(DataProcessor, "DataProcessor");
-LOGT_MODULE("MainApp");
+LOGT_MODULE("MainApplication");
 
 int main() {
-    // Basic configuration
-    logt::file("app.log");
-    logt::claim("Main");
-    logt::setFilterLevel(LogLevel::l_DEBUG);
-    logt::enableSuperTimestamp(true);
+    // System initialization configuration
+    logt::file("application.log");  // Output to file
+    logt::claim("MainThread");      // Main thread naming
+    logt::setFilterLevel(LogLevel::l_DEBUG);  // Set log level
+    logt::enableSuperTimestamp(true);  // Enable high-precision timestamps
     
-    // Enable colored output (optional)
-    logt::install_preprocessor(logc::logPreprocessor);
+    // Note: Color preprocessor (logc::logPreprocessor) should not be enabled in file mode
+    // as it adds terminal color codes that don't render well in text files
     
-    // Log messages
-    logt.info() << "Application starting";
-    logt.warn() << "Configuration file not found, using defaults";
+    // Record startup information
+    logt.info() << "Main application initialization completed";
+    logt.warn() << "Using default configuration parameters";
     
-    // Class usage
-    DataProcessor processor;
-    processor.process();
+    // Use class logging functionality
+    DataProcessor data_processor;
+    data_processor.process();
     
-    // Multi-threaded example
-    std::thread worker([](){
-        logt::claim("Worker");
-        LOGT_LOCAL("Worker");
-        for(int i = 0; i < 5; i++) {
-            logt.info() << "Working on task " << i;
+    // Multi-threaded logging example
+    std::thread worker_thread([](){
+        logt::claim("WorkerThread");  // Worker thread naming
+        LOGT_LOCAL("Worker");         // Local log signature
+        
+        for(int task_id = 0; task_id < 5; task_id++) {
+            logt.info() << "Executing work task ID: " << task_id;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     });
     
-    worker.join();
-    logt.info() << "Application completed";
+    worker_thread.join();
+    logt.info() << "All processing tasks completed";
     
-    // Critical: shutdown before exit
+    // Critical step: shutdown logging system
     logt::shutdown();
     return 0;
 }
 ```
 
-## Output Format
+## Output Format Specification
 
-With default settings, log messages follow this format:
+Standard output format:
 ```
-[YYYY/MM/DD HH:MM:SS] [LEVEL] [THREAD] [SIGNATURE] Message content
-```
-
-With super timestamp enabled:
-```
-[YYYY/MM/DD HH:MM:SS.MMM.UUU] [LEVEL] [THREAD] [SIGNATURE] Message content
+[YYYY/MM/DD HH:MM:SS] [LEVEL] [THREAD] [SIGNATURE] Log message content
 ```
 
-Where:
-- `MMM` = milliseconds (3 digits)
-- `UUU` = microseconds (3 digits)
+Format with high-precision timestamps enabled:
+```
+[YYYY/MM/DD HH:MM:SS.MMM.UUU] [LEVEL] [THREAD] [SIGNATURE] Log message content
+```
 
-## Performance Notes
+Format explanation:
+- Timestamp: Complete date and time information
+- Level: Log severity identifier (DEBUG/INFO/WARN/ERROR/FATAL)
+- Thread: Name of the thread that produced the log
+- Signature: Source module or class identifier of the log message
+- Message content: Specific log information provided by the user
 
-- Log operations are completely non-blocking
-- Heavy formatting should be done before logging to minimize queue time
-- Consider using `setFilterLevel(LogLevel::l_WARN)` in production to reduce log volume
-- Always call `shutdown()` to prevent log loss on program exit
+## Performance Optimization Recommendations
 
-## Submodule Integration
+- **Zero-Blocking Advantage**: Leverage the asynchronous nature - logging operations won't impact main thread performance
+- **Preprocessing Optimization**: Complex string concatenation and formatting should be completed before logging calls to reduce processing time in the queue
+- **Production Configuration**: In production environments, consider setting `setFilterLevel(LogLevel::l_WARN)` or higher to reduce unnecessary log output
+- **Resource Cleanup**: Always call the `shutdown()` method before program exit to prevent log message loss and resource leaks
 
-See [`logc`](logc.md) for colored output support through preprocessor installation.
+## Extension Integration
+
+Through the preprocessor mechanism, logt can seamlessly integrate with other functional modules. Particularly when used with the [`logc`](logc.md) color output library, it can add rich color identifiers to terminal logs, enhancing log readability. Preprocessors also support advanced features like custom format conversion, sensitive information filtering, and log auditing.
