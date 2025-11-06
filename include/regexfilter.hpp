@@ -11,6 +11,11 @@ public:
     bool filtered(const std::string& s) const;
     int apply(std::stringlist& list, bool reverse) const;
 
+    void addPattern(const std::string& pattern);
+    void addPatterns(const std::stringlist& patterns);
+    void clearPatterns();
+    void setPatterns(const std::stringlist& patterns);
+
 private:
     std::vector<std::regex> m_patterns;
 };
