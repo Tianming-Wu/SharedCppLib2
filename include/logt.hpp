@@ -77,11 +77,22 @@ public:
     logt_sso(logt_sso&&) = default;
     logt_sso& operator=(logt_sso&&) = default;
     
-    // 流输出操作符
     template<typename T>
-    requires requires(T t, std::stringstream& ss) {
-        ss << t;  // 必须支持 stringstream 的 << 操作符
+    requires requires(const T& t) {
+        requires std::is_class_v<T>;  // 必须是类类型
+        { t.serialize() } -> std::convertible_to<std::string>;  // 返回 std::string
     }
+    logt_sso& operator<<(const T& value) {
+        ss_ << value.serialize();
+        return *this;
+    }
+
+    // 通用的流输出支持（排除已经匹配 serialize() 的类型）
+    template<typename T>
+    requires (!requires(const T& t) { 
+        requires std::is_class_v<T>;
+        { t.serialize() } -> std::same_as<std::string>;
+    }) && requires(T t, std::stringstream& test_ss) { test_ss << t; }
     logt_sso& operator<<(const T& value) {
         ss_ << value;
         return *this;

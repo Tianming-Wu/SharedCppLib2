@@ -1,3 +1,9 @@
+/*
+    Variant project inspired by QVariant.
+    This project is currently deprecated, but may restart if good
+    solutions are found.
+*/
+
 #pragma once
 #include <string>
 #include <stdexcept>
