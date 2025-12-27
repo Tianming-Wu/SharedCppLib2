@@ -27,6 +27,14 @@ inline wstring itows(int d)
 	return stl;
 }
 
+template<typename T>
+requires requires(const T& t, std::stringstream& test_ss) { test_ss << t; }
+std::string streamed_to_string(const T& value) {
+    std::stringstream ss_;
+    ss_ << value;
+    return ss_.str();
+}
+
 #ifndef lower
 inline std::string lower(const std::string& orig) {
     constexpr int offset = 'a' - 'A';
