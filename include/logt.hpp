@@ -25,6 +25,7 @@ Doesn't work well in file mode, disable by yourself.
 #include <bitset>
 #include <map>
 #include <initializer_list>
+#include <new>
 
 #ifdef UNICODE
     #define LOGT_WCHAR_SUPPORT
@@ -68,11 +69,15 @@ struct logt_channel {
 
     void open(); // reserved
     void close(); // close the stream and set it to invalid
+
+    mutable std::mutex _mutex;
+    [[nodiscard]] auto lock();
 };
 
 struct logt_channelinfo {
     std::bitset<LOGT_MAX_CHANNEL> channels;
     inline bool operator[](size_t index) const { return bool(channels[index]); }
+    inline void set(size_t index, bool value = true) { channels[index] = value; }
 
     inline bool stdoutput() const { return bool(channels[0]); }
 };
@@ -203,9 +208,9 @@ public:
     logt_sso fatal() const { return logt_sso(LogLevel::l_FATAL, formatter, channels, name_); }
     logt_sso debug() const { return logt_sso(LogLevel::l_DEBUG, formatter, channels, name_); }
 
-    void setFormatter(logt_format::format_func formatter_);
-    void setChannel(int channelid, bool enable);
-    void setChannels(std::initializer_list<int> enabled_channels);
+    bool setFormatter(logt_format::format_func formatter_);
+    bool setChannel(int channelid, bool enable);
+    bool setChannels(std::initializer_list<int> enabled_channels);
     
 private:
     std::string name_;
@@ -218,9 +223,9 @@ class logt {
     friend class logt_sig;
 public:
     // 静态配置方法
-    static int addfile(const std::filesystem::path& filename);
-    static int addostream(std::ostream& os);
-    static void stdcout(bool enable);
+    static int addfile(const std::filesystem::path& filename, bool default_enable = true);
+    static int addostream(std::ostream& os, bool default_enable = true);
+    static void stdcout(bool enable, bool default_enable = true);
     static void claim(const std::string& name);
     inline static void setFilterLevel(LogLevel level) { filter_level_ = level; }
 
@@ -257,16 +262,12 @@ private:
     // 静态成员
     static LogLevel filter_level_;
 
-    // static std::ofstream log_file_;
-    // static std::ostream* output_stream_;
     static logt_channel channels_[LOGT_MAX_CHANNEL];
-    static logt_channelinfo channelinfo_;
+    static logt_channelinfo channelinfo_;  // track registered channels
     static int last_channel_id;
-    // static bool use_file_;
+    static logt_channelinfo default_channels_;
 
     static preprocessor_t preprocessor_;
-    
-    static std::mutex file_mutex_;
     static std::mutex thread_mutex_;
     static std::unordered_map<std::thread::id, std::string> thread_names_;
     
@@ -280,9 +281,24 @@ private:
     static logt_format formatter_;
 };
 
+// 日志文件管理
+// class logt_manager {
+// public:
+//     logt_manager(const std::filesystem::path& logFolder);
+//     ~logt_manager();
+
+// private:
+//     std::filesystem::path m_logFolder;
+// };
+
 
 #define LOGT_DECLARE \
 private: \
+    static ::logt_sig logt;
+
+// Public version of LOGT_DECLARE for external access
+#define LOGT_PUBLIC_DECLARE \
+public: \
     static ::logt_sig logt;
 
 // 类外签名定义宏

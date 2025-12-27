@@ -2,7 +2,7 @@
 
 + 名称: logt  
 + 命名空间: 无  
-+ 文档版本: `1.1.0`
++ 文档版本: `1.2.0`
 
 ## CMake 配置信息
 
@@ -88,55 +88,53 @@ void send_data() {
 
 ### 系统配置方法
 
-#### file - 文件输出
+#### addfile - 添加文件通道
 ```cpp
-static void file(const std::filesystem::path& filename);
+static int addfile(const std::filesystem::path& filename, bool default_enable = true);
 ```
-设置日志输出到指定的文件系统路径。文件将以追加模式打开，确保历史日志不被覆盖。
+以追加模式打开文件通道并返回通道 ID。`default_enable` 决定新签名是否默认启用该通道。若通道数量耗尽返回 `-1`。
 
-#### setostream - 自定义流
+#### addostream - 添加自定义流
 ```cpp
-static void setostream(std::ostream& os);
+static int addostream(std::ostream& os, bool default_enable = true);
 ```
-将日志输出重定向到用户提供的输出流对象，支持任何符合 std::ostream 接口的流。
+注册自定义输出流并返回通道 ID。传入的流对象需在日志期间保持有效。
 
-#### stdcout - 控制台输出
+#### stdcout - 控制台通道
 ```cpp
-static void stdcout();
+static void stdcout(bool enable = true, bool default_enable = true);
 ```
-设置日志输出到标准控制台输出（std::cout）。这是库的默认输出行为。
+控制通道 0（stdout）。该通道始终存在，可选择禁用或不作为默认通道。
 
 #### claim - 线程命名
 ```cpp
 static void claim(const std::string& name);
 ```
-为当前执行线程设置可读的标识名称。该名称将出现在此线程产生的所有日志消息中，便于调试和追踪。
+为当前线程设置可读名称；后续该线程的日志会显示此名称。
 
 #### setFilterLevel - 日志过滤
 ```cpp
 static void setFilterLevel(LogLevel level);
 ```
-设置需要记录的最低日志级别。所有低于此级别的日志消息将被静默丢弃，不进入处理队列。
-
-可用级别按严重程度递增: `l_DEBUG`, `l_INFO`, `l_WARN`, `l_ERROR`, `l_FATAL`，特殊级别 `l_QUIET` 用于完全禁用日志。
+设置入队的最低日志级别。级别：`l_DEBUG`, `l_INFO`, `l_WARN`, `l_ERROR`, `l_FATAL`，特殊 `l_QUIET`。
 
 #### enableSuperTimestamp - 高精度时间戳
 ```cpp
 static void enableSuperTimestamp(bool enabled);
 ```
-启用或禁用高精度时间戳模式。启用后，时间戳将包含毫秒和微秒信息，提供更精确的时间记录。
+启用后时间戳包含毫秒/微秒。
 
 #### install_preprocessor - 预处理器
 ```cpp
 static void install_preprocessor(preprocessor_t preprocessor);
 ```
-安装自定义的日志消息预处理器函数。预处理器可以在日志消息最终输出前对其进行修改，常用于添加颜色代码、自定义格式或过滤敏感信息。与 `logc` 颜色库配合使用可实现彩色终端输出。
+安装预处理钩子。预处理现位于 `write_message()` 中：可对 stdout/自定义流保留彩色内容，同时文件通道自动使用原始未处理内容（避免 ANSI 写入文件）。
 
 #### shutdown - 系统关闭
 ```cpp
 static void shutdown();
 ```
-**必须在使用日志的应用程序退出前调用**。该方法会优雅停止日志系统，确保所有已进入队列的日志消息都被完整处理，并正确清理后台工作线程。
+优雅停止工作线程并刷新队列中的日志。**程序退出前务必调用。**
 
 ### 日志记录方法
 
@@ -177,6 +175,9 @@ logt_sso debug() const;
 ### LOGT_DECLARE
 在类声明内部声明静态日志签名对象。必须放置在类的私有访问区域。
 
+### LOGT_PUBLIC_DECLARE
+公开版本的 `LOGT_DECLARE`，用于暴露静态日志签名以便外部配置（例如调整通道）。
+
 ### LOGT_DEFINE(Class, Name)
 在实现文件中为特定类定义日志签名。Class 参数指定目标类名，Name 参数定义该类的日志标识符。
 
@@ -188,6 +189,14 @@ logt_sso debug() const;
 
 ### LOGT_TEMP(Name)
 创建临时日志签名对象，适用于一次性使用的日志场景，不保留静态状态。
+
+## 通道管理
+
+- **通道 0**：stdout 永远注册，可通过 `stdcout(enable, default_enable)` 控制。
+- **添加通道**：`addfile()` / `addostream()` 返回通道 ID，并设置对新签名的默认启用状态。
+- **按签名控制**：`logt_sig::setChannel(id, enable)` / `setChannels({ids...})` 返回 `bool`，会校验通道是否已注册。
+- **公开访问**：若类需要外部修改通道，可使用 `LOGT_PUBLIC_DECLARE` 暴露静态日志对象。
+- **预处理作用域**：预处理发生在 `write_message()`；stdout/自定义流使用处理后的内容（可含颜色），文件通道使用原始内容（无 ANSI 码）。
 
 ## 日志级别详解
 
@@ -220,13 +229,15 @@ LOGT_MODULE("MainApplication");
 
 int main() {
     // 系统初始化配置
-    logt::file("application.log");  // 输出到文件
-    logt::claim("MainThread");      // 主线程命名
+    int file_channel = logt::addfile("application.log");  // 输出到文件
+    logt::stdcout(true);              // stdout 通道 0
+    logt::claim("MainThread");       // 主线程命名
     logt::setFilterLevel(LogLevel::l_DEBUG);  // 设置日志级别
     logt::enableSuperTimestamp(true);  // 启用高精度时间戳
+    // 将模块日志路由到 stdout + 文件
+    logt.setChannels({0, file_channel});
     
-    // 安装颜色预处理器（需要 logc 库）
-    // 不要在使用文件时启用。
+    // 颜色预处理：stdout/自定义流保留颜色，文件保持无颜色文本
     // logt::install_preprocessor(logc::logPreprocessor);
     
     // 记录启动信息

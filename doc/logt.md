@@ -2,7 +2,7 @@
 
 + Name: logt  
 + Namespace: none  
-+ Document Version: `1.1.0`
++ Document Version: `1.2.0`
 
 ## CMake Info
 
@@ -88,55 +88,53 @@ void send_data() {
 
 ### System Configuration Methods
 
-#### file - File Output
+#### addfile - Add File Channel
 ```cpp
-static void file(const std::filesystem::path& filename);
+static int addfile(const std::filesystem::path& filename, bool default_enable = true);
 ```
-Sets log output to the specified file system path. The file will be opened in append mode to preserve historical logs.
+Opens (append mode) a file output channel and returns its channel id. `default_enable` controls whether new signatures enable this channel by default. Returns `-1` if channel slots are exhausted.
 
-#### setostream - Custom Stream
+#### addostream - Add Custom Stream
 ```cpp
-static void setostream(std::ostream& os);
+static int addostream(std::ostream& os, bool default_enable = true);
 ```
-Redirects log output to a user-provided output stream, supporting any stream that conforms to the std::ostream interface.
+Registers a custom stream channel and returns its channel id. The provided stream must outlive logging.
 
-#### stdcout - Console Output
+#### stdcout - Console Channel
 ```cpp
-static void stdcout();
+static void stdcout(bool enable = true, bool default_enable = true);
 ```
-Sets log output to standard console output (std::cout). This is the default behavior of the library.
+Controls channel 0 (stdout). It is always registered; you can disable it or exclude it from defaults.
 
 #### claim - Thread Naming
 ```cpp
 static void claim(const std::string& name);
 ```
-Sets a readable identifier name for the current execution thread. This name will appear in all log messages produced by this thread, facilitating debugging and tracing.
+Sets a readable name for the current thread; the name appears in subsequent log lines from this thread.
 
 #### setFilterLevel - Log Filtering
 ```cpp
 static void setFilterLevel(LogLevel level);
 ```
-Sets the minimum log level to be recorded. All log messages below this level will be silently discarded and not queued for processing.
-
-Available levels in increasing severity: `l_DEBUG`, `l_INFO`, `l_WARN`, `l_ERROR`, `l_FATAL`, with special level `l_QUIET` for complete log suppression.
+Sets the minimum level to queue. Levels: `l_DEBUG`, `l_INFO`, `l_WARN`, `l_ERROR`, `l_FATAL`, special `l_QUIET`.
 
 #### enableSuperTimestamp - High-Precision Timestamps
 ```cpp
 static void enableSuperTimestamp(bool enabled);
 ```
-Enables or disables high-precision timestamp mode. When enabled, timestamps include millisecond and microsecond information for more precise time recording.
+Adds milliseconds/microseconds to timestamps when enabled.
 
 #### install_preprocessor - Preprocessor
 ```cpp
 static void install_preprocessor(preprocessor_t preprocessor);
 ```
-Installs a custom log message preprocessor function. Preprocessors can modify log messages before final output, commonly used for adding color codes, custom formatting, or filtering sensitive information. When used with the `logc` color library, it enables colored terminal output.
+Installs a preprocessing hook. It now runs inside `write_message()`, so you can let it color stdout/custom streams while file channels still see the original unprocessed content (e.g., no ANSI codes in files).
 
 #### shutdown - System Shutdown
 ```cpp
 static void shutdown();
 ```
-**Must be called before the logging application exits**. This method gracefully stops the logging system, ensures all queued log messages are fully processed, and properly cleans up background worker threads.
+Gracefully stops the worker thread and flushes all pending messages. **Call before program exit.**
 
 ### Logging Methods
 
@@ -177,6 +175,9 @@ Creates a DEBUG-level log message stream for recording detailed debugging inform
 ### LOGT_DECLARE
 Declares a static log signature object inside a class declaration. Must be placed in the private access section of the class.
 
+### LOGT_PUBLIC_DECLARE
+Public version of `LOGT_DECLARE`, exposing the static log signature for external configuration (e.g., channel changes).
+
 ### LOGT_DEFINE(Class, Name)
 Defines the log signature for a specific class in the implementation file. The Class parameter specifies the target class name, and the Name parameter defines the log identifier for that class.
 
@@ -188,6 +189,14 @@ Creates a function-scoped local log signature for temporary use within functions
 
 ### LOGT_TEMP(Name)
 Creates a temporary log signature object for one-time use scenarios that don't require persistent state.
+
+## Channel Management
+
+- **Channel 0**: stdout is always registered; `stdcout(enable, default_enable)` controls it.
+- **Adding channels**: `addfile()` / `addostream()` return channel ids. They set `default_enable` for new signatures.
+- **Per-signature control**: `logt_sig::setChannel(id, enable)` / `setChannels({ids...})` return `bool` and validate id registration.
+- **Public access**: use `LOGT_PUBLIC_DECLARE` if a class needs external code to adjust its channels.
+- **Preprocessor scope**: runs inside `write_message()`; stdout/custom streams use processed content (e.g., colors), file channels use original content (no ANSI codes).
 
 ## Log Level Details
 
@@ -219,13 +228,16 @@ LOGT_MODULE("MainApplication");
 
 int main() {
     // System initialization configuration
-    logt::file("application.log");  // Output to file
-    logt::claim("MainThread");      // Main thread naming
+    int file_channel = logt::addfile("application.log");  // Output to file
+    logt::stdcout(true);              // stdout channel 0
+    logt::claim("MainThread");       // Main thread naming
     logt::setFilterLevel(LogLevel::l_DEBUG);  // Set log level
-    logt::enableSuperTimestamp(true);  // Enable high-precision timestamps
+    logt::enableSuperTimestamp(true); // Enable high-precision timestamps
+    // Route module logs to stdout + file
+    logt.setChannels({0, file_channel});
     
-    // Note: Color preprocessor (logc::logPreprocessor) should not be enabled in file mode
-    // as it adds terminal color codes that don't render well in text files
+    // Color preprocessor: colors stay on stdout/custom streams, files get plain text
+    // logt::install_preprocessor(logc::logPreprocessor);
     
     // Record startup information
     logt.info() << "Main application initialization completed";

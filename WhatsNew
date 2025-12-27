@@ -1,5 +1,9 @@
 # Changelog
 
+
+### v1.18.1
+- Chg: add channel control to logt.
+
 ### v1.17.1
 - Chg: stringlist now also provides wstringlist.
 - Rmv: stringlist_split stream operator
