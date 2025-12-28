@@ -135,6 +135,16 @@ std::string bytearray::toEscapedString() const {
     return ss.str();
 }
 
+std::u8string bytearray::toUtf8() const
+{
+    if (this->empty()) return std::u8string();
+    
+    return std::u8string(
+        reinterpret_cast<const char8_t*>(this->data()),
+        this->size()
+    );
+}
+
 bool bytearray::operator== (const bytearray &ba) const {
     if(size() != ba.size()) return false;
     for(size_t i = 0; i < size(); i++) {
@@ -181,6 +191,21 @@ bytearray bytearray::fromHex(const std::string& hex) {
 
 bytearray bytearray::fromRaw(const char* raw, size_t size) {
     return bytearray(raw, size);
+}
+
+bytearray bytearray::fromUtf8(const std::u8string& utf8str)
+{
+    if (utf8str.empty()) return bytearray();
+    
+    bytearray result;
+    result.reserve(utf8str.size());
+    
+    const byte* src = reinterpret_cast<const byte*>(utf8str.data());
+    for (size_t i = 0; i < utf8str.size(); i++) {
+        result.push_back(src[i]);
+    }
+    
+    return result;
 }
 
 bool bytearray::readFromStream(std::istream &is, size_t size) {

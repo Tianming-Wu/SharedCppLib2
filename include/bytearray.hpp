@@ -86,10 +86,14 @@ public:
     std::string tohex(size_t begin, size_t size = -1) const;
     std::string toEscapedString() const;
 
+    std::u8string toUtf8() const;
+
     bool operator== (const bytearray &ba) const;
 
     static bytearray fromHex(const std::string& hex);
     static bytearray fromRaw(const char* raw, size_t size);
+
+    static bytearray fromUtf8(const std::u8string& utf8str);
 
     bool readFromStream(std::istream& is, size_t size);
     bool readAllFromStream(std::istream& is);
