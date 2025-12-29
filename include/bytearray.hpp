@@ -87,6 +87,9 @@ public:
     std::string toEscapedString() const;
 
     std::u8string toUtf8() const;
+    std::u16string toUtf16() const;
+    std::u32string toUtf32() const;
+    std::string toBase64() const;
 
     bool operator== (const bytearray &ba) const;
 
@@ -94,6 +97,9 @@ public:
     static bytearray fromRaw(const char* raw, size_t size);
 
     static bytearray fromUtf8(const std::u8string& utf8str);
+    static bytearray fromUtf16(const std::u16string& utf16str);
+    static bytearray fromUtf32(const std::u32string& utf32str);
+    static bytearray fromBase64(const std::string& base64str);
 
     bool readFromStream(std::istream& is, size_t size);
     bool readAllFromStream(std::istream& is);

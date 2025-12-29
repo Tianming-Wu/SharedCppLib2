@@ -1,5 +1,5 @@
 #include "bytearray.hpp"
-#include "stringlist.hpp" 
+#include "stringlist.hpp"
 
 namespace std {
 
@@ -145,6 +145,36 @@ std::u8string bytearray::toUtf8() const
     );
 }
 
+std::u16string bytearray::toUtf16() const
+{
+    if (this->empty()) return std::u16string();
+    
+    // Ensure size is multiple of sizeof(char16_t)
+    if (this->size() % sizeof(char16_t) != 0) {
+        throw std::runtime_error("bytearray::toUtf16: size must be multiple of 2 bytes");
+    }
+    
+    return std::u16string(
+        reinterpret_cast<const char16_t*>(this->data()),
+        this->size() / sizeof(char16_t)
+    );
+}
+
+std::u32string bytearray::toUtf32() const
+{
+    if (this->empty()) return std::u32string();
+    
+    // Ensure size is multiple of sizeof(char32_t)
+    if (this->size() % sizeof(char32_t) != 0) {
+        throw std::runtime_error("bytearray::toUtf32: size must be multiple of 4 bytes");
+    }
+    
+    return std::u32string(
+        reinterpret_cast<const char32_t*>(this->data()),
+        this->size() / sizeof(char32_t)
+    );
+}
+
 bool bytearray::operator== (const bytearray &ba) const {
     if(size() != ba.size()) return false;
     for(size_t i = 0; i < size(); i++) {
@@ -202,6 +232,38 @@ bytearray bytearray::fromUtf8(const std::u8string& utf8str)
     
     const byte* src = reinterpret_cast<const byte*>(utf8str.data());
     for (size_t i = 0; i < utf8str.size(); i++) {
+        result.push_back(src[i]);
+    }
+    
+    return result;
+}
+
+bytearray bytearray::fromUtf16(const std::u16string& utf16str)
+{
+    if (utf16str.empty()) return bytearray();
+    
+    bytearray result;
+    size_t byte_size = utf16str.size() * sizeof(char16_t);
+    result.reserve(byte_size);
+    
+    const byte* src = reinterpret_cast<const byte*>(utf16str.data());
+    for (size_t i = 0; i < byte_size; i++) {
+        result.push_back(src[i]);
+    }
+    
+    return result;
+}
+
+bytearray bytearray::fromUtf32(const std::u32string& utf32str)
+{
+    if (utf32str.empty()) return bytearray();
+    
+    bytearray result;
+    size_t byte_size = utf32str.size() * sizeof(char32_t);
+    result.reserve(byte_size);
+    
+    const byte* src = reinterpret_cast<const byte*>(utf32str.data());
+    for (size_t i = 0; i < byte_size; i++) {
         result.push_back(src[i]);
     }
     
