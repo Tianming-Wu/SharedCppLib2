@@ -19,6 +19,9 @@ include(GNUInstallDirs)
 set(INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR})
 set(INSTALL_INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/SharedCppLib2)
 
+# 防止编码报错
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/source-charset:utf-8>")
+
 # 添加调试后缀
 set(CMAKE_DEBUG_POSTFIX "d")
 
