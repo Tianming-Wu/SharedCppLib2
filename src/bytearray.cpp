@@ -183,6 +183,85 @@ bool bytearray::operator== (const bytearray &ba) const {
     return true;
 }
 
+std::bytearray bytearray::operator<<(size_t offset) const { return shiftLeft(offset); }
+std::bytearray bytearray::operator>>(size_t offset) const { return shiftRight(offset); }
+
+std::bytearray bytearray::shiftLeft(size_t offset) const
+{
+    if (offset >= size()) {
+        // 移位超过大小，返回全0数组
+        return bytearray(size(), std::byte(0x00));
+    }
+    
+    bytearray result(size(), std::byte(0x00));
+    // 将 [offset, size) 的数据复制到 [0, size-offset)
+    std::copy(begin() + offset, end(), result.begin());
+    
+    return result;
+}
+
+std::bytearray bytearray::shiftRight(size_t offset) const
+{
+    if (offset >= size()) {
+        // 移位超过大小，返回全0数组
+        return bytearray(size(), std::byte(0x00));
+    }
+    
+    bytearray result(size(), std::byte(0x00));
+    // 将 [0, size-offset) 的数据复制到 [offset, size)
+    std::copy(begin(), end() - offset, result.begin() + offset);
+    
+    return result;
+}
+
+std::bytearray bytearray::rotateLeft(size_t offset) const
+{
+    if (empty() || offset == 0) return *this;
+    
+    offset %= size();  // 处理超过大小的旋转
+    if (offset == 0) return *this;
+    
+    bytearray result;
+    result.reserve(size());
+    
+    // 将 [offset, size) 复制到前面
+    result.::std::vector<::std::byte>::insert(
+        result.end(),
+        begin() + offset, end()
+    );
+    // 将 [0, offset) 复制到后面
+    result.::std::vector<::std::byte>::insert(
+        result.end(),
+        begin(), begin() + offset
+    );
+    
+    return result;
+}
+
+std::bytearray bytearray::rotateRight(size_t offset) const
+{
+    if (empty() || offset == 0) return *this;
+    
+    offset %= size();  // 处理超过大小的旋转
+    if (offset == 0) return *this;
+    
+    bytearray result;
+    result.reserve(size());
+    
+    // 将 [size-offset, size) 复制到前面
+    result.::std::vector<::std::byte>::insert(
+        result.end(),
+        end() - offset, end()
+    );
+    // 将 [0, size-offset) 复制到后面
+    result.::std::vector<::std::byte>::insert(
+        result.end(),
+        begin(), end() - offset
+    );
+    
+    return result;
+}
+
 bytearray::bytearray()
 : vector<byte>()
 {}

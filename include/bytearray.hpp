@@ -93,6 +93,15 @@ public:
 
     bool operator== (const bytearray &ba) const;
 
+    std::bytearray operator << (size_t offset) const;
+    std::bytearray operator >> (size_t offset) const;
+
+    std::bytearray shiftLeft(size_t offset) const;
+    std::bytearray shiftRight(size_t offset) const;
+
+    std::bytearray rotateLeft(size_t offset) const;
+    std::bytearray rotateRight(size_t offset) const;
+
     static bytearray fromHex(const std::string& hex);
     static bytearray fromRaw(const char* raw, size_t size);
 
