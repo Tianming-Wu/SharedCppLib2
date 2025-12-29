@@ -204,7 +204,8 @@ inline cursor_position get_cursor_position() {
     std::getline(std::cin, response);
 
     int rows, cols;
-    sscanf(response.c_str(), "\033[%d;%dR", &rows, &cols);
+    // sscanf(response.c_str(), "\033[%d;%dR", &rows, &cols);
+    sscanf_s(response.c_str(), "\033[%d;%dR", &rows, &cols);
 
     return cursor_position {.rows = rows, .cols = cols};
 }

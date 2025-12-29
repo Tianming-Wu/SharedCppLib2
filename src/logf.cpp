@@ -71,7 +71,13 @@ std::string logf::level(loglevel lv) {
 std::string logf::timestamp() {
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
     std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
-    std::tm localTime = *std::localtime(&currentTime);
+    std::tm localTime;
+#ifdef _WIN32
+    localtime_s(&localTime, &currentTime);
+#else
+    localtime_r(&currentTime, &localTime);
+#endif
+
     return std::format("{:04d}/{:02d}/{:02d} {:02d}:{:02d}:{:02d}",
         localTime.tm_year+1900, localTime.tm_mon+1, localTime.tm_mday,
         localTime.tm_hour, localTime.tm_min, localTime.tm_sec
@@ -81,7 +87,12 @@ std::string logf::timestamp() {
 std::string logf::timestamp_microsecond() {
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
     std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
-    std::tm localTime = *std::localtime(&currentTime);
+    std::tm localTime;
+#ifdef _WIN32
+    localtime_s(&localTime, &currentTime);
+#else
+    localtime_r(&currentTime, &localTime);
+#endif
     auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count() % 1000000;
     return std::format("{:04d}/{:02d}/{:02d} {:02d}:{:02d}:{:02d}.{:06}",
         localTime.tm_year+1900, localTime.tm_mon+1, localTime.tm_mday,
