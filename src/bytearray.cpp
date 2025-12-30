@@ -41,7 +41,14 @@ void bytearray::append(uint8_t val) {
     append(static_cast<std::byte>(val));
 }
 
-void bytearray::reverse() {
+void bytearray::addString(const std::string &str)
+{
+    append(std::bytearray(str.length()));
+    append(str.data(), str.size());
+}
+
+void bytearray::reverse()
+{
     std::reverse(begin(), end());
 }
 

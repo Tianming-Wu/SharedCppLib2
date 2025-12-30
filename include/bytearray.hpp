@@ -74,6 +74,9 @@ public:
     void append(const char* str);
     void append(uint8_t val);
 
+    // special one for safe string storage. extract with bytearray_view::readString().
+    void addString(const std::string& str);
+
     void reverse();
 
     void swap(bytearray &ba);
