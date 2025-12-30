@@ -1,5 +1,7 @@
 # Changelog
 
+### v1.18.3
+- Upd: Add some new operations on bytearray, rotate/move and encoding support.
 
 ### v1.18.1
 - Chg: add channel control to logt.

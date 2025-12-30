@@ -85,6 +85,7 @@ public:
     std::string tohex() const;
     std::string tohex(size_t begin, size_t size = -1) const;
     std::string toEscapedString() const;
+    std::string xtoEscapedString() const;
 
     std::u8string toUtf8() const;
     std::u16string toUtf16() const;

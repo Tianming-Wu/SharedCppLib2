@@ -135,6 +135,37 @@ std::string bytearray::toEscapedString() const {
     return ss.str();
 }
 
+/// @brief Upgraded version of escaped string, which contains more options.
+/// @return escaped string.
+std::string bytearray::xtoEscapedString() const
+{
+    std::stringstream ss;
+
+    for (byte b : *this) {
+        unsigned char c = static_cast<unsigned char>(b);
+        switch (c) {
+            case '\0': ss << "\\0"; break;
+            case '\a': ss << "\\a"; break;
+            case '\b': ss << "\\b"; break;
+            case '\t': ss << "\\t"; break;
+            case '\n': ss << "\\n"; break;
+            case '\v': ss << "\\v"; break;
+            case '\f': ss << "\\f"; break;
+            case '\r': ss << "\\r"; break;
+            case '\\\\': ss << "\\\\\\\\"; // 转义反斜杠
+            default:
+                if (isprint(c)) {
+                    ss << static_cast<char>(c);
+                } else {
+                    ss << "\\x" << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c);
+                }
+                break;
+        }
+    }
+
+    return ss.str();
+}
+
 std::u8string bytearray::toUtf8() const
 {
     if (this->empty()) return std::u8string();
