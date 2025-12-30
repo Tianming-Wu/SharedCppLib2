@@ -2,7 +2,7 @@
 
 + Name: bytearray  
 + Namespace: `std`  
-+ Document Version: `1.0.0`
++ Document Version: `1.1.0`
 
 ## CMake Info
 
@@ -302,11 +302,83 @@ NetworkPacket deserialize_packet(const std::bytearray& data) {
 3. **Use stream operations** for large file processing
 4. **Chain operations** to minimize temporary copies
 
+## Serialization with bytearray_view
+
+For efficient deserialization with automatic cursor management, use `bytearray_view`:
+
+```cpp
+#include <SharedCppLib2/bytearray.hpp>
+
+struct User {
+    uint32_t id;
+    std::string name;
+    uint64_t created_at;
+};
+
+// Serialization
+std::bytearray serialize(const User& user) {
+    std::bytearray data;
+    data.append(std::bytearray(user.id));
+    data.append(bytearray::toSafeString(user.name));
+    data.append(std::bytearray(user.created_at));
+    return data;
+}
+
+// Deserialization with bytearray_view
+User deserialize(const std::bytearray& data) {
+    std::bytearray_view view(data);
+    User user;
+    user.id = view.read<uint32_t>();
+    user.name = view.readString();
+    user.created_at = view.read<uint64_t>();
+    return user;
+}
+```
+
+### bytearray_view Features
+
+- **Cursor Management**: Automatic position tracking for sequential reads
+- **Safe Access**: Bounds checking with informative error messages
+- **String Support**: Direct `readString()` for length-prefixed strings
+- **Stream-like Interface**: Familiar `read()`, `peek()`, `seek()` operations
+
+### bytearray_view API
+
+```cpp
+class bytearray_view {
+public:
+    bytearray_view(const bytearray& data);
+    
+    // Read operations
+    template<typename _T> _T read();      // Read & advance cursor
+    template<typename _T> _T peek();      // Read without advancing
+    std::string readString();              // Read length-prefixed string
+    std::string peekString();              // Peek string without advancing
+    
+    // Cursor control
+    void seek(size_t pos);                // Move to absolute position
+    void reset();                          // Reset cursor to 0
+    size_t tell() const;                  // Get current position
+    
+    // Data inspection
+    bool available(size_t bytes) const;   // Check if bytes available
+    size_t remaining() const;              // Bytes from cursor to end
+    size_t size() const;                   // Total size
+    bool empty() const;                    // Check if empty
+    
+    // Direct access (passthrough)
+    const byte* data() const;
+    byte at(size_t i) const;
+    bytearray subarr(size_t begin, size_t size = -1) const;
+};
+```
+
 ## Error Handling
 
 - `at()` throws `std::out_of_range` for invalid indices
 - `convert_to()` throws `std::runtime_error` for size/alignment mismatches
 - `fromHex()` throws `std::invalid_argument` for malformed hex strings
+- `bytearray_view::read()` throws `std::out_of_range` for insufficient data
 - Stream operations return `bool` indicating success/failure
 
 ## Integration with Other Libraries

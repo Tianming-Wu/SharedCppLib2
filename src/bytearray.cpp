@@ -433,4 +433,42 @@ bool bytearray::readUntilDelimiter(std::istream &is, char delimiter)
     return false;
 }
 
+
+/*=============================================*\
+|           bytearray_view functions            |
+\*=============================================*/
+
+// what the hell was that above?
+
+bytearray_view::bytearray_view(const bytearray &data)
+    : ba(data), cursor(0)
+{}
+
+bool bytearray_view::available(size_t bytes) const { return cursor + bytes <= ba.size(); }
+size_t bytearray_view::remaining() const { return ba.size() - cursor; }
+void bytearray_view::seek(size_t pos) { cursor = pos; }
+void bytearray_view::reset() { cursor = 0; }
+size_t bytearray_view::tell() const { return cursor; }
+
+std::string bytearray_view::peekString() const
+{
+    std::string result;
+    
+    if(!available(sizeof(size_t))) throw std::out_of_range("bytearray_view: not enough size data");
+    size_t str_size = ba.subarr(cursor, sizeof(size_t)).as<size_t>();
+    
+    if(!available(str_size)) throw std::out_of_range("bytearray_view: not enough string data");
+    result.resize(str_size);
+
+    std::memcpy(result.data(), ba.data() + sizeof(size_t), str_size);
+    return result;
+}
+
+std::string bytearray_view::readString() const
+{
+    std::string result = peekString();
+    cursor += sizeof(size_t) + result.size();
+    return result;
+}
+
 } // namespace std

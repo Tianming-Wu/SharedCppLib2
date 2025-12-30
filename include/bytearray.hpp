@@ -47,6 +47,12 @@ public:
         return *std::bit_cast<const _T*>(data());
     }
 
+    // another shorter name for convert_to
+    template<typename _T>
+    _T as() const {
+        return convert_to<_T>();
+    }
+
     template<typename _T, typename _Tp>
     _T convert_to_constructer() {
         return _T(
@@ -90,7 +96,9 @@ public:
     std::u8string toUtf8() const;
     std::u16string toUtf16() const;
     std::u32string toUtf32() const;
+#ifndef BYTEARRAY_NO_BASE64
     std::string toBase64() const;
+#endif
 
     bool operator== (const bytearray &ba) const;
 
@@ -109,7 +117,9 @@ public:
     static bytearray fromUtf8(const std::u8string& utf8str);
     static bytearray fromUtf16(const std::u16string& utf16str);
     static bytearray fromUtf32(const std::u32string& utf32str);
+#ifndef BYTEARRAY_NO_BASE64
     static bytearray fromBase64(const std::string& base64str);
+#endif
 
     bool readFromStream(std::istream& is, size_t size);
     bool readAllFromStream(std::istream& is);
@@ -119,6 +129,52 @@ public:
         os.write(reinterpret_cast<const char*>(data()), size());
     }
 
+};
+
+class bytearray_view
+{
+public:
+    bytearray_view(const bytearray& data);
+
+    // 穿透底层 bytearray 的信息
+    inline size_t size() const { return ba.size(); }
+    inline bool empty() const { return ba.empty(); }
+    inline const byte* data() const { return ba.data(); }
+    inline byte at(size_t i) const { return ba.at(i); }
+    inline byte operator[](size_t i) const { return ba[i]; }
+    inline bytearray subarr(size_t begin, size_t size = -1) const { 
+        return ba.subarr(begin, size); 
+    }
+
+    // 游标操作
+    bool available(size_t bytes) const;
+    size_t remaining() const;
+    void seek(size_t pos);
+    void reset();
+    size_t tell() const;
+
+    template<typename _T>
+    _T peek() const {
+        static_assert(std::is_trivially_copyable_v<_T>);
+        if (!available(sizeof(_T))) 
+            throw std::out_of_range("bytearray_view: not enough data");
+        _T result = ba.subarr(cursor, sizeof(_T)).convert_to<_T>();
+        // cursor += sizeof(_T); // peek does not progress
+        return result;
+    }
+
+    template<typename _T>
+    _T read() const {
+        cursor += sizeof(_T);
+        return peek<_T>();
+    }
+
+    std::string peekString() const;
+    std::string readString() const;
+
+protected:
+    mutable size_t cursor = 0;
+    const bytearray& ba;
 };
 
 // inline std::ostream& operator<<(std::ostream& os, const bytearray& ba) {

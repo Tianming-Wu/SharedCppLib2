@@ -3,6 +3,8 @@
 
 namespace std {
 
+#ifndef BYTEARRAY_NO_BASE64
+
 std::string bytearray::toBase64() const
 {
     if (this->empty()) return std::string();
@@ -28,5 +30,7 @@ bytearray bytearray::fromBase64(const std::string& base64str)
     
     return result;
 }
+
+#endif
 
 } // namespace std

@@ -1,5 +1,14 @@
 # Changelog
 
+### v1.19.0
+- New: bytearray_view for efficient serialization/deserialization with cursor management.
+- New: UTF-16, UTF-32, and Base64 encoding/decoding support for bytearray.
+- New: xtoEscapedString() with enhanced escape sequences (\n, \t, \r, etc).
+- New: safeString methods (toSafeString/asSafeString) for length-prefixed string serialization.
+- New: toSafeString and asSafeString for length-prefixed string serialization.
+- Opt: Improved enum bit operators with underlying_type_t and noexcept.
+- Opt: Fixed logf timestamp functions to use cross-platform localtime_r/localtime_s.
+
 ### v1.18.3
 - Upd: Add some new operations on bytearray, rotate/move and encoding support.
 

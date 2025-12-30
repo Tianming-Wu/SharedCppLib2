@@ -2,7 +2,7 @@
 
 + 名称: bytearray  
 + 命名空间: `std`  
-+ 文档版本: `1.0.0`
++ 文档版本: `1.1.0`
 
 ## CMake 配置信息
 
@@ -302,11 +302,83 @@ NetworkPacket deserialize_packet(const std::bytearray& data) {
 3. **使用流操作** 处理大文件
 4. **链式操作** 以减少临时拷贝
 
+## 使用 bytearray_view 进行序列化
+
+对于需要自动游标管理的高效反序列化，使用 `bytearray_view`：
+
+```cpp
+#include <SharedCppLib2/bytearray.hpp>
+
+struct User {
+    uint32_t id;
+    std::string name;
+    uint64_t created_at;
+};
+
+// 序列化
+std::bytearray serialize(const User& user) {
+    std::bytearray data;
+    data.append(std::bytearray(user.id));
+    data.append(bytearray::toSafeString(user.name));
+    data.append(std::bytearray(user.created_at));
+    return data;
+}
+
+// 使用 bytearray_view 进行反序列化
+User deserialize(const std::bytearray& data) {
+    std::bytearray_view view(data);
+    User user;
+    user.id = view.read<uint32_t>();
+    user.name = view.readString();
+    user.created_at = view.read<uint64_t>();
+    return user;
+}
+```
+
+### bytearray_view 特性
+
+- **游标管理**：自动跟踪顺序读取的位置
+- **安全访问**：带边界检查和详细错误提示
+- **字符串支持**：直接 `readString()` 读取长度前缀字符串
+- **流式接口**：熟悉的 `read()`、`peek()`、`seek()` 操作
+
+### bytearray_view API
+
+```cpp
+class bytearray_view {
+public:
+    bytearray_view(const bytearray& data);
+    
+    // 读取操作
+    template<typename _T> _T read();      // 读取并移动游标
+    template<typename _T> _T peek();      // 读取不移动游标
+    std::string readString();              // 读取长度前缀字符串
+    std::string peekString();              // 查看字符串不移动游标
+    
+    // 游标控制
+    void seek(size_t pos);                // 移动到绝对位置
+    void reset();                          // 重置游标到 0
+    size_t tell() const;                  // 获取当前位置
+    
+    // 数据检查
+    bool available(size_t bytes) const;   // 检查是否有足够字节
+    size_t remaining() const;              // 从游标到结尾的字节数
+    size_t size() const;                   // 总大小
+    bool empty() const;                    // 检查是否为空
+    
+    // 直接访问（穿透）
+    const byte* data() const;
+    byte at(size_t i) const;
+    bytearray subarr(size_t begin, size_t size = -1) const;
+};
+```
+
 ## 错误处理
 
 - `at()` 对无效索引抛出 `std::out_of_range`
 - `convert_to()` 对大小/对齐不匹配抛出 `std::runtime_error`
 - `fromHex()` 对格式错误的十六进制字符串抛出 `std::invalid_argument`
+- `bytearray_view::read()` 对数据不足抛出 `std::out_of_range`
 - 流操作返回 `bool` 表示成功/失败
 
 ## 与其他库的集成
