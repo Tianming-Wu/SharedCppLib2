@@ -50,6 +50,16 @@ void basic_arguments<CharT>::addParameter(const string_type &name, string_type &
 }
 
 template <typename CharT>
+std::basic_string<CharT> basic_arguments<CharT>::name() const {
+    return this->size() > 0 ? this->at(0) : string_type();
+}
+
+template <typename CharT>
+bool basic_arguments<CharT>::empty() const {
+    return this->size() <= 1;
+}
+
+template <typename CharT>
 void basic_arguments<CharT>::addParameter(const string_type &name, bool &value, bool default_value)
 {
     auto it = m_parameters.find(name);
@@ -132,7 +142,8 @@ template <typename CharT>
 void basic_arguments<CharT>::parse_GNU()
 {
     m_parameters.clear();
-    for (size_t i = 0; i < this->size(); i++) {
+    // Start from i=1 to skip argv[0] (program name)
+    for (size_t i = 1; i < this->size(); i++) {
         const string_type &arg = this->at(i);
         if (arg.length() >= 2 && arg[0] == '-' ) {
             if (arg[1] == '-') {
@@ -191,7 +202,8 @@ void basic_arguments<CharT>::parse_POSIX()
     ARGUMENTS_IGNORE_FLAG_WARNING(AllowCombinedOptions, "POSIX style does not support combined options.");
 
     m_parameters.clear();
-    for (size_t i = 0; i < this->size(); i++) {
+    // Start from i=1 to skip argv[0] (program name)
+    for (size_t i = 1; i < this->size(); i++) {
         const string_type &arg = this->at(i);
         if (arg.length() >= 2 && arg[0] == '-' ) {
             if (arg[1] == '-') {

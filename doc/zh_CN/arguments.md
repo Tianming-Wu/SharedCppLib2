@@ -74,6 +74,9 @@ int main(int argc, char** argv) {
 ### 🛡️ 策略控制
 可配置的验证和错误处理策略。
 
+### ℹ️ 程序名称处理
+自动提取并跳过 `argv[0]`（程序名称）。
+
 ## 支持的类型
 
 ### 字符串参数
@@ -199,6 +202,18 @@ basic_arguments(int argc, CharT** argv);
 basic_arguments(int argc, CharT** argv, parse_policy policy);
 basic_arguments(int argc, CharT** argv, parse_policy policy, argument_style style);
 ```
+
+### name
+```cpp
+string_type name() const;
+```
+返回程序名称（`argv[0]`）。下列被自动提取且不被当作选项处理。
+
+### empty
+```cpp
+bool empty() const;
+```
+如果没有任何参数仅报改argv[0])，返回 `true`。
 
 ### addParameter（字符串）
 ```cpp

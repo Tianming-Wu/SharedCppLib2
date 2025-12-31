@@ -74,6 +74,9 @@ Supports strings, integers, floats, booleans, enums, and custom types.
 ### 🛡️ Policy Controls
 Configurable validation and error handling strategies.
 
+### ℹ️ Program Name Handling
+Automatically extracts and skips `argv[0]` (program name) during parsing.
+
 ## Supported Types
 
 ### String Parameters
@@ -199,6 +202,18 @@ basic_arguments(int argc, CharT** argv);
 basic_arguments(int argc, CharT** argv, parse_policy policy);
 basic_arguments(int argc, CharT** argv, parse_policy policy, argument_style style);
 ```
+
+### name
+```cpp
+string_type name() const;
+```
+Returns the program name (`argv[0]`). This is automatically extracted and not treated as an option.
+
+### empty
+```cpp
+bool empty() const;
+```
+Returns `true` if there are no arguments (only `argv[0]` or less).
 
 ### addParameter (String)
 ```cpp

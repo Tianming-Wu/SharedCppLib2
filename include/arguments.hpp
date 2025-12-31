@@ -42,9 +42,16 @@ public:
     ~basic_arguments() = default;
 
     using std::basic_stringlist<CharT>::size;
-    using std::basic_stringlist<CharT>::empty;
     using std::basic_stringlist<CharT>::at;
     using std::basic_stringlist<CharT>::operator[];
+    
+    /// Get the program name (argv[0])
+    /// @return Program name/path
+    string_type name() const;
+    
+    /// Check if there are any arguments (excluding argv[0])
+    /// @return true if there are arguments besides program name
+    bool empty() const;
 
     // Key feature: everything was actually parsed afterwards, and the behavior is actually in parse_policy.
     void addParameter(const string_type &name, string_type& value, const string_type& default_value = string_type());
