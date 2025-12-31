@@ -176,10 +176,11 @@ args.addParameter("--config", config);
 
 ```cpp
 enum parse_policy {
-    Null                = 0,       // 无特殊处理
-    FailIfEmptyValue    = 1 << 0,  // 空值时报错
-    FailIfUnknown       = 1 << 1,  // 未知选项时报错
-    AllowEqualSign      = 1 << 2   // 允许 --option=value 语法
+    Null                = 0,          // 无特殊处理
+    FailIfEmptyValue    = 1 << 0,     // 空值时报错
+    FailIfUnknown       = 1 << 1,     // 未知选项时报错
+    AllowEqualSign      = 1 << 2,     // 允许 --option=value 语法
+    HelpAboutBlocking   = 1 << 3      // 检测到帮助/版本时停止并退出
 };
 ```
 
@@ -264,7 +265,54 @@ void addEnum(const string_type& name,
              int& value, 
              const std::map<string_type, int>& options, 
              int default_value = 0);
+
+// 枚举类型的模板重载
+template<typename E>
+requires std::is_enum_v<E>
+void addEnum(const string_type& name, 
+             E& value, 
+             const std::map<string_type, E>& options, 
+             E default_value = static_cast<E>(0));
 ```
+
+模板重载自动实现枚举类型和整数类型之间的转换，无需手动转换。
+
+### addHelp
+```cpp
+void addHelp(std::function<void()> helpFunction);
+```
+注册一个帮助处理函数，当检测到 `--help` 时调用。
+
+```cpp
+args.addHelp([]() {
+    std::cout << "用法: program [选项]\n"
+              << "选项:\n"
+              << "  --name NAME  设置名称\n"
+              << "  --help       显示此帮助消息\n";
+});
+```
+
+> [!IMPORTANT]
+> 尽可能尽早调用 `addHelp()`，最好在其他 `addParameter()` 调用之前。如果设置了 `HelpAboutBlocking` 策略，当检测到 `--help` 时，帮助函数将立即被调用且程序会立即退出，其他参数将不会被解析。
+
+如果设置了 `HelpAboutBlocking` 策略，程序将在调用帮助函数后退出。
+
+### addVersion
+```cpp
+void addVersion(std::function<void()> versionFunction);
+```
+注册一个版本处理函数，当检测到 `--version` 时调用。
+
+```cpp
+args.addVersion([]() {
+    std::cout << scl2::about() << std::endl;
+});
+```
+
+> [!IMPORTANT]
+> 尽可能尽早调用 `addVersion()`，最好在其他 `addParameter()` 调用之前。如果设置了 `HelpAboutBlocking` 策略，当检测到 `--version` 时，版本函数将立即被调用且程序会立即退出，其他参数将不会被解析。
+
+如果设置了 `HelpAboutBlocking` 策略，程序将在调用版本函数后退出。
 
 ### addParameter（自定义类型）
 ```cpp
@@ -294,6 +342,41 @@ int mask;
 args.addParameter("--mask", mask, 0, 2);
 
 // 使用: --mask 10110101
+```
+
+### 枚举类型支持
+```cpp
+enum class ServiceCommand : int { 
+    Null = 0, 
+    Install = 1, 
+    Uninstall = 2, 
+    Start = 3, 
+    Stop = 4, 
+    Restart = 5, 
+    Status = 6 
+};
+
+ServiceCommand cmd = ServiceCommand::Null;
+
+args.addEnum("--service", cmd, {
+    { "install", ServiceCommand::Install },
+    { "uninstall", ServiceCommand::Uninstall },
+    { "start", ServiceCommand::Start },
+    { "stop", ServiceCommand::Stop },
+    { "restart", ServiceCommand::Restart },
+    { "status", ServiceCommand::Status }
+}, ServiceCommand::Start);
+
+// 现在可以在 switch 语句中直接使用 cmd
+switch (cmd) {
+    case ServiceCommand::Install:
+        // 处理安装
+        break;
+    case ServiceCommand::Start:
+        // 处理启动
+        break;
+    // ...
+}
 ```
 
 ### 自定义反序列化器

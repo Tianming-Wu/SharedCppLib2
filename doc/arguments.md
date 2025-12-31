@@ -176,10 +176,11 @@ Control argument validation and behavior:
 
 ```cpp
 enum parse_policy {
-    Null                = 0,       // No special handling
-    FailIfEmptyValue    = 1 << 0,  // Error on empty values
-    FailIfUnknown       = 1 << 1,  // Error on unknown options
-    AllowEqualSign      = 1 << 2   // Allow --option=value syntax
+    Null                = 0,          // No special handling
+    FailIfEmptyValue    = 1 << 0,     // Error on empty values
+    FailIfUnknown       = 1 << 1,     // Error on unknown options
+    AllowEqualSign      = 1 << 2,     // Allow --option=value syntax
+    HelpAboutBlocking   = 1 << 3      // Stop and exit if help/version detected
 };
 ```
 
@@ -264,7 +265,54 @@ void addEnum(const string_type& name,
              int& value, 
              const std::map<string_type, int>& options, 
              int default_value = 0);
+
+// Template overload for enum types
+template<typename E>
+requires std::is_enum_v<E>
+void addEnum(const string_type& name, 
+             E& value, 
+             const std::map<string_type, E>& options, 
+             E default_value = static_cast<E>(0));
 ```
+
+The template overload automatically converts between enum types and integers, allowing direct use of enums without manual casting.
+
+### addHelp
+```cpp
+void addHelp(std::function<void()> helpFunction);
+```
+Registers a help handler function to be called when `--help` is detected.
+
+```cpp
+args.addHelp([]() {
+    std::cout << "Usage: program [OPTIONS]\n"
+              << "Options:\n"
+              << "  --name NAME  Set the name\n"
+              << "  --help       Show this help message\n";
+});
+```
+
+> [!IMPORTANT]
+> Call `addHelp()` as early as possible, ideally before other `addParameter()` calls. If `HelpAboutBlocking` policy is set, the help function will be called and the program will exit immediately when `--help` is detected, preventing other parameters from being parsed.
+
+If `HelpAboutBlocking` policy is set, the program will exit after calling the help function.
+
+### addVersion
+```cpp
+void addVersion(std::function<void()> versionFunction);
+```
+Registers a version handler function to be called when `--version` is detected.
+
+```cpp
+args.addVersion([]() {
+    std::cout << scl2::about() << std::endl;
+});
+```
+
+> [!IMPORTANT]
+> Call `addVersion()` as early as possible, ideally before other `addParameter()` calls. If `HelpAboutBlocking` policy is set, the version function will be called and the program will exit immediately when `--version` is detected, preventing other parameters from being parsed.
+
+If `HelpAboutBlocking` policy is set, the program will exit after calling the version function.
 
 ### addParameter (Custom Types)
 ```cpp
@@ -294,6 +342,41 @@ int mask;
 args.addParameter("--mask", mask, 0, 2);
 
 // Usage: --mask 10110101
+```
+
+### Enum Type Support
+```cpp
+enum class ServiceCommand : int { 
+    Null = 0, 
+    Install = 1, 
+    Uninstall = 2, 
+    Start = 3, 
+    Stop = 4, 
+    Restart = 5, 
+    Status = 6 
+};
+
+ServiceCommand cmd = ServiceCommand::Null;
+
+args.addEnum("--service", cmd, {
+    { "install", ServiceCommand::Install },
+    { "uninstall", ServiceCommand::Uninstall },
+    { "start", ServiceCommand::Start },
+    { "stop", ServiceCommand::Stop },
+    { "restart", ServiceCommand::Restart },
+    { "status", ServiceCommand::Status }
+}, ServiceCommand::Start);
+
+// Now you can use cmd directly in switch statements
+switch (cmd) {
+    case ServiceCommand::Install:
+        // handle install
+        break;
+    case ServiceCommand::Start:
+        // handle start
+        break;
+    // ...
+}
 ```
 
 ### Custom Deserializers

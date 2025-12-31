@@ -9,10 +9,15 @@ namespace std {
 template class basic_stringlist<char>;
 template class basic_stringlist<wchar_t>;
 
+// Default parsing policy: allows space-separated values and equals syntax
+template<typename CharT>
+constexpr typename basic_arguments<CharT>::parse_policy default_policy = 
+    basic_arguments<CharT>::AllowEqualSign;
+
 
 template<typename CharT>
 basic_arguments<CharT>::basic_arguments(int argc, CharT** argv)
-    : std::basic_stringlist<CharT>(argc, argv), m_policy(Null), m_style(Style_GNU)
+    : std::basic_stringlist<CharT>(argc, argv), m_policy(default_policy<CharT>), m_style(Style_GNU)
 {
     parse();
 }
@@ -119,7 +124,30 @@ void basic_arguments<CharT>::addEnum(const string_type &name, int &value, const 
 }
 
 template <typename CharT>
-bool basic_arguments<CharT>::testPolicy(parse_policy p) {
+void basic_arguments<CharT>::addHelp(std::function<void()> helpFunction)
+{
+    if(m_parameters.find("help") != m_parameters.end()) {
+        helpFunction();
+        if (testPolicy(HelpAboutBlocking)) {
+            exit(0);
+        }
+    }
+}
+
+template <typename CharT>
+void basic_arguments<CharT>::addVersion(std::function<void()> versionFunction)
+{
+    if(m_parameters.find("version") != m_parameters.end()) {
+        versionFunction();
+        if (testPolicy(HelpAboutBlocking)) {
+            exit(0);
+        }
+    }
+}
+
+template <typename CharT>
+bool basic_arguments<CharT>::testPolicy(parse_policy p)
+{
     return (m_policy & p) != 0;
 }
 

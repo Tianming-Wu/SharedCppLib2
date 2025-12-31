@@ -6,6 +6,8 @@
 #include <map>
 #include <stdexcept>
 #include <charconv>
+#include <type_traits>
+#include <functional>
 
 namespace std {
 
@@ -27,6 +29,7 @@ public:
         AllowCombinedOptions = 1 << 0,
         FailIfEmptyValue = 1 << 1,
         AllowEqualSign = 1 << 2,  // Parse --option=value syntax
+        HelpAboutBlocking = 1 << 3, // Stop parsing options if help/version detected
     };
     Define_Enum_BitOperators_Inclass(parse_policy)
 
@@ -86,6 +89,26 @@ public:
 
     void addFlag(const string_type &name, bool& value, bool default_value = false);
     void addEnum(const string_type &name, int& value, const std::map<string_type, int>& options, int default_value = 0);
+    
+    // Template overload for enum types - accepts map<string, E> where E is an enum
+    template<typename E>
+    requires std::is_enum_v<E>
+    void addEnum(const string_type &name, E &value, const std::map<string_type, E> &options, E default_value = static_cast<E>(0))
+    {
+        std::map<string_type, int> int_opts;
+        for (const auto &p : options) {
+            int_opts.emplace(p.first, static_cast<int>(p.second));
+        }
+
+        int int_default = static_cast<int>(default_value);
+        int int_value = static_cast<int>(value);
+
+        // Call the existing int version
+        addEnum(name, int_value, int_opts, int_default);
+
+        // Write the parsed result back to the enum variable
+        value = static_cast<E>(int_value);
+    }
     
     // For types with deserialize() or deserialise() method (custom serializable types)
     template<typename T>
@@ -148,6 +171,10 @@ public:
                 throw parameter_error("Argument '" + name + "' has invalid floating-point value.");
         }
     }
+
+    // more convinient functions
+    void addHelp(std::function<void()> helpFunction);
+    void addVersion(std::function<void()> versionFunction);
 
     // should this be protected?
     bool testPolicy(parse_policy p);
