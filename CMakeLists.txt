@@ -28,6 +28,12 @@ set(CMAKE_DEBUG_POSTFIX "d")
 # 头文件目录
 include_directories("include")
 
+# 生成版本信息头文件
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.hpp.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/SharedCppLib2/version.hpp"
+)
+
 # 构建输出目录
 # set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
@@ -91,6 +97,7 @@ foreach(target_name ${TARGET_LIST})
 
     target_include_directories(${target_name} PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
         $<INSTALL_INTERFACE:include>
     )
 
@@ -103,6 +110,11 @@ install(DIRECTORY include/
     FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
 )
 
+# 安装生成的版本头文件
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/include/SharedCppLib2/version.hpp
+    DESTINATION ${INSTALL_INCLUDEDIR}
+)
+
 # 安装导出文件
 install(EXPORT SharedCppLib2Targets
     FILE SharedCppLib2Targets.cmake
@@ -113,7 +125,7 @@ install(EXPORT SharedCppLib2Targets
 # 生成配置文件
 include(CMakePackageConfigHelpers)
 configure_package_config_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/SharedCppLib2Config.cmake
     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
 )

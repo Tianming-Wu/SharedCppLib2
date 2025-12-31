@@ -77,3 +77,7 @@ build
 *.ini
 .vscode
 
+# Keep cmake configuration files and templates
+!cmake/
+!cmake/**
+

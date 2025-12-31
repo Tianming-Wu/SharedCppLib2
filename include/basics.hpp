@@ -152,3 +152,16 @@ public:
         using T = std::underlying_type_t<NAME>; \
         return static_cast<NAME>(~static_cast<T>(a)); \
     }
+
+// Version information
+#include <SharedCppLib2/version.hpp>
+
+namespace scl2 {
+/// Get the version string of SharedCppLib2
+/// @return Version in format "major.minor.patch"
+std::string version();
+
+/// Get detailed information about SharedCppLib2
+/// @return Detailed version and build information
+std::string about();
+} // namespace scl2
