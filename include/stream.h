@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <string>
 #include <sstream>
+#include <chrono>
 
 namespace streamobj {
 
@@ -19,3 +20,16 @@ stream_wrapper<T> stream(const T& obj) {
 }
 
 }
+
+
+template <typename CharT>
+class basic_sclstream {
+public:
+    basic_sclstream() = default;
+    virtual ~basic_sclstream() = default;
+
+    virtual bool readyRead();
+    virtual bool waitForReadyRead(std::chrono::milliseconds timeout = std::chrono::seconds(5));
+
+    std::basic_streambuf<CharT>& handle();
+};

@@ -41,7 +41,7 @@ std::cout << names.join(", ") << std::endl;
 std::stringlist words = std::stringlist::split("hello world from cpp", " ");
 ```
 
-### 命令行参数处理
+### 基本构造
 ```cpp
 int main(int argc, char** argv) {
     std::stringlist args(argc, argv);
@@ -52,6 +52,9 @@ int main(int argc, char** argv) {
     return 0;
 }
 ```
+
+> [!TIP]
+> 对于带有类型安全和自动验证的高级命令行参数解析，请参阅 [`arguments`](arguments.md)。
 
 ## 核心功能
 
@@ -220,7 +223,7 @@ sl.exec_foreach([](size_t index, std::string& value) {
 ```cpp
 stringlist(int argc, char** argv, int start = 0, int end = -1);
 ```
-非常适合命令行参数处理。
+将 C 风格参数转换为 stringlist。对于高级参数解析，请参阅 [`arguments`](arguments.md)。
 
 ### 从初始化列表
 ```cpp

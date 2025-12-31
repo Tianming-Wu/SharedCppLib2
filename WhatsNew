@@ -1,11 +1,16 @@
 # Changelog
 
+### v1.20.0
+- New: arguments library with template-based type-safe parameter parsing.
+- New: arguments supports integral, floating-point, enum, and custom deserializable types.
+- Opt: arguments parsing simplified using std::from_chars (46% code reduction).
+- Opt: arguments now defaults to space-separated values (--option value), equals syntax optional.
+
 ### v1.19.0
 - New: bytearray_view for efficient serialization/deserialization with cursor management.
 - New: UTF-16, UTF-32, and Base64 encoding/decoding support for bytearray.
 - New: xtoEscapedString() with enhanced escape sequences (\n, \t, \r, etc).
 - New: safeString methods (toSafeString/asSafeString) for length-prefixed string serialization.
-- New: toSafeString and asSafeString for length-prefixed string serialization.
 - Opt: Improved enum bit operators with underlying_type_t and noexcept.
 - Opt: Fixed logf timestamp functions to use cross-platform localtime_r/localtime_s.
 

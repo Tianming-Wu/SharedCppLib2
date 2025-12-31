@@ -41,7 +41,7 @@ std::cout << names.join(", ") << std::endl;
 std::stringlist words = std::stringlist::split("hello world from cpp", " ");
 ```
 
-### Command Line Arguments
+### Basic Construction
 ```cpp
 int main(int argc, char** argv) {
     std::stringlist args(argc, argv);
@@ -52,6 +52,9 @@ int main(int argc, char** argv) {
     return 0;
 }
 ```
+
+> [!TIP]
+> For advanced command-line argument parsing with type safety and automatic validation, see [`arguments`](arguments.md).
 
 ## Core Features
 
@@ -220,7 +223,7 @@ sl.exec_foreach([](size_t index, std::string& value) {
 ```cpp
 stringlist(int argc, char** argv, int start = 0, int end = -1);
 ```
-Perfect for command-line argument processing.
+Converts C-style arguments to stringlist. For advanced argument parsing, see [`arguments`](arguments.md).
 
 ### From Initializer List
 ```cpp

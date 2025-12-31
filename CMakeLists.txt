@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.10)
 # endif()
 
 project(SharedCppLib2
-    VERSION 1.19.0
+    VERSION 1.20.0
     LANGUAGES CXX
 )
 
@@ -43,6 +43,13 @@ add_library(logt STATIC src/logt.cpp)
 add_library(logc STATIC src/logc.cpp)
 add_library(Base64 STATIC src/Base64.cpp)
 add_library(platform STATIC src/platform.cpp)
+# add_library(process STATIC src/process.cpp)
+add_library(arguments STATIC src/arguments.cpp)
+
+# 禁用 MSVC 的显式模板实例化警告
+if(MSVC)
+    target_compile_options(arguments PRIVATE /wd4661)
+endif()
 
 # 库依赖关系
 target_link_libraries(logd PUBLIC variant)
@@ -56,9 +63,10 @@ target_link_libraries(basic PRIVATE Base64)
 target_link_libraries(regexfilter PUBLIC basic)
 target_link_libraries(logc PUBLIC basic)
 target_link_libraries(sha256 PUBLIC basic)
+target_link_libraries(arguments PUBLIC basic)
 
 # 库列表
-set(TARGET_LIST variant logd logf sha256 basic indexer regexfilter logt logc Base64 platform)
+set(TARGET_LIST variant logd logf sha256 basic indexer regexfilter logt logc Base64 platform arguments)
 
 # 安装目标
 install(TARGETS ${TARGET_LIST}

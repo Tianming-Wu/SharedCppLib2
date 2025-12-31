@@ -21,6 +21,7 @@ A collection of modern C++ utility libraries designed for performance and ease o
 
 - **`ansiio`** - ANSI terminal output and formatting
 - **[`stringlist`](doc/stringlist.md)** - Enhanced string manipulation with Qt-inspired API
+- **[`arguments`](doc/arguments.md)** - Type-safe command-line argument parsing (argparse-inspired)
 - **`Base64`** - Base64 encoding and decoding utilities
 - **[`bytearray`](doc/bytearray.md)** - Binary data management and serialization
 - **[`sha256`](doc/sha256.md)** - SHA-256 cryptographic hash implementation
