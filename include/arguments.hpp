@@ -57,22 +57,22 @@ public:
     bool empty() const;
 
     // Key feature: everything was actually parsed afterwards, and the behavior is actually in parse_policy.
-    void addParameter(const string_type &name, string_type& value, const string_type& default_value = string_type());
-    void addParameter(const string_type &name, bool& value, bool default_value = false);
+    bool addParameter(const string_type &name, string_type& value, const string_type& default_value = string_type());
+    bool addParameter(const string_type &name, bool& value, bool default_value = false);
 
     template<typename _TN>
     requires(is_integral_v<_TN> && !is_same_v<_TN, bool>)
-    void addParameter(const string_type &name, _TN& value, _TN default_value = 0, int base = 10) {
+    bool addParameter(const string_type &name, _TN& value, _TN default_value = 0, int base = 10) {
         auto it = m_parameters.find(name);
         if (it == m_parameters.end()) {
             value = default_value;
-            return;
+            return false;
         }
         if (it->second.value.empty()) {
             if (testPolicy(FailIfEmptyValue))
                 throw parameter_error("Argument '" + name + "' requires an integral value.");
             value = default_value;
-            return;
+            return false;
         }
         if constexpr (is_same_v<CharT, char>) {
             const auto& str = it->second.value;
@@ -85,15 +85,16 @@ public:
             if (ec != std::errc{} || ptr != narrow.data() + narrow.size())
                 throw parameter_error("Argument '" + name + "' has invalid integral value.");
         }
+        return true;
     }
 
-    void addFlag(const string_type &name, bool& value, bool default_value = false);
-    void addEnum(const string_type &name, int& value, const std::map<string_type, int>& options, int default_value = 0);
+    bool addFlag(const string_type &name, bool& value, bool default_value = false);
+    bool addEnum(const string_type &name, int& value, const std::map<string_type, int>& options, int default_value = 0);
     
     // Template overload for enum types - accepts map<string, E> where E is an enum
     template<typename E>
     requires std::is_enum_v<E>
-    void addEnum(const string_type &name, E &value, const std::map<string_type, E> &options, E default_value = static_cast<E>(0))
+    bool addEnum(const string_type &name, E &value, const std::map<string_type, E> &options, E default_value = static_cast<E>(0))
     {
         std::map<string_type, int> int_opts;
         for (const auto &p : options) {
@@ -104,10 +105,11 @@ public:
         int int_value = static_cast<int>(value);
 
         // Call the existing int version
-        addEnum(name, int_value, int_opts, int_default);
+        bool result = addEnum(name, int_value, int_opts, int_default);
 
         // Write the parsed result back to the enum variable
         value = static_cast<E>(int_value);
+        return result;
     }
     
     // For types with deserialize() or deserialise() method (custom serializable types)
@@ -116,19 +118,19 @@ public:
         requires std::is_class_v<T>;
         requires requires { t.deserialize(s); } || requires { t.deserialise(s); };
     }
-    void addParameter(const string_type &name, T& value, std::optional<T> default_value = std::nullopt) {
+    bool addParameter(const string_type &name, T& value, std::optional<T> default_value = std::nullopt) {
         auto it = m_parameters.find(name);
         if (it == m_parameters.end()) {
             if (default_value.has_value())
                 value = default_value.value();
-            return;
+            return false;
         }
         if (it->second.value.empty()) {
             if (testPolicy(FailIfEmptyValue))
                 throw parameter_error("Argument '" + name + "' requires a value.");
             if (default_value.has_value())
                 value = default_value.value();
-            return;
+            return false;
         }
         try {
             if constexpr (requires { value.deserialize(it->second.value); }) {
@@ -139,24 +141,25 @@ public:
         } catch (const std::exception& e) {
             throw parameter_error("Argument '" + name + "' failed to deserialize: " + std::string(e.what()));
         }
+        return true;
     }
 
     // For floating-point types
     template<typename T>
     requires(std::is_floating_point_v<T>)
-    void addParameter(const string_type &name, T& value, std::optional<T> default_value = std::nullopt) {
+    bool addParameter(const string_type &name, T& value, std::optional<T> default_value = std::nullopt) {
         auto it = m_parameters.find(name);
         if (it == m_parameters.end()) {
             if (default_value.has_value())
                 value = default_value.value();
-            return;
+            return false;
         }
         if (it->second.value.empty()) {
             if (testPolicy(FailIfEmptyValue))
                 throw parameter_error("Argument '" + name + "' requires a numeric value.");
             if (default_value.has_value())
                 value = default_value.value();
-            return;
+            return false;
         }
         if constexpr (std::is_same_v<CharT, char>) {
             const auto& str = it->second.value;
@@ -170,11 +173,12 @@ public:
             if (ec != std::errc{} || ptr != narrow.data() + narrow.size())
                 throw parameter_error("Argument '" + name + "' has invalid floating-point value.");
         }
+        return true;
     }
 
     // more convinient functions
-    void addHelp(std::function<void()> helpFunction);
-    void addVersion(std::function<void()> versionFunction);
+    bool addHelp(std::function<void()> helpFunction);
+    bool addVersion(std::function<void()> versionFunction);
 
     // should this be protected?
     bool testPolicy(parse_policy p);

@@ -37,20 +37,23 @@ basic_arguments<CharT>::basic_arguments(int argc, CharT **argv, parse_policy pol
 }
 
 template <typename CharT>
-void basic_arguments<CharT>::addParameter(const string_type &name, string_type &value, const string_type &default_value)
+bool basic_arguments<CharT>::addParameter(const string_type &name, string_type &value, const string_type &default_value)
 {
     auto it = m_parameters.find(name);
     if (it != m_parameters.end()) {
         if (!it->second.value.empty()) {
             value = it->second.value;
+            return true;
         } else {
             if(testPolicy(FailIfEmptyValue)) {
                 throw parameter_error("Argument '" + name + "' requires a value.");
             }
             value = default_value;
+            return false;
         }
     } else {
         value = default_value;
+        return false;
     }
 }
 
@@ -65,7 +68,7 @@ bool basic_arguments<CharT>::empty() const {
 }
 
 template <typename CharT>
-void basic_arguments<CharT>::addParameter(const string_type &name, bool &value, bool default_value)
+bool basic_arguments<CharT>::addParameter(const string_type &name, bool &value, bool default_value)
 {
     auto it = m_parameters.find(name);
     if (it != m_parameters.end()) {
@@ -73,8 +76,10 @@ void basic_arguments<CharT>::addParameter(const string_type &name, bool &value, 
             string_type val = it->second.value;
             if (val == "1" || val == "true" || val == "yes" || val == "on") {
                 value = true;
+                return true;
             } else if (val == "0" || val == "false" || val == "no" || val == "off") {
                 value = false;
+                return true;
             } else {
                 throw parameter_error("Argument '" + name + "' requires a boolean value.");
             }
@@ -83,25 +88,29 @@ void basic_arguments<CharT>::addParameter(const string_type &name, bool &value, 
                 throw parameter_error("Argument '" + name + "' requires a boolean value.");
             }
             value = true; // Presence of flag implies true. in this case, addFlag works the same.
+            return true;
         }
     } else {
         value = default_value;
+        return false;
     }
 }
 
 template <typename CharT>
-void basic_arguments<CharT>::addFlag(const string_type &name, bool &value, bool default_value)
+bool basic_arguments<CharT>::addFlag(const string_type &name, bool &value, bool default_value)
 {
     auto it = m_parameters.find(name);
     if (it != m_parameters.end()) {
         value = true;
+        return true;
     } else {
         value = default_value;
+        return false;
     }
 }
 
 template <typename CharT>
-void basic_arguments<CharT>::addEnum(const string_type &name, int &value, const std::map<string_type, int> &options, int default_value)
+bool basic_arguments<CharT>::addEnum(const string_type &name, int &value, const std::map<string_type, int> &options, int default_value)
 {
     auto it = m_parameters.find(name);
     if (it != m_parameters.end()) {
@@ -109,6 +118,7 @@ void basic_arguments<CharT>::addEnum(const string_type &name, int &value, const 
             auto opt_it = options.find(it->second.value);
             if (opt_it != options.end()) {
                 value = opt_it->second;
+                return true;
             } else {
                 throw parameter_error("Argument '" + name + "' has invalid enum value '" + it->second.value + "'.");
             }
@@ -117,32 +127,38 @@ void basic_arguments<CharT>::addEnum(const string_type &name, int &value, const 
                 throw parameter_error("Argument '" + name + "' requires a value.");
             }
             value = default_value;
+            return false;
         }
     } else {
         value = default_value;
+        return false;
     }
 }
 
 template <typename CharT>
-void basic_arguments<CharT>::addHelp(std::function<void()> helpFunction)
+bool basic_arguments<CharT>::addHelp(std::function<void()> helpFunction)
 {
     if(m_parameters.find("help") != m_parameters.end()) {
         helpFunction();
         if (testPolicy(HelpAboutBlocking)) {
             exit(0);
         }
+        return true;
     }
+    return false;
 }
 
 template <typename CharT>
-void basic_arguments<CharT>::addVersion(std::function<void()> versionFunction)
+bool basic_arguments<CharT>::addVersion(std::function<void()> versionFunction)
 {
     if(m_parameters.find("version") != m_parameters.end()) {
         versionFunction();
         if (testPolicy(HelpAboutBlocking)) {
             exit(0);
         }
+        return true;
     }
+    return false;
 }
 
 template <typename CharT>
