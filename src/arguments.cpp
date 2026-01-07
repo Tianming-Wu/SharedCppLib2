@@ -181,6 +181,17 @@ bool basic_arguments<CharT>::testPolicy(parse_policy p)
 template <typename CharT>
 void basic_arguments<CharT>::parse()
 {
+    m_primaryCommand.clear();
+    
+    // Extract primary command if policy is enabled
+    if (testPolicy(EnablePrimaryCommand) && this->size() > 1) {
+        const string_type &firstArg = this->at(1);
+        // Check if first argument is not an option (doesn't start with -)
+        if (firstArg.length() > 0 && firstArg[0] != CharT('-')) {
+            m_primaryCommand = firstArg;
+        }
+    }
+    
     switch(m_style) {
     case Style_GNU:
         parse_GNU(); break;
@@ -197,8 +208,13 @@ template <typename CharT>
 void basic_arguments<CharT>::parse_GNU()
 {
     m_parameters.clear();
-    // Start from i=1 to skip argv[0] (program name)
-    for (size_t i = 1; i < this->size(); i++) {
+    // Start from i=1 to skip argv[0] (program name), or i=2 if primary command is enabled and present
+    size_t start_idx = 1;
+    if (testPolicy(EnablePrimaryCommand) && !m_primaryCommand.empty()) {
+        start_idx = 2;
+    }
+    
+    for (size_t i = start_idx; i < this->size(); i++) {
         const string_type &arg = this->at(i);
         if (arg.length() >= 2 && arg[0] == '-' ) {
             if (arg[1] == '-') {
@@ -257,10 +273,15 @@ void basic_arguments<CharT>::parse_POSIX()
     ARGUMENTS_IGNORE_FLAG_WARNING(AllowCombinedOptions, "POSIX style does not support combined options.");
 
     m_parameters.clear();
-    // Start from i=1 to skip argv[0] (program name)
-    for (size_t i = 1; i < this->size(); i++) {
+    // Start from i=1 to skip argv[0] (program name), or i=2 if primary command is enabled and present
+    size_t start_idx = 1;
+    if (testPolicy(EnablePrimaryCommand) && !m_primaryCommand.empty()) {
+        start_idx = 2;
+    }
+    
+    for (size_t i = start_idx; i < this->size(); i++) {
         const string_type &arg = this->at(i);
-        if (arg.length() >= 2 && arg[0] == '-' ) {
+        if (arg.length() >= 2 && arg[0] == C('-') ) {
             if (arg[1] == '-') {
                 // Long option: --option
                 string_type name = arg.substr(2);
@@ -306,6 +327,19 @@ template <typename CharT>
 void basic_arguments<CharT>::parse_Windows()
 {
     // not supprted :(
+}
+
+template <typename CharT>
+bool basic_arguments<CharT>::addPrimaryCommand(string_type& prim)
+{
+    prim = m_primaryCommand;
+    return !m_primaryCommand.empty();
+}
+
+template <typename CharT>
+typename basic_arguments<CharT>::string_type basic_arguments<CharT>::getPrimaryCommand()
+{
+    return m_primaryCommand;
 }
 
 } // namespace std

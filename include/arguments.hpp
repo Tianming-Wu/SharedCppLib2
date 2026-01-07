@@ -31,7 +31,7 @@ public:
         FailIfEmptyValue = 1 << 1,
         AllowEqualSign = 1 << 2,  // Parse --option=value syntax (on by default)
         HelpAboutBlocking = 1 << 3, // Stop parsing options if help/version detected
-        EnablePrimaryCommand = 1 << 4, // Allow a primary command (first non-option argument) (off by default)
+        EnablePrimaryCommand = 1 << 4, // Allow a primary command (first argument and non-option) (off by default)
     };
     Define_Enum_BitOperators_Inclass(parse_policy)
 
@@ -185,6 +185,10 @@ public:
     bool addHelp(std::function<void()> helpFunction);
     bool addVersion(std::function<void()> versionFunction);
 
+    // Primary command handling
+    bool addPrimaryCommand(string_type& prim);
+    string_type getPrimaryCommand();
+
     // should this be protected?
     bool testPolicy(parse_policy p);
 
@@ -214,6 +218,15 @@ protected:
         }
     }
 
+    // Helper function to create char literals with correct character type
+    static constexpr CharT C(char c) {
+        if constexpr (std::is_same_v<CharT, char>) {
+            return c;
+        } else {
+            return static_cast<CharT>(c);
+        }
+    }
+
     // Helper function to convert string_type to std::string for exceptions
     static std::string toNarrow(const string_type& str) {
         if constexpr (std::is_same_v<CharT, char>) {
@@ -226,6 +239,7 @@ protected:
 private:
     parse_policy m_policy;
     argument_style m_style;
+    string_type m_primaryCommand;
 
     struct param_info {
         size_t position;
