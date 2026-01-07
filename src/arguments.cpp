@@ -6,8 +6,8 @@
 
 namespace std {
 
-template class basic_stringlist<char>;
-template class basic_stringlist<wchar_t>;
+template class basic_arguments<char>;
+template class basic_arguments<wchar_t>;
 
 // // Default parsing policy: allows space-separated values and equals syntax
 // template<typename CharT>
@@ -46,7 +46,7 @@ bool basic_arguments<CharT>::addParameter(const string_type &name, string_type &
             return true;
         } else {
             if(testPolicy(FailIfEmptyValue)) {
-                throw parameter_error("Argument '" + name + "' requires a value.");
+                throw parameter_error("Argument '" + toNarrow(name) + "' requires a value.");
             }
             value = default_value;
             return false;
@@ -74,18 +74,18 @@ bool basic_arguments<CharT>::addParameter(const string_type &name, bool &value, 
     if (it != m_parameters.end()) {
         if(!it->second.value.empty()) {
             string_type val = it->second.value;
-            if (val == "1" || val == "true" || val == "yes" || val == "on") {
+            if (val == S("1") || val == S("true") || val == S("yes") || val == S("on")) {
                 value = true;
                 return true;
-            } else if (val == "0" || val == "false" || val == "no" || val == "off") {
+            } else if (val == S("0") || val == S("false") || val == S("no") || val == S("off")) {
                 value = false;
                 return true;
             } else {
-                throw parameter_error("Argument '" + name + "' requires a boolean value.");
+                throw parameter_error("Argument '" + toNarrow(name) + "' requires a boolean value.");
             }
         } else {
             if(testPolicy(FailIfEmptyValue)) {
-                throw parameter_error("Argument '" + name + "' requires a boolean value.");
+                throw parameter_error("Argument '" + toNarrow(name) + "' requires a boolean value.");
             }
             value = true; // Presence of flag implies true. in this case, addFlag works the same.
             return true;
@@ -131,11 +131,11 @@ bool basic_arguments<CharT>::addEnum(const string_type &name, int &value, const 
                 value = opt_it->second;
                 return true;
             } else {
-                throw parameter_error("Argument '" + name + "' has invalid enum value '" + it->second.value + "'.");
+                throw parameter_error("Argument '" + toNarrow(name) + "' has invalid enum value '" + toNarrow(it->second.value) + "'.");
             }
         } else {
             if(testPolicy(FailIfEmptyValue)) {
-                throw parameter_error("Argument '" + name + "' requires a value.");
+                throw parameter_error("Argument '" + toNarrow(name) + "' requires a value.");
             }
             value = default_value;
             return false;
@@ -149,7 +149,7 @@ bool basic_arguments<CharT>::addEnum(const string_type &name, int &value, const 
 template <typename CharT>
 bool basic_arguments<CharT>::addHelp(std::function<void()> helpFunction)
 {
-    if(m_parameters.find("help") != m_parameters.end()) {
+    if(m_parameters.find(S("help")) != m_parameters.end()) {
         helpFunction();
         if (testPolicy(HelpAboutBlocking)) {
             exit(0);
@@ -162,7 +162,7 @@ bool basic_arguments<CharT>::addHelp(std::function<void()> helpFunction)
 template <typename CharT>
 bool basic_arguments<CharT>::addVersion(std::function<void()> versionFunction)
 {
-    if(m_parameters.find("version") != m_parameters.end()) {
+    if(m_parameters.find(S("version")) != m_parameters.end()) {
         versionFunction();
         if (testPolicy(HelpAboutBlocking)) {
             exit(0);
@@ -227,7 +227,7 @@ void basic_arguments<CharT>::parse_GNU()
                 // Combined short options: -abc
                 for (size_t j = 1; j < arg.length(); j++) {
                     string_type name(1, arg[j]);
-                    m_parameters[name] = { i, "" };
+                    m_parameters[name] = { i, S("") };
                 }
             } else {
                 // Short option: -o or -ovalue

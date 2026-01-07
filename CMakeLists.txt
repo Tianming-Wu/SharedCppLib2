@@ -61,6 +61,7 @@ endif()
 target_link_libraries(logd PUBLIC variant)
 target_link_libraries(logf PUBLIC logd)
 target_link_libraries(logc PUBLIC logt)
+target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要平台相关支持
 
 # 按需链接：bytearray_base64.cpp 会引用 Base64，但只有在用户代码调用相关函数时才会被链接
 target_link_libraries(basic PRIVATE Base64)

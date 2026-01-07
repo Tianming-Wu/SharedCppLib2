@@ -2,6 +2,7 @@
 
 #include "stringlist.hpp"
 #include "basics.hpp"
+#include "platform.hpp" // unluckily needed for string conversion helpers
 
 #include <map>
 #include <stdexcept>
@@ -198,6 +199,29 @@ protected:
     void parse_GNU();
     void parse_POSIX();
     void parse_Windows();
+
+    // Helper function to create string literals with correct character type
+    template<size_t N>
+    static constexpr string_type S(const char (&str)[N]) {
+        if constexpr (std::is_same_v<CharT, char>) {
+            return string_type(str);
+        } else {
+            wchar_t wstr[N];
+            for (size_t i = 0; i < N; ++i) {
+                wstr[i] = static_cast<wchar_t>(str[i]);
+            }
+            return string_type(wstr, N - 1);
+        }
+    }
+
+    // Helper function to convert string_type to std::string for exceptions
+    static std::string toNarrow(const string_type& str) {
+        if constexpr (std::is_same_v<CharT, char>) {
+            return str;
+        } else {
+            return platform::wstringToString(str);
+        }
+    }
 
 private:
     parse_policy m_policy;
