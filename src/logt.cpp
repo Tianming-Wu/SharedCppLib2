@@ -372,6 +372,17 @@ std::string logt::format_timestamp(const std::chrono::system_clock::time_point& 
     }
 }
 
+// Wrapper for steady_clock timestamps: maps to system_clock using current offset.
+// Note: steady_clock is monotonic but not wall-clock; this produces an approximate wall time
+// based on the offset at call time.
+std::string logt::format_timestamp(const std::chrono::steady_clock::time_point& tp) {
+    const auto sys_now = std::chrono::system_clock::now();
+    const auto steady_now = std::chrono::steady_clock::now();
+    const auto sys_tp = sys_now + (tp - steady_now);
+    const auto sys_tp_cast = std::chrono::time_point_cast<std::chrono::system_clock::duration>(sys_tp);
+    return format_timestamp(sys_tp_cast);
+}
+
 void logt::ensure_worker_started() {
     std::call_once(worker_flag_, []() {
         worker_ = std::thread(worker_thread);

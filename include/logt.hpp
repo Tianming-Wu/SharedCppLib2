@@ -258,6 +258,7 @@ private:
 
     static void write_message(const logt_message& message);
     static std::string format_timestamp(const std::chrono::system_clock::time_point& tp);
+    static std::string format_timestamp(const std::chrono::steady_clock::time_point& tp);
 
     // 静态成员
     static LogLevel filter_level_;
