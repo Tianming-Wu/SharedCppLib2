@@ -28,10 +28,14 @@ public:
         Null = 0,
         AllowCombinedOptions = 1 << 0,
         FailIfEmptyValue = 1 << 1,
-        AllowEqualSign = 1 << 2,  // Parse --option=value syntax
+        AllowEqualSign = 1 << 2,  // Parse --option=value syntax (on by default)
         HelpAboutBlocking = 1 << 3, // Stop parsing options if help/version detected
+        EnablePrimaryCommand = 1 << 4, // Allow a primary command (first non-option argument) (off by default)
     };
     Define_Enum_BitOperators_Inclass(parse_policy)
+
+    static constexpr parse_policy default_policy = 
+        basic_arguments<CharT>::AllowEqualSign;
 
     enum argument_style {
         Style_GNU,      // --long-option, -s, -abc
@@ -89,6 +93,7 @@ public:
     }
 
     bool addFlag(const string_type &name, bool& value, bool default_value = false);
+    bool addFlag(const string_type &name); // only work on returns
     bool addEnum(const string_type &name, int& value, const std::map<string_type, int>& options, int default_value = 0);
     
     // Template overload for enum types - accepts map<string, E> where E is an enum
@@ -176,7 +181,6 @@ public:
         return true;
     }
 
-    // more convinient functions
     bool addHelp(std::function<void()> helpFunction);
     bool addVersion(std::function<void()> versionFunction);
 

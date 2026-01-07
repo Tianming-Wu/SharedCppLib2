@@ -9,15 +9,15 @@ namespace std {
 template class basic_stringlist<char>;
 template class basic_stringlist<wchar_t>;
 
-// Default parsing policy: allows space-separated values and equals syntax
-template<typename CharT>
-constexpr typename basic_arguments<CharT>::parse_policy default_policy = 
-    basic_arguments<CharT>::AllowEqualSign;
+// // Default parsing policy: allows space-separated values and equals syntax
+// template<typename CharT>
+// constexpr typename basic_arguments<CharT>::parse_policy basic_arguments<CharT>::default_policy = 
+//     basic_arguments<CharT>::AllowEqualSign;
 
 
 template<typename CharT>
 basic_arguments<CharT>::basic_arguments(int argc, CharT** argv)
-    : std::basic_stringlist<CharT>(argc, argv), m_policy(default_policy<CharT>), m_style(Style_GNU)
+    : std::basic_stringlist<CharT>(argc, argv), m_policy(default_policy), m_style(Style_GNU)
 {
     parse();
 }
@@ -105,6 +105,17 @@ bool basic_arguments<CharT>::addFlag(const string_type &name, bool &value, bool 
         return true;
     } else {
         value = default_value;
+        return false;
+    }
+}
+
+template <typename CharT>
+bool basic_arguments<CharT>::addFlag(const string_type &name)
+{
+    auto it = m_parameters.find(name);
+    if (it != m_parameters.end()) {
+        return true;
+    } else {
         return false;
     }
 }
