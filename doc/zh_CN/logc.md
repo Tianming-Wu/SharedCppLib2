@@ -165,7 +165,7 @@ int main() {
     // 配置日志记录
     logt::stdcout();
     logt::claim("MainThread");
-    logt::setFilterLevel(LogLevel::l_DEBUG);
+    logt::setFilterLevel(LogLevel::Debug);
     
     // 启用彩色输出
     logt::install_preprocessor(logc::logPreprocessor);

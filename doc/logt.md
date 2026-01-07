@@ -231,7 +231,7 @@ int main() {
     int file_channel = logt::addfile("application.log");  // Output to file
     logt::stdcout(true);              // stdout channel 0
     logt::claim("MainThread");       // Main thread naming
-    logt::setFilterLevel(LogLevel::l_DEBUG);  // Set log level
+    logt::setFilterLevel(LogLevel::Debug);  // Set log level
     logt::enableSuperTimestamp(true); // Enable high-precision timestamps
     // Route module logs to stdout + file
     logt.setChannels({0, file_channel});
@@ -290,7 +290,7 @@ Format explanation:
 
 - **Zero-Blocking Advantage**: Leverage the asynchronous nature - logging operations won't impact main thread performance
 - **Preprocessing Optimization**: Complex string concatenation and formatting should be completed before logging calls to reduce processing time in the queue
-- **Production Configuration**: In production environments, consider setting `setFilterLevel(LogLevel::l_WARN)` or higher to reduce unnecessary log output
+- **Production Configuration**: In production environments, consider setting `setFilterLevel(LogLevel::Warn)` or higher to reduce unnecessary log output
 - **Resource Cleanup**: Always call the `shutdown()` method before program exit to prevent log message loss and resource leaks
 
 ## Extension Integration

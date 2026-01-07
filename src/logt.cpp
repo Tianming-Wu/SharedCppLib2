@@ -10,7 +10,7 @@ std::atomic<bool> logt_eventbus::stopped_{false};
 
 
 // 静态成员定义
-LogLevel logt::filter_level_ = LogLevel::l_INFO;
+LogLevel logt::filter_level_ = LogLevel::Info;
 logt_channel logt::channels_[LOGT_MAX_CHANNEL];
 logt_channelinfo logt::channelinfo_;  // track registered channels
 int logt::last_channel_id = 1;

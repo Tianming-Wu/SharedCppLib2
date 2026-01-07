@@ -165,7 +165,7 @@ int main() {
     // Configure logging
     logt::stdcout();
     logt::claim("MainThread");
-    logt::setFilterLevel(LogLevel::l_DEBUG);
+    logt::setFilterLevel(LogLevel::Debug);
     
     // Enable colored output
     logt::install_preprocessor(logc::logPreprocessor);

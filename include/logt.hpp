@@ -42,12 +42,12 @@ Doesn't work well in file mode, disable by yourself.
 #endif
 
 enum class LogLevel {
-    l_QUIET = -1, // For not logging anything (filter only)
-    l_DEBUG =  0,
-    l_INFO  =  1,
-    l_WARN  =  2,
-    l_ERROR =  3,
-    l_FATAL =  4
+    Quiet = -1, // For not logging anything (filter only)
+    Debug =  0,
+    Info  =  1,
+    Warn  =  2,
+    Error =  3,
+    Fatal =  4
 };
 
 struct logt_channel {
@@ -202,11 +202,11 @@ public:
     
     const std::string& name() const { return name_; }
 
-    logt_sso info()  const { return logt_sso(LogLevel::l_INFO,  formatter, channels, name_); }
-    logt_sso warn()  const { return logt_sso(LogLevel::l_WARN,  formatter, channels, name_); }
-    logt_sso error() const { return logt_sso(LogLevel::l_ERROR, formatter, channels, name_); }
-    logt_sso fatal() const { return logt_sso(LogLevel::l_FATAL, formatter, channels, name_); }
-    logt_sso debug() const { return logt_sso(LogLevel::l_DEBUG, formatter, channels, name_); }
+    logt_sso info()  const { return logt_sso(LogLevel::Info,  formatter, channels, name_); }
+    logt_sso warn()  const { return logt_sso(LogLevel::Warn,  formatter, channels, name_); }
+    logt_sso error() const { return logt_sso(LogLevel::Error, formatter, channels, name_); }
+    logt_sso fatal() const { return logt_sso(LogLevel::Fatal, formatter, channels, name_); }
+    logt_sso debug() const { return logt_sso(LogLevel::Debug, formatter, channels, name_); }
 
     bool setFormatter(logt_format::format_func formatter_);
     bool setChannel(int channelid, bool enable);

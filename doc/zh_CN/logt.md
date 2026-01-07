@@ -232,7 +232,7 @@ int main() {
     int file_channel = logt::addfile("application.log");  // 输出到文件
     logt::stdcout(true);              // stdout 通道 0
     logt::claim("MainThread");       // 主线程命名
-    logt::setFilterLevel(LogLevel::l_DEBUG);  // 设置日志级别
+    logt::setFilterLevel(LogLevel::Debug);  // 设置日志级别
     logt::enableSuperTimestamp(true);  // 启用高精度时间戳
     // 将模块日志路由到 stdout + 文件
     logt.setChannels({0, file_channel});
@@ -291,7 +291,7 @@ int main() {
 
 - **零阻塞优势**: 充分利用异步特性，日志操作不会影响主线程性能
 - **预处理优化**: 复杂的字符串拼接和格式化建议在日志调用前完成，减少队列中的处理时间
-- **生产环境配置**: 在生产环境中建议设置 `setFilterLevel(LogLevel::l_WARN)` 或更高，减少不必要的日志输出
+- **生产环境配置**: 在生产环境中建议设置 `setFilterLevel(LogLevel::Warn)` 或更高，减少不必要的日志输出
 - **资源清理**: 务必在程序退出前调用 `shutdown()` 方法，防止日志消息丢失和资源泄漏
 
 ## 扩展功能集成
