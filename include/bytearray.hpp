@@ -77,6 +77,17 @@ public:
     // special one for safe string storage. extract with bytearray_view::readString().
     void addString(const std::string& str);
 
+    // special one for containers of trivially copyable types
+    template<typename _T>
+    requires (std::is_trivially_copyable_v<typename _T::value_type>)
+    void appendContainer(const _T& in) {
+        using _Ty = typename _T::value_type;
+        const std::byte* src = reinterpret_cast<const std::byte*>(in.data());
+        append(bytearray(in.size())); // number of elements
+        append(bytearray(sizeof(typename _T::value_type))); // size of each element
+        ::std::vector<std::byte>::insert(end(), src, src + in.size() * sizeof(_Ty));
+    }
+
     void reverse();
 
     void swap(bytearray &ba);
@@ -168,12 +179,49 @@ public:
 
     template<typename _T>
     _T read() const {
+        _T result = peek<_T>();
         cursor += sizeof(_T);
-        return peek<_T>();
+        return result;
     }
 
     std::string peekString() const;
     std::string readString() const;
+
+    template<typename _T>
+    requires (std::is_trivially_copyable_v<typename _T::value_type>)
+    _T peekContainer() const {
+        using _Ty = typename _T::value_type;
+        
+        if (!available(sizeof(size_t) * 2)) 
+            throw std::out_of_range("bytearray_view::peekContainer: not enough data for metadata");
+        
+        // Create a single temporary view to read both metadata fields sequentially
+        bytearray_view temp(ba.subarr(cursor));
+        size_t count = temp.read<size_t>();
+        size_t elemSize = temp.read<size_t>();
+        
+        if (elemSize != sizeof(_Ty)) 
+            throw std::runtime_error("bytearray_view::peekContainer: element size mismatch");
+        
+        if (!available(sizeof(size_t) * 2 + count * sizeof(_Ty))) 
+            throw std::out_of_range("bytearray_view::peekContainer: not enough data for elements");
+        
+        // Calculate data start position: cursor + metadata size
+        const std::byte* data_start = ba.data() + cursor + sizeof(size_t) * 2;
+        
+        _T result;
+        result.resize(count);
+        std::memcpy(result.data(), data_start, count * sizeof(_Ty));
+        return result;
+    }
+
+    template<typename _T>
+    requires (std::is_trivially_copyable_v<typename _T::value_type>)
+    _T readContainer() const {
+        _T result = peekContainer<_T>();
+        cursor += sizeof(size_t) * 2 + result.size() * sizeof(typename _T::value_type);
+        return result;
+    }
 
 protected:
     mutable size_t cursor = 0;
