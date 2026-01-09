@@ -27,6 +27,8 @@ Doesn't work well in file mode, disable by yourself.
 #include <initializer_list>
 #include <new>
 
+#include "basics.hpp" // for disable_copy, disable_move
+
 #ifdef UNICODE
     #define LOGT_WCHAR_SUPPORT
 #endif
@@ -109,9 +111,6 @@ private:
 class logt_format {
 public:
     logt_format() {}
-
-    // logt_format(const logt_format&) = delete;
-    // logt_format& operator=(const logt_format&) = delete;
     
     logt_format(const logt_format&) = default;
     logt_format& operator=(const logt_format&) = default;
@@ -148,14 +147,10 @@ public:
     logt_sso(LogLevel level, const logt_format& formatter, const logt_channelinfo& channels, const std::string& signature = "");
     ~logt_sso();
     
-    // 禁止拷贝
-    logt_sso(const logt_sso&) = delete;
-    logt_sso& operator=(const logt_sso&) = delete;
+    disable_copy(logt_sso) // 禁止拷贝
+    enable_move(logt_sso) // 支持移动
     
-    // 支持移动
-    logt_sso(logt_sso&&) = default;
-    logt_sso& operator=(logt_sso&&) = default;
-    
+    // Serialize support (serialize() member function returning std::string)
     template<typename T>
     requires requires(const T& t) {
         requires std::is_class_v<T>;  // 必须是类类型
@@ -166,7 +161,8 @@ public:
         return *this;
     }
 
-    // 通用的流输出支持（排除已经匹配 serialize() 的类型）
+    // Universial stream support (excluded serialize() supported types)
+    // using stringstream
     template<typename T>
     requires (!requires(const T& t) { 
         requires std::is_class_v<T>;
@@ -223,10 +219,30 @@ class logt {
     friend class logt_sig;
 public:
     // 静态配置方法
+
+    /// @brief Add a log file to the logging system.
+    /// @param filename The path to the log file
+    /// @param default_enable Whether logging to this file is enabled by default
+    /// @return An integer identifier for the added log file
     static int addfile(const std::filesystem::path& filename, bool default_enable = true);
+
+    /// @brief Add an output stream to the logging system.
+    /// @param os The output stream
+    /// @param default_enable Whether logging to this stream is enabled by default
+    /// @return An integer identifier for the added output stream
     static int addostream(std::ostream& os, bool default_enable = true);
+
+    /// @brief Enable or disable logging to standard output (console).
+    /// @param enable Whether to enable logging to standard output
+    /// @param default_enable Whether logging to standard output is enabled by default
     static void stdcout(bool enable, bool default_enable = true);
+
+    /// @brief Claim the current thread with a name for logging purposes.
+    /// @param name The name to associate with the current thread
     static void claim(const std::string& name);
+
+    /// @brief Set the global log filter level, by default is `LogLevel::Info`.
+    /// @param level The minimum log level to output
     inline static void setFilterLevel(LogLevel level) { filter_level_ = level; }
 
     // 静态关闭方法
@@ -236,13 +252,16 @@ public:
     /// @brief Shutdown the logging system then close the application.
     static void exit(int exitcode);
 
-    /** @brief Install preprocessor function to process log messages.
-     * @param preprocessor A function that takes a logt_message reference and returns a bool.
-     */
+    /// @brief Install preprocessor function to process log messages.
+    /// @param preprocessor A function that takes a logt_message reference and returns a bool.
     static void install_preprocessor(preprocessor_t preprocessor);
 
+    /// @brief Set a custom formatter function for log messages.
+    /// @param formatter the formatting function
     void setFormatter(logt_format::format_func formatter);
 
+    /// @brief Enable super timestamp format (with nanoseconds).
+    /// @param enabled Whether to enable the super timestamp format
     inline static void enableSuperTimestamp(bool enabled) { 
         super_timestamp_enabled_ = enabled; 
     }
@@ -251,14 +270,22 @@ public:
         return super_timestamp_enabled_; 
     }
 
+    /// @brief Format a system_clock timestamp.
+    /// @param tp a time point from system_clock. You can use something like `std::chrono::system_clock::now()`.
+    /// @return The formatted timestamp string.
+    static std::string format_timestamp(const std::chrono::system_clock::time_point& tp);
+
+    /// @brief Format a steady_clock timestamp.
+    /// @param tp a time point from steady_clock. You can use something like `std::chrono::steady_clock::now()`.
+    /// @return The formatted timestamp string.
+    static std::string format_timestamp(const std::chrono::steady_clock::time_point& tp);
+
 private:
     static std::string get_thread_name();
     static void worker_thread();
     static void ensure_worker_started();
 
     static void write_message(const logt_message& message);
-    static std::string format_timestamp(const std::chrono::system_clock::time_point& tp);
-    static std::string format_timestamp(const std::chrono::steady_clock::time_point& tp);
 
     // 静态成员
     static LogLevel filter_level_;
@@ -292,12 +319,13 @@ private:
 //     std::filesystem::path m_logFolder;
 // };
 
-
+// 类内签名定义宏
+// 不建议使用，因为类成员函数的自定义签名目前会覆盖这个宏定义的签名，所以它不太实用
 #define LOGT_DECLARE \
 private: \
     static ::logt_sig logt;
 
-// Public version of LOGT_DECLARE for external access
+// 类内签名定义宏 - 公共访问权限
 #define LOGT_PUBLIC_DECLARE \
 public: \
     static ::logt_sig logt;
