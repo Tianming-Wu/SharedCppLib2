@@ -80,7 +80,56 @@ std::wstring stringToWstring(const std::string &str)
 #endif
 }
 
+fs::path findExecutableInPath(const std::string &name)
+{
+    std::string fullPath;
+#ifdef OS_WINDOWS
+    fullPath.reserve(260); // MAX_PATH on Windows is typically 260
 
+    DWORD result = SearchPathA(
+        nullptr,
+        name.c_str(),
+        ".exe",
+        static_cast<DWORD>(fullPath.capacity()),
+        fullPath.data(),
+        nullptr
+    );
+
+    return (result > 0 && result < fullPath.capacity()) ? fs::path(fullPath.c_str()) : fs::path();
+#else
+    fullPath.reserve(4096); // Common PATH_MAX on Linux
+
+    char* res = realpath(("/usr/bin/" + name).c_str(), fullPath.data());
+    if (res != nullptr) {
+        return fs::path(fullPath.c_str());
+    }
+#endif
+    // Fallback: manually search in PATH
+    const char* pathEnv = std::getenv("PATH");
+    if (!pathEnv) {
+        return fs::path();
+    }
+
+    std::string pathStr(pathEnv);
+    size_t start = 0;
+    size_t end = pathStr.find_first_of( ":;" );
+    while (end != std::string::npos) {
+        fs::path dir = pathStr.substr(start, end - start);
+        fs::path candidate = dir / name;
+        if (fs::exists(candidate) && fs::is_regular_file(candidate)) {
+            return candidate;
+        }
+        start = end + 1;
+        end = pathStr.find_first_of( ":;", start );
+    }
+    // Check the last segment after the final delimiter
+    fs::path dir = pathStr.substr(start);
+    fs::path candidate = dir / name;
+    if (fs::exists(candidate) && fs::is_regular_file(candidate)) {
+        return candidate;
+    }
+    return fs::path();
+}
 
 #ifdef OS_WINDOWS
 namespace windows {
