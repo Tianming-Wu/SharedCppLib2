@@ -168,7 +168,7 @@ bool preprocessing(std::bytearray* _message)
         size_t remainder = _message->size() % 64;
         if (remainder < 56)
         {
-            _message->append(0x80); // 0x80 == 10000000
+            _message->append(std::byte{0x80}); // 0x80 == 10000000
             for (size_t i = 1; i < 56 - remainder; ++i)
             {
                 _message->append(std::byte{0x00});
@@ -176,7 +176,7 @@ bool preprocessing(std::bytearray* _message)
         }
         else if (remainder == 56)
         {
-            _message->append(0x80);
+            _message->append(std::byte{0x80});
             for (size_t i = 1; i < 64; ++i)
             {
                 _message->append(std::byte{0x00});
@@ -184,7 +184,7 @@ bool preprocessing(std::bytearray* _message)
         }
         else
         {
-            _message->append(0x80);
+            _message->append(std::byte{0x80});
             for (size_t i = 1; i < 64 - remainder + 56; ++i)
             {
                 _message->append(std::byte{0x00});

@@ -2,9 +2,7 @@
 */
 #pragma once
 
-#include "stream.h"
-
-class hpint;
+#include "stream.hpp"
 
 namespace io {
 

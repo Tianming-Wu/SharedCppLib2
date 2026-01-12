@@ -257,7 +257,7 @@ void logt::shutdown() {
 void logt::exit(int exitcode)
 {
     shutdown();
-    ::exit(exitcode);
+    ::exit(exitcode); // call the C exit
 }
 
 void logt::install_preprocessor(preprocessor_t preprocessor)
