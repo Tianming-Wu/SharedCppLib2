@@ -7,7 +7,7 @@
 #include <unordered_set>
 
 #include "basics.hpp"
-#include "stream.h"
+// #include "stream.hpp"
 #include "bytearray.hpp"
 
 namespace std {
@@ -130,6 +130,16 @@ public:
 //     sw.sl = basic_stringlist<CharT>::split(input, sw.delim);
 //     return is;
 // }
+
+// template<typename CharT>
+// class basic_stringlist_view
+// {
+// public:
+
+// private:
+//     basic_stringlist<CharT>& m_ref;
+//     basic_stringlist<CharT>::iterator it;
+// };
 
 extern template class basic_stringlist<char>;
 extern template class basic_stringlist<wchar_t>;
