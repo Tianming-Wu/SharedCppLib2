@@ -153,6 +153,22 @@ public:
         return static_cast<NAME>(~static_cast<T>(a)); \
     }
 
+#define disable_copy(CLASS) \
+    CLASS(const CLASS&) = delete; \
+    CLASS& operator=(const CLASS&) = delete;
+
+#define disable_move(CLASS) \
+    CLASS(CLASS&&) = delete; \
+    CLASS& operator=(CLASS&&) = delete;
+
+#define enable_copy(CLASS) \
+    CLASS(const CLASS&) = default; \
+    CLASS& operator=(const CLASS&) = default;
+
+#define enable_move(CLASS) \
+    CLASS(CLASS&&) = default; \
+    CLASS& operator=(CLASS&&) = default;
+
 // Version information
 #include <SharedCppLib2/version.hpp>
 
