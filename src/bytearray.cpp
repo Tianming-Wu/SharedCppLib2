@@ -17,10 +17,9 @@ void bytearray::append(const bytearray &ba) {
     }
 }
 
-void bytearray::append(const byte &b) {
+void bytearray::append(byte b) {
     push_back(b);
 }
-
 
 void bytearray::append(const byte* pb, size_t size) {
     for(size_t i = 0; i < size; i++) {
@@ -43,7 +42,7 @@ void bytearray::append(uint8_t val) {
 
 void bytearray::addString(const std::string &str)
 {
-    append(std::bytearray(str.length()));
+    append(str.length()); // now size_t is carefully appended
     append(str.data(), str.size());
 }
 
@@ -304,10 +303,22 @@ bytearray::bytearray()
 : vector<byte>()
 {}
 
+bytearray::bytearray(size_t count, byte value)
+: vector<byte>(count, value)
+{}
+
+bytearray::bytearray(std::initializer_list<byte> init)
+: vector<byte>(init)
+{}
+
 bytearray::bytearray(const bytearray &ba) {
     for (const byte &b : ba)
         push_back(b);
 }
+
+bytearray::bytearray(byte b)
+    : vector<byte>(1, b)
+{}
 
 bytearray::bytearray(const std::string &str) {
     for (const char &c : str)
@@ -317,6 +328,11 @@ bytearray::bytearray(const std::string &str) {
 bytearray::bytearray(const char *raw, size_t size) {
     for (size_t i = 0; i < size; i++)
         push_back(static_cast<byte>(raw[i]));
+}
+
+bytearray::bytearray(const byte *raw, size_t size) {
+    for (size_t i = 0; i < size; i++)
+        push_back(raw[i]);
 }
 
 bytearray bytearray::fromHex(const std::string& hex) {

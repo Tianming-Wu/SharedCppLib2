@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <bit>
 #include <cstdint>
+#include <initializer_list>
 
 namespace std {
 
@@ -15,33 +16,37 @@ template<typename> class basic_stringlist;
 using stringlist = basic_stringlist<char>;
 using wstringlist = basic_stringlist<wchar_t>;
 
+// now using std::byte. I'm not really satisfied, because it it so EXPLICIT. There are no any implicit conversions at all.
+// Fine. I just need to warn the users to use append(std::byte{0x08}) instead of append(0x08), which is a fucking INTEGER.
 // #undef byte
 // typedef unsigned char byte;
 
 class bytearray : public vector<byte>
 {
 public:
-
-    using vector<byte>::vector;
-    // bytearray(bytearray&) = default;
-    // bytearray(bytearray&&) = default;
-
     bytearray();
     bytearray(const bytearray &ba);
-    bytearray(const std::string &str);
+    bytearray(byte b);
+    bytearray(const std::string &str); // note: assumes raw data, does not include length and null terminator
     bytearray(const char *raw, size_t size);
+    bytearray(const byte *raw, size_t size);
+    bytearray(size_t count, byte value);
+    bytearray(std::initializer_list<byte> init);
+
+    template<typename InputIt>
+    bytearray(InputIt first, InputIt last) : vector<byte>(first, last) {}
 
     template<typename _Any>
+    requires (std::is_trivially_copyable_v<_Any>)
     bytearray(const _Any& in) {
-        static_assert(std::is_trivially_copyable_v<_Any>,  "bytearray: T must be trivially copyable");
         const std::byte* src = reinterpret_cast<const std::byte*>(&in);
         ::std::vector<std::byte>::insert(end(), src, src + sizeof(_Any));
     }
 
     template<typename _T>
     // requires (std::is_aggregate_v<_T>)
+    requires (std::is_trivially_copyable_v<_T>)
     _T convert_to() const {
-        static_assert(std::is_trivially_copyable_v<_T>, "Type must be trivially copyable");
         if (size() != sizeof(_T)) throw std::runtime_error("bytearray::convert_to: type size mismatch");
         if (reinterpret_cast<uintptr_t>(data()) % alignof(_T) != 0) throw std::runtime_error("bytearray::convert_to: alignment mismatch");
         return *std::bit_cast<const _T*>(data());
@@ -49,16 +54,20 @@ public:
 
     // another shorter name for convert_to
     template<typename _T>
+    requires (std::is_trivially_copyable_v<_T>)
     _T as() const {
         return convert_to<_T>();
     }
 
-    template<typename _T, typename _Tp>
+    // construct _T from raw data pointer and size, for some STL containers
+    template<typename _T>
+    requires ( std::is_class_v<_T>, std::is_trivially_copyable_v<typename _T::value_type> )
     _T convert_to_constructer() {
+        using _Tp = typename _T::value_type;
         return _T(
-        reinterpret_cast<const _Tp*>(this->data()),
-        this->size() / sizeof(_Tp)
-    );
+            reinterpret_cast<const _Tp*>(this->data()),
+            this->size() / sizeof(_Tp)
+        );
     }
 
     inline const byte* rawData() const { return data(); }
@@ -68,11 +77,22 @@ public:
     byte vat(size_t p, const byte &v = byte('\0')) const;
 
     void append(const bytearray &ba);
-    void append(const byte &b);
+    void append(byte b);
     void append(const byte* pb, size_t size);
     void append(const char* str, size_t size);
-    void append(const char* str);
+    void append(const char* str); // this is a little dangerous, be careful! it follows the null terminator.
     void append(uint8_t val);
+    inline void append(int8_t val) { append(static_cast<uint8_t>(val)); }
+
+    // fuck you std standard for no explicit parameters
+    inline void append(uint16_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(uint16_t))); }
+    inline void append(int16_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int16_t))); }
+    inline void append(uint32_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(uint32_t))); }
+    inline void append(int32_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int32_t))); }
+    inline void append(uint64_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(uint64_t))); }
+    inline void append(int64_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int64_t))); }
+
+    inline void appendSize(size_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(size_t))); }
 
     // special one for safe string storage. extract with bytearray_view::readString().
     void addString(const std::string& str);
@@ -83,8 +103,12 @@ public:
     void appendContainer(const _T& in) {
         using _Ty = typename _T::value_type;
         const std::byte* src = reinterpret_cast<const std::byte*>(in.data());
-        append(bytearray(in.size())); // number of elements
-        append(bytearray(sizeof(typename _T::value_type))); // size of each element
+
+        const size_t count = in.size();
+        const size_t elemSize = sizeof(_Ty);
+
+        appendSize(count);
+        appendSize(elemSize);
         ::std::vector<std::byte>::insert(end(), src, src + in.size() * sizeof(_Ty));
     }
 
