@@ -114,9 +114,9 @@ logt_sso::logt_sso(LogLevel level, const logt_format& formatter, const logt_chan
     info.signature = signature;
 
     if(formatter.formatFunc) {
-        formatter.formatFunc(formatter.settings, info);
+        ss_ << formatter.formatFunc(formatter.settings, info);
     } else {
-        default_formatter(formatter.settings, info);
+        ss_ << default_formatter(formatter.settings, info);
     }
 }
 
@@ -138,12 +138,12 @@ std::string logt_sso::default_formatter(const logt_format::formatSettings& setti
         if (!thread_name.empty()) {
             format_result += "[" + thread_name + "] ";
         } else {
-            format_result += "[" + streamed_to_string(std::this_thread::get_id()) + "] ";
+            format_result += "[#" + streamed_to_string(std::this_thread::get_id()) + "] ";
         }
     }
 
     if (!info.signature.empty()) {
-        ss_ << "[" << info.signature << "] ";
+        format_result += "[" + info.signature + "] ";
     }
 
     return format_result;

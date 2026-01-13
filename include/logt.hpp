@@ -146,9 +146,8 @@ class logt_sso {
 public:
     logt_sso(LogLevel level, const logt_format& formatter, const logt_channelinfo& channels, const std::string& signature = "");
     ~logt_sso();
-    
-    disable_copy(logt_sso) // 禁止拷贝
-    enable_move(logt_sso) // 支持移动
+     
+    enable_move_only(logt_sso) // 禁止拷贝，支持移动
     
     // Serialize support (serialize() member function returning std::string)
     template<typename T>
