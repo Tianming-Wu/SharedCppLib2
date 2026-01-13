@@ -17,6 +17,7 @@ class basic_stringlist : public vector<std::basic_string<CharT>>
 {
 public:
     typedef std::basic_string<CharT> string_type;
+    typedef string_type value_type; // For STL compatibility
 
     // linking to default vector methods
     using vector<string_type>::size;

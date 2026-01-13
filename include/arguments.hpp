@@ -23,6 +23,7 @@ class basic_arguments : protected std::basic_stringlist<CharT>
 {
 public:
     typedef std::basic_string<CharT> string_type;
+    typedef std::basic_stringlist<CharT> stringlist_type;
 
     // allow unscoped usage to simply, since user will need to combine multiple flags.
     enum parse_policy { 
@@ -48,6 +49,8 @@ public:
     basic_arguments(int argc, CharT** argv, parse_policy policy);
     basic_arguments(int argc, CharT** argv, parse_policy policy, argument_style style);
     ~basic_arguments() = default;
+
+    enable_move_only(basic_arguments)
 
     using std::basic_stringlist<CharT>::size;
     using std::basic_stringlist<CharT>::at;
@@ -117,12 +120,28 @@ public:
         value = static_cast<E>(int_value);
         return result;
     }
+
+    // This version accepts alias name with a stringlist as the secondary key.
+    // This parameter does not look very common, but is easy to write.
+    template <typename E>
+    requires std::is_enum_v<E>
+    bool addEnumAlias(const string_type &name, E &value, const std::map<stringlist_type, E> &options, E default_value = static_cast<E>(0))
+    {
+        std::map<string_type, E> str_to_enum;
+        for (const auto &p : options) {
+            for (const auto &str : p.first) {
+                str_to_enum.emplace(str, p.second);
+            }
+        }
+
+        return addEnum(name, value, str_to_enum, default_value);
+    }
     
     // For types with deserialize() or deserialise() method (custom serializable types)
     template<typename T>
     requires requires(T& t, const string_type& s) {
         requires std::is_class_v<T>;
-        requires requires { t.deserialize(s); } || requires { t.deserialise(s); };
+        requires requires { t.deserialize(s); } || requires { t.deserialise(s); };  
     }
     bool addParameter(const string_type &name, T& value, std::optional<T> default_value = std::nullopt) {
         auto it = m_parameters.find(name);
