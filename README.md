@@ -77,7 +77,7 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(your_target SharedCppLib2::basic)
 ```
 
-**Available targets:** `variant`, `logd`, `logf`, `sha256`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`
+**Available targets:** `variant`, `logd`, `logf`, `sha256`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`
 
 ### 4. Code Example
 ```cpp

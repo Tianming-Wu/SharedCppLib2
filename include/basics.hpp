@@ -4,6 +4,8 @@
 #include <sstream>
 #include <type_traits>
 
+#include "version.hpp"
+
 namespace std {
 
 struct rect {
@@ -169,8 +171,21 @@ public:
     CLASS(CLASS&&) = default; \
     CLASS& operator=(CLASS&&) = default;
 
-// Version information
-#include <SharedCppLib2/version.hpp>
+#define enable_copy_move(CLASS) \
+    enable_copy(CLASS) \
+    enable_move(CLASS)
+
+#define disable_copy_move(CLASS) \
+    disable_copy(CLASS) \
+    disable_move(CLASS)
+
+#define enable_copy_only(CLASS) \
+    enable_copy(CLASS) \
+    disable_move(CLASS)
+
+#define enable_move_only(CLASS) \
+    disable_copy(CLASS) \
+    enable_move(CLASS)
 
 namespace scl2 {
 /// Get the version string of SharedCppLib2

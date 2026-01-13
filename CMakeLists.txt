@@ -26,9 +26,10 @@ add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/source-charset:utf-8>")
 set(CMAKE_DEBUG_POSTFIX "d")
 
 # 头文件目录
-include_directories("include")
+include_directories("include" "${CMAKE_CURRENT_BINARY_DIR}/include/SharedCppLib2/")
 
 # 生成版本信息头文件
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/SharedCppLib2")
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.hpp.in"
     "${CMAKE_CURRENT_BINARY_DIR}/include/SharedCppLib2/version.hpp"
@@ -111,9 +112,10 @@ install(DIRECTORY include/
     FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
 )
 
-# 安装生成的版本头文件
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/include/SharedCppLib2/version.hpp
+# 安装生成的版本头文件（放入 install_dir/SharedCppLib2/）
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/SharedCppLib2/
     DESTINATION ${INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "version.hpp"
 )
 
 # 安装导出文件
