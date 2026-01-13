@@ -173,6 +173,7 @@ class bytearray_view
 {
 public:
     bytearray_view(const bytearray& data);
+    bytearray_view(const bytearray&&) = delete; // prevent binding to temporaries
 
     // 穿透底层 bytearray 的信息
     inline size_t size() const { return ba.size(); }
@@ -220,10 +221,14 @@ public:
             throw std::out_of_range("bytearray_view::peekContainer: not enough data for metadata");
         
         // Create a single temporary view to read both metadata fields sequentially
-        bytearray_view temp(ba.subarr(cursor));
-        size_t count = temp.read<size_t>();
-        size_t elemSize = temp.read<size_t>();
-        
+        size_t count, elemSize;
+        {
+            bytearray temp = ba.subarr(cursor);
+            bytearray_view temp_view(temp);
+            count = temp_view.read<size_t>();
+            elemSize = temp_view.read<size_t>();
+        }
+
         if (elemSize != sizeof(_Ty)) 
             throw std::runtime_error("bytearray_view::peekContainer: element size mismatch");
         

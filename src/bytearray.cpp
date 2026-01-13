@@ -81,8 +81,9 @@ std::bytearray &bytearray::insert(size_t pos, const bytearray &ba)
 
 bytearray bytearray::subarr(size_t begin, size_t size) const {
     bytearray re;
-    if(size == -1) size = this->size();
-    for(size_t i = begin; i < size; i++) {
+    if (begin >= this->size()) return re;
+    size_t end = (size == 18446744073709551615Ui64) ? this->size() : std::min(this->size(), begin + size);
+    for (size_t i = begin; i < end; ++i) {
         re.push_back(at(i));
     }
     return re;

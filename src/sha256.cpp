@@ -4,10 +4,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <filesystem>
-
-namespace fs = std::filesystem;
-
 namespace sha256 {
 
 // 在SHA256算法中的初始信息摘要，这些常量是对自然数中前8个质数的平方根的小数部分取前32bit而来。
@@ -31,7 +27,7 @@ std::vector<uint32_t> add_constant_ =
     0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 };
 
-// 内联函数&模版函数的定义 /
+// 内联函数&模版函数的定义
 inline uint32_t ch(uint32_t x, uint32_t y, uint32_t z) { return (x & y) ^ ((~x) & z); }
 inline uint32_t maj(uint32_t x, uint32_t y, uint32_t z) { return (x & y) ^ (x & z) ^ (y & z); }
 inline uint32_t big_sigma0(uint32_t x) { return (x >> 2 | x << 30) ^ (x >> 13 | x << 19) ^ (x >> 22 | x << 10); }
@@ -87,17 +83,16 @@ bool encrypt(const std::bytearray& input_message,
 {
     if (!input_message.empty() && _digest)
     {
-        //! ????????
+        // 预处理
         std::bytearray message = input_message;
         preprocessing(&message);
 
-        //! ???????????????64Byte??��???????
+        // 将数据分解成 64Byte 大小的数据块
         std::vector<std::bytearray> chunks;
         breakTextInto64ByteChunks(message, &chunks);
 
-        //! ??64Byte??��??????�?????64??4Byte??��????????????????????
-        std::vector<uint32_t> message_digest(initial_message_digest_); // ??????????
-
+        // 64Byte数据块构造64个4Byte字
+        std::vector<uint32_t> message_digest(initial_message_digest_); // 信息摘要
         std::vector<uint32_t> words;
         for (const auto& chunk : chunks)
         {
@@ -105,7 +100,7 @@ bool encrypt(const std::bytearray& input_message,
             transform(words, &message_digest);
         }
 
-        //! ?????????
+        // 生成最终的哈希值（数字指纹）
         produceFinalHashValue(message_digest, _digest);
 
         return true;
@@ -211,7 +206,7 @@ bool breakTextInto64ByteChunks(const std::bytearray& message,
 {
     if (_chunks && 0 == message.size() % 64)
     {
-        _chunks->clear(); // ??????buffer
+        _chunks->clear(); // 清空缓冲区
 
         size_t quotient = message.size() / 64;
         for (size_t i = 0; i < quotient; ++i)
@@ -314,5 +309,5 @@ bool produceFinalHashValue(const std::vector<uint32_t>& input,
     }
 }
 
-} // namespace shaunit
+} // namespace sha256
 
