@@ -162,6 +162,8 @@ public:
     bool readFromStream(std::istream& is, size_t size);
     bool readAllFromStream(std::istream& is);
     bool readUntilDelimiter(std::istream& is, char delimiter = '\0');
+    // bool readFromStreamAt(std::istream& is, size_t position, size_t size);
+    // bool readFromStreamAtEnd(std::istream& is, size_t size);
 
     inline void writeRaw(std::ostream& os) const {
         os.write(reinterpret_cast<const char*>(data()), size());
@@ -257,32 +259,17 @@ protected:
     const bytearray& ba;
 };
 
-// inline std::ostream& operator<<(std::ostream& os, const bytearray& ba) {
-//     if (os.flags() & std::ios_base::hex) {
-//         return os << ba.tohex();
-//     }
-//     return os << ba.tostdstring();
-// }
 
+// These operators avoid any unwanted format used. It by default deal with raw data only.
+// If user really need something like hex, they must do it explicitly.
 
 inline ostream& operator<<(ostream& os, const std::bytearray& ba) {
-    if (os.flags() & ios_base::hex) {
-        ios_base::fmtflags original_flags = os.flags();
-        os << hex << setfill('0');
-        for (const auto& b : ba) {
-            os << setw(2) << static_cast<int>(b);
-        }
-        os.flags(original_flags);
-    } else {
-        os << ba.tostdstring();
-    }
+    ba.writeRaw(os);
     return os;
 }
 
-inline std::istream& operator>>(std::istream& is, bytearray& ba) {
+inline istream& operator>>(istream& is, std::bytearray& ba) {
     ba.clear();
-    
-    // check if is file stream and in binary mode
     auto* file_stream = dynamic_cast<std::istream*>(&is);
     if (file_stream && (file_stream->flags() & std::ios::binary)) {
         // read the entire file content
@@ -294,23 +281,65 @@ inline std::istream& operator>>(std::istream& is, bytearray& ba) {
             ba.resize(size);
             file_stream->read(reinterpret_cast<char*>(ba.data()), size);
         }
-    }
-    else if (is.flags() & std::ios_base::hex) {
-        // hex text mode
-        std::string hexInput;
-        is >> hexInput;
-        try {
-            ba = bytearray::fromHex(hexInput);
-        } catch (...) {
-            is.setstate(std::ios::failbit);
-        }
     } else {
-        // normal text mode: read a "word"
-        std::string strInput;
-        is >> strInput;
-        ba = bytearray(strInput);
+        is.setstate(std::ios::failbit);
     }
-    return is;
 }
+
+// inline std::ostream& operator<<(std::ostream& os, const bytearray& ba) {
+//     if (os.flags() & std::ios_base::hex) {
+//         return os << ba.tohex();
+//     }
+//     return os << ba.tostdstring();
+// }
+
+
+// inline ostream& operator<<(ostream& os, const std::bytearray& ba) {
+//     if (os.flags() & ios_base::hex) {
+//         ios_base::fmtflags original_flags = os.flags();
+//         os << hex << setfill('0');
+//         for (const auto& b : ba) {
+//             os << setw(2) << static_cast<int>(b);
+//         }
+//         os.flags(original_flags);
+//     } else {
+//         os << ba.tostdstring();
+//     }
+//     return os;
+// }
+
+// inline std::istream& operator>>(std::istream& is, bytearray& ba) {
+//     ba.clear();
+    
+//     // check if is file stream and in binary mode
+//     auto* file_stream = dynamic_cast<std::istream*>(&is);
+//     if (file_stream && (file_stream->flags() & std::ios::binary)) {
+//         // read the entire file content
+//         file_stream->seekg(0, std::ios::end);
+//         auto size = file_stream->tellg();
+//         file_stream->seekg(0, std::ios::beg);
+        
+//         if (size > 0) {
+//             ba.resize(size);
+//             file_stream->read(reinterpret_cast<char*>(ba.data()), size);
+//         }
+//     }
+//     else if (is.flags() & std::ios_base::hex) {
+//         // hex text mode
+//         std::string hexInput;
+//         is >> hexInput;
+//         try {
+//             ba = bytearray::fromHex(hexInput);
+//         } catch (...) {
+//             is.setstate(std::ios::failbit);
+//         }
+//     } else {
+//         // normal text mode: read a "word"
+//         std::string strInput;
+//         is >> strInput;
+//         ba = bytearray(strInput);
+//     }
+//     return is;
+// }
 
 } // namespace std
