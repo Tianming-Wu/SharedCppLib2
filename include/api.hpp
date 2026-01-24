@@ -7,6 +7,11 @@
 #include <string>
 #include "version.hpp"
 
+// you need this macro to activate API support in other libraries
+#ifndef SHAREDCPPLIB2_API_SUPPORT
+    #define SHAREDCPPLIB2_API_SUPPORT
+#endif
+
 namespace scl2 {
 
 template<typename T>
