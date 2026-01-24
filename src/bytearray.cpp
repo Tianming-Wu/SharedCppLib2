@@ -357,6 +357,11 @@ bytearray bytearray::fromRaw(const char* raw, size_t size) {
     return bytearray(raw, size);
 }
 
+bytearray bytearray::fromRaw(const unsigned char *raw, size_t size)
+{
+    return bytearray(reinterpret_cast<const char*>(raw), size);
+}
+
 bytearray bytearray::fromUtf8(const std::u8string& utf8str)
 {
     if (utf8str.empty()) return bytearray();
@@ -493,6 +498,19 @@ std::string bytearray_view::readString() const
     std::string result = peekString();
     cursor += sizeof(size_t) + result.size();
     return result;
+}
+
+std::bytearray bytearray_view::readBytes(size_t size) const
+{
+    auto result = peekBytes(size);
+    cursor += size;
+    return result;
+}
+
+std::bytearray bytearray_view::peekBytes(size_t size) const
+{
+    if (!available(size)) throw std::out_of_range("bytearray_view: not enough data");
+    return ba.subarr(cursor, size);
 }
 
 } // namespace std

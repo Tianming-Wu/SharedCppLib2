@@ -33,11 +33,11 @@ class bytearray : public vector<byte>
 public:
     bytearray();
     bytearray(const bytearray &ba);
-    bytearray(byte b);
-    bytearray(const std::string &str); // note: assumes raw data, does not include length and null terminator
-    bytearray(const char *raw, size_t size);
-    bytearray(const byte *raw, size_t size);
-    bytearray(size_t count, byte value);
+    explicit bytearray(byte b);
+    explicit bytearray(const std::string &str); // note: assumes raw data, does not include length and null terminator
+    explicit bytearray(const char *raw, size_t size);
+    explicit bytearray(const byte *raw, size_t size);
+    explicit bytearray(size_t count, byte value);
     bytearray(std::initializer_list<byte> init);
 
     template<typename InputIt>
@@ -45,7 +45,7 @@ public:
 
     template<typename _Any>
     requires (std::is_trivially_copyable_v<_Any>)
-    bytearray(const _Any& in) {
+    explicit bytearray(const _Any& in) {
         const std::byte* src = reinterpret_cast<const std::byte*>(&in);
         ::std::vector<std::byte>::insert(end(), src, src + sizeof(_Any));
     }
@@ -68,7 +68,7 @@ public:
 
     // construct _T from raw data pointer and size, for some STL containers
     template<typename _T>
-    requires ( std::is_class_v<_T>, std::is_trivially_copyable_v<typename _T::value_type> )
+    requires ( std::is_class_v<_T> && std::is_trivially_copyable_v<typename _T::value_type> )
     _T convert_to_constructer() {
         using _Tp = typename _T::value_type;
         return _T(
@@ -98,6 +98,19 @@ public:
     inline void append(int32_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int32_t))); }
     inline void append(uint64_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(uint64_t))); }
     inline void append(int64_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int64_t))); }
+
+    // explicit overloads for unsigned long and long (only when distinct from fixed-width types)
+    template<typename T>
+    requires (std::is_same_v<T, unsigned long> && 
+              !std::is_same_v<unsigned long, uint32_t> && 
+              !std::is_same_v<unsigned long, uint64_t>)
+    inline void append(T val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(unsigned long))); }
+
+    template<typename T>
+    requires (std::is_same_v<T, long> && 
+              !std::is_same_v<long, int32_t> && 
+              !std::is_same_v<long, int64_t>)
+    inline void append(T val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(long))); }
 
     inline void appendSize(size_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(size_t))); }
 
@@ -158,6 +171,7 @@ public:
 
     static bytearray fromHex(const std::string& hex);
     static bytearray fromRaw(const char* raw, size_t size);
+    static bytearray fromRaw(const unsigned char* raw, size_t size);
 
     static bytearray fromUtf8(const std::u8string& utf8str);
     static bytearray fromUtf16(const std::u16string& utf16str);
@@ -220,6 +234,9 @@ public:
 
     std::string peekString() const;
     std::string readString() const;
+
+    std::bytearray readBytes(size_t size) const;
+    std::bytearray peekBytes(size_t size) const;
 
     template<typename _T>
     requires (std::is_trivially_copyable_v<typename _T::value_type>)
@@ -291,6 +308,7 @@ inline istream& operator>>(istream& is, std::bytearray& ba) {
     } else {
         is.setstate(std::ios::failbit);
     }
+    return is;
 }
 
 // inline std::ostream& operator<<(std::ostream& os, const bytearray& ba) {
