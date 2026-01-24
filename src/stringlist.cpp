@@ -160,8 +160,15 @@ basic_stringlist<CharT> basic_stringlist<CharT>::from_initializer(initializer_li
     return l;
 }
 
-template<typename CharT>
-basic_stringlist<CharT> basic_stringlist<CharT>::split(const basic_stringlist<CharT>::string_type &s, const basic_stringlist<CharT>::string_type &delim) {
+template <typename CharT>
+basic_stringlist<CharT> basic_stringlist<CharT>::split(const string_type &s, CharT delim)
+{
+    return split(s, string_type(1, delim));
+}
+
+template <typename CharT>
+basic_stringlist<CharT> basic_stringlist<CharT>::split(const basic_stringlist<CharT>::string_type &s, const basic_stringlist<CharT>::string_type &delim)
+{
     if(s.length() < 3) return basic_stringlist<CharT>(s);
     basic_stringlist<CharT> l;
     size_t pos, lpos = 0, dlen = delim.length();
