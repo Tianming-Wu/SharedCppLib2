@@ -1,10 +1,10 @@
 /*
+    Log Threaded (logt) - A simple asynchronous logging library for C++23
 
-Log Threaded (logt) - A simple asynchronous logging library for C++23
+    Note: to output to console with colors, include logc.hpp and use `logt::install_preprocessor(logc::logPreprocessor);`
+    Doesn't work well in file mode, disable by yourself.
 
-Note: to output to console with colors, include logc.hpp and use `logt::install_preprocessor(logc::logPreprocessor);`
-Doesn't work well in file mode, disable by yourself.
-
+    This library is way too complex to tell you everything here. Just go and check the document.
 */
 #pragma once
 
@@ -29,16 +29,23 @@ Doesn't work well in file mode, disable by yourself.
 
 #include "basics.hpp" // for disable_copy, disable_move
 
+// Enable wide character support if UNICODE is defined
 #ifdef UNICODE
     #define LOGT_WCHAR_SUPPORT
 #endif
 
+// Include additional headers for wide character support
+// May switch to methods provided by basics.hpp later
 #ifdef LOGT_WCHAR_SUPPORT
     #include <locale>
     #include <codecvt>
     #include <type_traits>
 #endif
 
+// Maximum number of log channels supported
+// It is not that costly to increase this value,
+// but it is recommended to keep it as low as possible.
+// Usually 16 channels are already quite enough.
 #ifndef LOGT_MAX_CHANNEL
     #define LOGT_MAX_CHANNEL 16
 #endif

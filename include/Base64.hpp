@@ -1,3 +1,10 @@
+/*
+    A simple Base64 encoding and decoding library.
+    namespace:
+        Base64
+    link target:
+        SharedCppLib2::Base64
+*/
 #pragma once
 
 #include <iostream>

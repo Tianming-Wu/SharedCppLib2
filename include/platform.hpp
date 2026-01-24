@@ -1,3 +1,15 @@
+/*
+    Platform abstraction layer for cross-platform compatibility.
+    Provides functions to get executable path, environment variables, etc.
+    classes:
+        platform
+    link target:
+        SharedCppLib2::platform
+
+    Note that some apis are only available on specific platforms, since they makes
+    no sense on other platforms. Those apis are under platform::windows or platform::linux
+    namespaces.
+*/
 #pragma once
 
 #include <filesystem>

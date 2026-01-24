@@ -1,3 +1,10 @@
+/*
+    Basic utilities and definitions for SharedCppLib2.
+    types:
+        std::rect
+    link target:
+        SharedCppLib2::basic
+*/
 #pragma once
 
 #include <string>

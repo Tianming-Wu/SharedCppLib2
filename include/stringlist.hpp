@@ -1,3 +1,10 @@
+/*
+    A string list class with various utility functions.
+    classes:
+        std::stringlist, std::wstringlist
+    link target:
+        SharedCppLib2::basic
+*/
 #pragma once
 
 #include <string>
@@ -80,6 +87,7 @@ public:
     /// @return the built stringlist
     static basic_stringlist from_initializer(initializer_list<string_type> build);
 
+    static basic_stringlist split(const string_type &s, CharT delim);
     static basic_stringlist split(const string_type &s, const string_type &delim);
     static basic_stringlist split(const string_type &s, const basic_stringlist &delims);
 

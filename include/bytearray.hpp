@@ -1,3 +1,10 @@
+/*
+    A byte array class for handling raw binary data.
+    classes:
+        std::bytearray, std::bytearray_view
+    link target:
+        SharedCppLib2::basic
+*/
 #pragma once
 
 #include <vector>

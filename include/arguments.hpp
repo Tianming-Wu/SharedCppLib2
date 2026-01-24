@@ -1,3 +1,10 @@
+/*
+    A simple argument parser library. Supports many cool features.
+    classes:
+        std::arguments, std::warguments
+    link target:
+        SharedCppLib2::arguments
+*/
 #pragma once
 
 #include "stringlist.hpp"

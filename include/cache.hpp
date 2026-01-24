@@ -1,8 +1,15 @@
 /*
     Function cache library.
-
     Allows caching of function results based on their input parameters.
 
+    classes:
+        std::general_cache<ReturnType, Args...>
+        std::context_cache<ReturnType>
+        std::global_cache<ReturnType>
+    enums:
+        std::cache_mode { cache_construct, cache_call }
+    link target:
+        none (header-only)
 
 example:
     int expensive_function(int x, std::string y) {
@@ -13,7 +20,10 @@ example:
 
     int result = cached_expensive(42, "hello"); // computes and caches result
     int cached_result = cached_expensive(42, "hello"); // retrieves cached result
+    int another_result = cached_expensive(7, "world"); // computes and caches new result
 
+    cached_expensive.count(); // returns number of cached entries
+    cached_expensive.release(); // clears the cache
 */
 
 #pragma once
@@ -147,3 +157,7 @@ private:
     bool is_cached;
     ReturnType cached_value;
 };
+
+// we don't have function decorators in C++, so we need to use macros.
+#define CACHED(function) \
+    context_cache<decltype(function())> cached_##function([&]() { return function(); });
