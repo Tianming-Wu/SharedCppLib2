@@ -1,3 +1,9 @@
+/*
+    ANSI IO library for Ansi terminal features.
+
+    Note: cursor control functions are just not working correnctly. You'd better
+    not use them.
+*/
 #pragma once
 
 #include <iostream>
@@ -172,21 +178,26 @@ void progress_bar_texted(int current, int all, int length = 140);
  * This function uses ANSI escape codes to move the cursor
  * to the specified position in the terminal.
  */
+[[deprecated]]
 inline string movecursor(int row, int col)
 {
     return string("\033[" + std::to_string(row) + ";" + std::to_string(col) + "H");
 }
 
 /// @brief Hide the cursor.
+[[deprecated]]
 const string hidecursor { "\033[?25l" };
 
 /// @brief Show the cursor.
+[[deprecated]]
 const string showcursor { "\033[?25h" };
 
 /// @brief Save the current cursor position.
+[[deprecated]]
 const string savecursorpos { "\033[s" };
 
 /// @brief Restore the cursor position saved by savecursorpos
+[[deprecated]]
 const string restorecursorpos { "\033[u" };
 
 
@@ -197,6 +208,7 @@ const string restorecursorpos { "\033[u" };
  * 
  * @warning uses sscanf which is unsafe. Will be fixed in a newer release.
  */
+[[deprecated]]
 inline cursor_position get_cursor_position() {
     std::cout << "\033[6n";
 
@@ -215,6 +227,7 @@ inline cursor_position get_cursor_position() {
  * This function uses ANSI escape codes to get the terminal
  * size and returns a struct containing the number of rows and columns.
  */
+[[deprecated]]
 inline cursor_position get_terminal_size() {
     std::cout << savecursorpos;
     movecursor(999,999);
