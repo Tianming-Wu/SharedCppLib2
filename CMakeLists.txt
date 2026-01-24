@@ -22,8 +22,11 @@ set(INSTALL_INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/SharedCppLib2)
 # 防止编码报错
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/source-charset:utf-8>")
 
-# 添加调试后缀
+# 添加类型后缀
 set(CMAKE_DEBUG_POSTFIX "d")
+set(CMAKE_RELEASE_POSTFIX "")
+set(CMAKE_RELWITHDEBINFO_POSTFIX "rd")
+set(CMAKE_MINSIZEREL_POSTFIX "s")
 
 # 头文件目录
 include_directories("include" "${CMAKE_CURRENT_BINARY_DIR}/include/SharedCppLib2/")
@@ -52,6 +55,9 @@ add_library(Base64 STATIC src/Base64.cpp)
 add_library(platform STATIC src/platform.cpp)
 # add_library(process STATIC src/process.cpp)
 add_library(arguments STATIC src/arguments.cpp)
+add_library(ini STATIC src/ini.cpp)
+add_library(xml STATIC src/xml.cpp)
+add_library(abstract STATIC src/abstract.cpp)
 
 # 禁用 MSVC 的显式模板实例化警告
 if(MSVC)
@@ -68,13 +74,12 @@ target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要
 target_link_libraries(basic PRIVATE Base64)
 
 # basic 库依赖关系
-target_link_libraries(regexfilter PUBLIC basic)
-target_link_libraries(logc PUBLIC basic)
-target_link_libraries(sha256 PUBLIC basic)
-target_link_libraries(arguments PUBLIC basic)
+foreach(target regexfilter logc sha256 arguments ini abstract xml)
+    target_link_libraries(${target} PUBLIC basic)
+endforeach()
 
 # 库列表
-set(TARGET_LIST variant logd logf sha256 basic indexer regexfilter logt logc Base64 platform arguments)
+set(TARGET_LIST variant logd logf sha256 basic indexer regexfilter logt logc Base64 platform arguments ini abstract xml)
 
 # 安装目标
 install(TARGETS ${TARGET_LIST}
