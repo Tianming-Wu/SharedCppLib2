@@ -4,11 +4,31 @@
 
     The description of xml format and the documentation of this module
     can be found at the end of this file.
+
+    The module is not designed to work using virtual function table,
+    you should directly use your derived classes if you want to extend
+    its functionality.
+
+    I haven't found a good way to preserve the original document structure,
+    nor the comments and formatting features (spaces, newlines, tabs, etc.)
+    They will not be included in the dev plan for another period of time.
+
+    So so far this is only a basic XML parser and serializer, and is only
+    useful when you only care about the data itself. Or if you only want to
+    deal with some read only files, then it is totally fine.
+
+    classes:
+        xml::node, xml::document
+    enums:
+        xml::ParsingStrategy
+    link target:
+        SharedCppLib2::xml
 */
 
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <map>
 #include <optional>
 #include <vector>
@@ -53,6 +73,8 @@ struct xnamespace {
 class qualified_name {
 public:
     qualified_name() = default;
+    qualified_name(const char* name);
+    qualified_name(std::string_view name);
     qualified_name(const std::string& name);
 
     std::optional<std::string> prefix;
@@ -77,6 +99,7 @@ public: explicit parser_error(const std::string& message) : std::runtime_error("
 // xml single node
 class node
 {
+    friend class document;
 public:
     node() = default;
     ~node() = default;
@@ -119,6 +142,7 @@ public:
 
     void addChildNode(node&& child);
     void removeChildNode(size_t index);
+    void resetChildNodes();
 
     // clear all content and set them to default.
     // Note that this does not clear name or namespace info.
@@ -130,7 +154,7 @@ public:
     // if it is in a document.
     void reset();
 
-private:
+protected:
     std::string name;
     std::optional<std::string> text_content;
     std::optional<std::vector<node>> children;
@@ -188,7 +212,9 @@ public:
     void clear(); // clear entire document to default state
     void reset(); // reset entire document to invalid state
 
-private:
+    std::bytearray payload() const; // get raw byte payload of the serialized document
+
+protected:
     node root_node;
 
     // prolog components

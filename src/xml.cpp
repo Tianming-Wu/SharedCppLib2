@@ -7,9 +7,21 @@
 #include <functional>
 #include <sstream>
 
+#include "bytearray.hpp"
+
 namespace xml
 {
 
+
+qualified_name::qualified_name(const char* name)
+    : qualified_name(std::string(name))
+{
+}
+
+qualified_name::qualified_name(std::string_view name)
+    : qualified_name(std::string(name))
+{
+}
 
 qualified_name::qualified_name(const std::string &name)
 {
@@ -557,6 +569,11 @@ void node::removeChildNode(size_t index)
     children->erase(children->begin() + index);
 }
 
+void node::resetChildNodes()
+{
+    children.reset();
+}
+
 void node::clear()
 {
     text_content.reset();
@@ -571,20 +588,6 @@ void node::reset()
     clear();
     name = "";
     xmlns.reset();
-}
-
-std::istream& operator>>(std::istream &is, document &doc)
-{
-    // read full stream into a string
-    std::string xml_text((std::istreambuf_iterator<char>(is)), std::istreambuf_iterator<char>());
-    doc.deserialize(xml_text);
-    return is;
-}
-
-std::ostream& operator<<(std::ostream &os, const document &doc)
-{
-    os << doc.serialize();
-    return os;
 }
 
 // private helper functions
@@ -816,9 +819,31 @@ void document::reset()
     doctype_declaration.reset();
 }
 
+std::bytearray document::payload() const
+{
+    std::string serialized = serialize();
+    return std::bytearray::fromRaw(serialized.data(), serialized.size());
+}
+
 bool xnamespace::isDefault() const
 {
     return !prefix.has_value();
+}
+
+// operators
+
+std::istream& operator>>(std::istream &is, document &doc)
+{
+    // read full stream into a string
+    std::string xml_text((std::istreambuf_iterator<char>(is)), std::istreambuf_iterator<char>());
+    doc.deserialize(xml_text);
+    return is;
+}
+
+std::ostream& operator<<(std::ostream &os, const document &doc)
+{
+    os << doc.serialize();
+    return os;
 }
 
 } // namespace xml
