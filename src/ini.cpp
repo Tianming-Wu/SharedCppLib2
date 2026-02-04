@@ -167,6 +167,45 @@ void ini::setValue(const std::string &section, const std::string &key, const std
     data[section][key] = value.tohex();
 }
 
+std::optional<std::string> ini::getValueOptional(const std::string& section, const std::string& key) const
+{
+    if(data.contains(section) && data.at(section).contains(key)) {
+        return std::optional<std::string>(data.at(section).at(key));
+    }
+    return std::nullopt;
+}
+
+std::optional<bool> ini::getValueAsBoolOptional(const std::string& section, const std::string& key) const
+{
+    if(data.contains(section) && data.at(section).contains(key)) {
+        const std::string& valueStr = data.at(section).at(key);
+        if(valueStr == "1" || valueStr == "true" || valueStr == "yes" || valueStr == "on") {
+            return std::optional<bool>(true);
+        } else if(valueStr == "0" || valueStr == "false" || valueStr == "no" || valueStr == "off") {
+            return std::optional<bool>(false);
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<std::stringlist> ini::getValueAsStringListOptional(const std::string& section, const std::string& key) const
+{
+    if(data.contains(section) && data.at(section).contains(key)) {
+        const std::string& valueStr = data.at(section).at(key);
+        return std::optional<std::stringlist>(std::stringlist::unpack(valueStr));
+    }
+    return std::nullopt;
+}
+
+std::optional<std::bytearray> ini::getValueAsByteArrayOptional(const std::string& section, const std::string& key) const
+{
+    if(data.contains(section) && data.at(section).contains(key)) {
+        const std::string& valueStr = data.at(section).at(key);
+        return std::optional<std::bytearray>(std::bytearray::fromHex(valueStr));
+    }
+    return std::nullopt;
+}
+
 bool ini::hasSection(const std::string &section) const
 {
     return data.contains(section);

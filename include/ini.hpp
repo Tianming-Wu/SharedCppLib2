@@ -35,6 +35,9 @@
 #include <map>
 #include <filesystem>
 
+
+#include <optional>
+
 // forward declaration
 namespace std {
     template<typename CharT> class basic_stringlist;
@@ -137,6 +140,41 @@ public:
         data[section][key] = std::string(s.begin(), s.end());
     }
     #endif // SHAREDCPPLIB2_API_SUPPORT
+
+
+    std::optional<std::string> getValueOptional(const std::string& section, const std::string& key) const;
+
+    template<typename T>
+    requires std::is_integral_v<T>
+    std::optional<T> getValueAsIntegerOptional(const std::string& section, const std::string& key) const {
+        if(data.contains(section) && data.at(section).contains(key)) {
+            const std::string& valueStr = data.at(section).at(key);
+            try {
+                return std::optional<T>(static_cast<T>(std::stoll(valueStr)));
+            } catch(...) {
+                return std::nullopt;
+            }
+        }
+        return std::nullopt;
+    }
+
+    template<typename T>
+    requires std::is_floating_point_v<T>
+    std::optional<T> getValueAsFloatOptional(const std::string& section, const std::string& key) const {
+        if(data.contains(section) && data.at(section).contains(key)) {
+            const std::string& valueStr = data.at(section).at(key);
+            try {
+                return std::optional<T>(static_cast<T>(std::stold(valueStr)));
+            } catch(...) {
+                return std::nullopt;
+            }
+        }
+        return std::nullopt;
+    }
+
+    std::optional<bool> getValueAsBoolOptional(const std::string& section, const std::string& key) const;
+    std::optional<std::stringlist> getValueAsStringListOptional(const std::string& section, const std::string& key) const;
+    std::optional<std::bytearray> getValueAsByteArrayOptional(const std::string& section, const std::string& key) const;
 
     bool hasSection(const std::string& section) const;
     bool hasKey(const std::string& section, const std::string& key) const;
