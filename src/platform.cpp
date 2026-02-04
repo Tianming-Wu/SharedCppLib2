@@ -131,6 +131,8 @@ fs::path findExecutableInPath(const std::string &name)
     return fs::path();
 }
 
+
+
 #ifdef OS_WINDOWS
 namespace windows {
 

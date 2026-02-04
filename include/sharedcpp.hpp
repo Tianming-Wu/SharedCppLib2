@@ -10,3 +10,9 @@
 #include "bytearray.hpp"
 #include "regexfilter.hpp"
 // #include ""
+
+
+
+/*
+    This file is something like <bits/stdc++.h> in GCC.
+*/

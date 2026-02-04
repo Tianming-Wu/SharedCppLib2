@@ -51,6 +51,9 @@ std::string TranslateError(DWORD errorCode);
 
 inline std::string TranslateLastError() { return TranslateError(GetLastError()); }
 
+// Get Argument in WinMain(), only Unicode is supported
+// because Windows only provided unicode api for the required
+// function. You can use __argc and __argv anyway, that's totally fine.
 class wargProvider {
 public:
     wargProvider();
@@ -70,5 +73,39 @@ namespace linux {
 
 } // namespace platform::linux
 #endif
+
+/*
+    This part is to simplify the main entry point definition,
+    if you need a console version and gui version of your application
+    at the same time.
+
+    Not finished and is currently unusable.
+*/
+
+// #ifdef OS_WINDOWS
+//     #define UNIVERSIAL_MAIN_ENTRY_POINTA \
+//         INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, INT nCmdShow) { \
+//             int argc = __argc; \
+//             char** argv = __argv;
+    
+//     #define UNIVERSIAL_MAIN_ENTRY_POINTW \
+//         INT WINAPI WinMainW(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, INT nCmdShow) { \
+//             platform::windows::wargProvider wargs; \
+//             int argc = wargs.argc; \
+//             LPWSTR* argv = wargs.argv;
+    
+//     #define UNIVERSIAL_MAIN_END_POINT \
+//         LocalFree(argv);
+// #else 
+//     #define UNIVERSIAL_MAIN_ENTRY_POINTA \
+//         int main(int argc, char** argv) {
+
+//     #define UNIVERSIAL_MAIN_ENTRY_POINTW \
+//         int wmain(int argc, wchar_t** argv) {
+
+//     #define UNIVERSIAL_MAIN_END_POINT
+// #endif
+
+
 
 } // namespace platform

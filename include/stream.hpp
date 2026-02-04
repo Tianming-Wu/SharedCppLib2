@@ -1,3 +1,13 @@
+/*
+    Template virtual stream object interface.
+
+    The goal is to provide a common interface for different stream types,
+    such as file streams, pipe streams, network streams, etc.
+
+    The detailed description is provided at the end of this file.
+
+*/
+
 #pragma once
 
 #include <iostream>
