@@ -30,6 +30,7 @@
 - **`hpcalc`** - 高精度算术运算
 - **[`regexfilter`](doc/zh_CN/regexfilter.md)** - 基于正则表达式的黑名单/白名单过滤
 - **`atxsort`** - 通用排序算法
+- **[`ini`](doc/zh_CN/ini.md)** - INI 配置解析与写入库
 
 ## 遗留模块（不推荐使用）
 

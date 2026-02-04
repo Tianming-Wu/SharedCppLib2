@@ -31,6 +31,7 @@ A collection of modern C++ utility libraries designed for performance and ease o
 - **`hpcalc`** - High-precision arithmetic operations
 - **[`regexfilter`](doc/regexfilter.md)** - Regex-based blacklist/whitelist filtering
 - **`atxsort`** - Universal sorting algorithms
+- **[`ini`](doc/ini.md)** - INI configuration parser and writer
 
 ## Legacy Modules (Not Recommended)
 
