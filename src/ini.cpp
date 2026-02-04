@@ -4,7 +4,7 @@
 #include <stringlist.hpp>
 #include <bytearray.hpp>
 
-bool ini::loadFromFile(const std::string &filename)
+bool ini::loadFromFile(const std::filesystem::path &filename)
 {
     std::ifstream ifs(filename);
 
@@ -18,7 +18,7 @@ bool ini::loadFromFile(const std::string &filename)
     return true;
 }
 
-bool ini::saveToFile(const std::string &filename) const
+bool ini::saveToFile(const std::filesystem::path &filename) const
 {
     if(data.empty()) return true; // Nothing to save
     std::ofstream ofs(filename);
@@ -83,6 +83,16 @@ std::ostream &ini::operator<<(std::ostream &os) const
     }
 
     return os;
+}
+
+std::map<std::string, std::string> &ini::operator[](const std::string &section)
+{
+    return data[section]; // This will create the section if it doesn't exist
+}
+
+const std::map<std::string, std::string> &ini::operator[](const std::string &section) const
+{
+    return data.at(section); // Will throw if section doesn't exist
 }
 
 std::string ini::getValue(const std::string &section, const std::string &key, const std::string &default_value) const

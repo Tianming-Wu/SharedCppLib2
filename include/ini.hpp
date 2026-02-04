@@ -33,6 +33,7 @@
 
 #include <string>
 #include <map>
+#include <filesystem>
 
 // forward declaration
 namespace std {
@@ -46,12 +47,15 @@ public:
     ini() = default;
     ~ini() = default;
 
-    bool loadFromFile(const std::string& filename);
-    bool saveToFile(const std::string& filename) const;
+    bool loadFromFile(const std::filesystem::path& filename);
+    bool saveToFile(const std::filesystem::path& filename) const;
 
     // You are actually allowed to save/load from any stream.
     std::istream& operator>>(std::istream& is);
     std::ostream& operator<<(std::ostream& os) const;
+
+    std::map<std::string, std::string>& operator[] (const std::string& section);
+    const std::map<std::string, std::string>& operator[] (const std::string& section) const;
 
     // string-based accessors
     std::string getValue(const std::string& section, const std::string& key, const std::string& default_value = "") const;
