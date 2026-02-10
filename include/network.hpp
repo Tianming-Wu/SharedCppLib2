@@ -17,6 +17,9 @@ public:
     {}
 };
 
+void init() noexcept;
+void cleanup() noexcept; // we can't really cleanup in destructor
+
 struct ipv4 {
     uint8_t octet1, octet2, octet3, octet4;
 
@@ -40,7 +43,7 @@ struct ipv6 {
     bool valid() const;
 };
 
-struct inet_addr {
+struct network_address {
     std::string address;
     
     ipv4 to_ipv4() const;
@@ -50,12 +53,27 @@ struct inet_addr {
 
     ipv4 __ipv4;
     ipv6 __ipv6;
+
+    bool dummy = false; // If this flag was set, the address is just a placeholder and does not represent a real address
 };
 
 // functions
-bool ping(const inet_addr& addr, std::chrono::milliseconds timeout = std::chrono::seconds(1));
-inet_addr resolve(const std::string& hostname);
+bool ping(const network_address& addr, std::chrono::milliseconds timeout = std::chrono::seconds(1));
+network_address resolve(const std::string& hostname);
 
+
+namespace http {
+
+// client& operator>> (client& cli, std::string& response);
+// client& operator<< (client& cli, const std::string& request);
+
+} // namespace http
+
+
+/// @brief DNS lookup functions
+namespace dns {
+
+} // namespace dns
 
 
 } // namespace network

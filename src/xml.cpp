@@ -550,6 +550,8 @@ std::vector<node> &node::getChildNodes()
 
 const std::vector<node> &node::getChildNodes() const
 {
+    // note: this is not safe, returning reference to a temporary object.
+    ///TODO: fix this by changing the function signature.
     return children.value_or(std::vector<node>());
 }
 

@@ -52,6 +52,42 @@ body::body(const xml::node &&node)
 
 
 
+
+Image::Image(const url &src, const std::string &alt)
+    : xml::node()
+{
+    name = "img"; // name should be "img"
+    setAttribute("src", src.toString());
+    setAttribute("alt", alt);
+    xml::node::setSelfClosing(true); // always self-closing
+}
+
+void Image::setSize(int width, int height)
+{
+    setAttribute("width", std::to_string(width));
+    setAttribute("height", std::to_string(height));
+}
+
+void Image::resetSize()
+{
+    removeAttribute("width");
+    removeAttribute("height");
+}
+
+Script::Script(const url& src)
+{
+    name = "script"; // name should be "script"
+    setAttribute("src", src.toString());
+    xml::node::setSelfClosing(false); // always non-self-closing
+}
+
+Script::Script(const std::string &inline_script)
+{
+    name = "script"; // name should be "script"
+    setTextContent(inline_script);
+    xml::node::setSelfClosing(false); // always non-self-closing
+}
+
 document::document()
 {
     // set html doctype prolog

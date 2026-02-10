@@ -32,6 +32,7 @@ using xml::qualified_name;
 using uri = uri;
 using url = url;
 
+// Header Node of html module
 class header : public xml::node
 {
 public:
@@ -61,6 +62,7 @@ public:
     void cancelSetSelfClosing() = delete;
 };
 
+// Body Node of html module
 class body : public xml::node
 {
 public:
@@ -72,6 +74,35 @@ public:
 
     enable_copy_move(body) // use default copy/move for now
 };
+
+
+// Friendly insert types
+class Image : protected xml::node
+{
+public:
+    Image(const url& src, const std::string& alt = "");
+
+    void setSize(int width, int height);
+    void resetSize(); // remove size attributes
+
+    ~Image() = default;
+
+    enable_copy_move(Image) // use default copy/move for now
+};
+
+
+class Script : protected xml::node
+{
+public:
+    Script(const url& src); // Load script from url
+    Script(const std::string& inline_script); // Load inline script
+
+    ~Script() = default;
+
+    enable_copy_move(Script) // use default copy/move for now
+};
+
+
 
 // we do not derive from xml::document,
 // so I don't have to delete many functions.
@@ -112,3 +143,37 @@ std::istream& operator>>(std::istream& is, document& doc);
 std::ostream& operator<<(std::ostream& os, const document& doc);
 
 } // namespace html
+
+
+/*
+    Developer Note:
+
+    As for HTML standard, I want to provide full-featured html construction, meaning
+    that it is possible to build a valid html file with all features using this library.
+
+    However, the priority of this library is relatively low, so maybe that would not be
+    possible in the near future.
+
+    To achieve this goal, this library provides simplified syntax for common html features.
+
+    I may have to also modify xml library for a better construction experience.
+
+    Typical tags are:
+    <head> </head> - meta tags, title, favicon, etc.
+    <body> </body> - content of the page, including text, images, scripts, etc.
+
+    <a> </a> - hyperlinks, which can be easily constructed by creating a node with name "a" and setting href attribute.
+    class name: *Anchor
+        - supported attributes: href, target, rel, etc.
+    
+    <img/> - images, which can be easily constructed by creating an Image object with src and alt attributes.
+    class name: Image
+        - self-closing
+        - supported attributes: src, alt, width, height
+
+    <script> </script> - scripts, which can be easily constructed by creating a Script object with src or inline script content.
+    class name: Script
+        - supported attributes: src
+        - inline script content is supported by setting text content of the node.
+
+*/

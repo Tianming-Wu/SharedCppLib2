@@ -3,7 +3,28 @@
 #include <stringlist.hpp>
 #include <platform.hpp> // for platform specific includes and flags
 
+int _n_sock = -1;
+
 namespace network {
+
+
+void init() noexcept
+{
+    if(_n_sock != -1) {
+        return;
+    }
+
+    WSADATA wsaData;
+	WSAStartup(0x202, &wsaData);
+
+    _n_sock = socket(AF_INET, SOCK_DGRAM, 0); // udp
+    _n_sock = socket(AF_INET, SOCK_STREAM, 0); // tcp
+}
+
+void cleanup() noexcept
+{
+    // currently, do nothing because the OS will clean up everything on exit
+}
 
 std::string ipv4::to_string() const
 {
@@ -36,12 +57,12 @@ bool ipv4::valid() const
     return true;
 }
 
-bool inet_addr::valid() const
+bool network_address::valid() const
 {
     return __ipv4.valid() || __ipv6.valid();
 }
 
-bool ping(const inet_addr &addr, std::chrono::milliseconds timeout)
+bool ping(const network_address &addr, std::chrono::milliseconds timeout)
 {
 #ifdef OS_WINDOWS
     // Windows implementation
@@ -55,9 +76,9 @@ bool ping(const inet_addr &addr, std::chrono::milliseconds timeout)
 #endif
 }
 
-inet_addr resolve(const std::string &hostname)
+network_address resolve(const std::string &hostname)
 {
-    return inet_addr();
+    return network_address();
 }
 
 } // namespace network

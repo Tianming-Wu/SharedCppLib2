@@ -3,6 +3,7 @@
 #include <cctype>
 #include <stdexcept>
 #include <algorithm>
+#include <map>
 
 uri::uri(const std::string &url)
 {
@@ -315,18 +316,24 @@ std::optional<uint16_t> url::getDefaultPort(const std::string& scheme)
 {
     std::string lower_scheme = scheme;
     std::transform(lower_scheme.begin(), lower_scheme.end(), lower_scheme.begin(), ::tolower);
+
+    static const std::map<std::string, std::optional<uint16_t>> default_ports = {
+        {"http", 80},
+        {"https", 443},
+        {"ftp", 21},
+        {"ftps", 990},
+        {"ssh", 22},
+        {"telnet", 23},
+        {"smtp", 25},
+        {"pop3", 110},
+        {"imap", 143},
+        {"ldap", 389},
+        {"file", std::nullopt}
+    };
     
-    if(lower_scheme == "http") return 80;
-    if(lower_scheme == "https") return 443;
-    if(lower_scheme == "ftp") return 21;
-    if(lower_scheme == "ftps") return 990;
-    if(lower_scheme == "ssh") return 22;
-    if(lower_scheme == "telnet") return 23;
-    if(lower_scheme == "smtp") return 25;
-    if(lower_scheme == "pop3") return 110;
-    if(lower_scheme == "imap") return 143;
-    if(lower_scheme == "ldap") return 389;
-    if(lower_scheme == "file") return std::nullopt;
-    
+    auto it = default_ports.find(lower_scheme);
+    if(it != default_ports.end()) {
+        return it->second;
+    }
     return std::nullopt;
 }
