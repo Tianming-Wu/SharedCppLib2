@@ -162,6 +162,8 @@ target_link_libraries(my_app
 - `SharedCppLib2::Base64`
 - `SharedCppLib2::platform`
 
+你可以从头文件顶部的注释中获知链接目标。
+
 ## 最佳实践
 
 ### 1. 版本固定

@@ -1,6 +1,6 @@
 # SHARED CPP Library 2 (SharedCppLib2)
 
-[中文](README-zh_CN.md)
+Other languages: [中文](README-zh_CN.md)
 
 **Author**: Tianming ([GitHub](https://github.com/Tianming-Wu))
 
@@ -17,6 +17,10 @@ You may use this library for personal or commercial purposes. Attribution is app
 
 A collection of modern C++ utility libraries designed for performance and ease of use. Built with C++23 standard.
 
+Some part of this project is basically re-inventing the wheel. The purpose is to learn something.
+
+I still tried to make the API design as good (friendly, easy-to-use) as possible.
+
 ## Core Modules
 
 - **`ansiio`** - ANSI terminal output and formatting
@@ -32,6 +36,9 @@ A collection of modern C++ utility libraries designed for performance and ease o
 - **[`regexfilter`](doc/regexfilter.md)** - Regex-based blacklist/whitelist filtering
 - **`atxsort`** - Universal sorting algorithms
 - **[`ini`](doc/ini.md)** - INI configuration parser and writer
+- **`platform`** - Cross-platform utilities and abstractions
+- **`xml`** - XML parsing and serialization library (in development) (Warning: Though the module is basically functional, some functions are yet unsafe and cause crashes.)
+- **`html`** - HTML parsing and manipulation library (in development)
 
 ## Legacy Modules (Not Recommended)
 

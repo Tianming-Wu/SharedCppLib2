@@ -1,5 +1,30 @@
 # Changelog
 
+
+### v1.21.0
+- New: version.hpp for compile-time version information.
+- Fix: Changed arguments behavior on argv[0] to be more reasonable. Now empty() ignores argv[0].
+- Add: arguments now supports --help and --version specific tag.
+- Chg: arguments now returns a boolean value indicating whether the option was found or using the default value.
+- New: arguments now supports defining a primary command (first non-option argument).
+- New: bytearray added appendContainer for storage of STL containers with supported element types.
+- New: wstring-string conversion is now present in platform header.
+- New: logt now supports steady-clock timestamps, and timestamp consturction is exposed now if you need to use it.
+- New: platform now provides "find executable in path" function for easier executable searching.
+- New: engeneering module (header-only) for easier engineering predefined type formatting.
+- Fix: bytearray is now safer and more explicit about its behavior. Some functions may bahave differently than before.
+- New: process module for easier process management. (still in development)
+- Fix: logt formatting module is now working correctly. (It had a bug before that is not showing the corrent thread and function name)
+- New: added SharedCppLib2 API Standard definition (api.hpp).
+- New: abstract module for virtual path resource access, like abstract path.
+- Dep: Some of the features in ansiio module are now marked as deprecated, since they are simply not working.
+- New: ini module for simple INI file parsing and writing.
+- New: xml module for xml parsing and writing. still in development.
+- New: html module for html parsing and writing. still in development.
+- New: uri library for URI parsing and building.
+- New: network module for easier network programming.
+- Chg: Base64 module is now using bytearray for binary side instead of string.
+
 ### v1.20.0
 - New: arguments library with template-based type-safe parameter parsing.
 - New: arguments supports integral, floating-point, enum, and custom deserializable types.

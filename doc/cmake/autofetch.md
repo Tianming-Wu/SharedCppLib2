@@ -162,6 +162,8 @@ After fetching, you can link with these SharedCppLib2 targets:
 - `SharedCppLib2::Base64`
 - `SharedCppLib2::platform`
 
+You can get the link target in the comment above the header file.
+
 ## Best Practices
 
 ### 1. Version Pinning
