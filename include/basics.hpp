@@ -10,6 +10,7 @@
 #include <string>
 #include <sstream>
 #include <type_traits>
+#include <vector>
 
 #include "version.hpp"
 
@@ -125,6 +126,44 @@ public:
 
 #define RUN_ONCE(FN, ...) RunOnce::execute(FN, ##__VA_ARGS__)
 #endif
+
+/// @brief Allow to scroll through bitwide flags using grammer `for (auto bit : enum_bitwiden(flags))`
+/// @tparam E An enum type with bitwise flags, and & operator support.
+/// @param value The enum value containing bitwise flags.
+/// @return A vector of individual bit flags set in the value.
+template<typename E>
+requires std::is_enum_v<E>
+std::vector<E> enum_bitwiden(E value) {
+    using T = std::underlying_type_t<E>;
+    std::vector<E> result;
+    for (T bit = 1; bit != 0; bit <<= 1) {
+        if (static_cast<T>(value) & bit) {
+            result.push_back(static_cast<E>(bit));
+        }
+    }
+    return result;
+}
+
+template<typename E>
+requires std::is_enum_v<E>
+std::vector<E> enum_bitwiden_range(E value, size_t min, size_t max) {
+    using T = std::underlying_type_t<E>;
+    max = std::min(max, sizeof(T) * 8); // No exceed the number of bits in the underlying type
+    std::vector<E> result;
+    for (T bit = 1 << min; bit != 0 && bit < (1 << max); bit <<= 1) {
+        if (static_cast<T>(value) & bit) {
+            result.push_back(static_cast<E>(bit));
+        }
+    }
+    return result;
+}
+
+// /// @brief Get the number of keys in the enum
+// template<typename E>
+// requires std::is_enum_v<E>
+// constexpr size_t __sizeof_enum() {
+//     for()
+// }
 
 #define Define_Enum_BitOperators(NAME) \
     inline constexpr NAME operator|(NAME a, NAME b) noexcept { \
