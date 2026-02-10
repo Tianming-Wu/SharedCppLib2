@@ -144,6 +144,12 @@ std::vector<E> enum_bitwiden(E value) {
     return result;
 }
 
+// Post a warning asking the user to disable windows.h min/max macros
+// That was a terrible namespace pollution. You basically CANT ESCAPE because IT FUCKING POLLUTES ANY NAMESPACE
+#if defined min || defined max
+    #error "min and max macros are defined. If you included windows.h, consider defining NOMINMAX before including it to avoid conflicts with std::min and std::max. You may encounter problems like error C2589. It is the namespace pollution caused by windows.h."
+#endif
+
 template<typename E>
 requires std::is_enum_v<E>
 std::vector<E> enum_bitwiden_range(E value, size_t min, size_t max) {
