@@ -292,9 +292,9 @@ basic_stringlist<CharT>& basic_stringlist<CharT>::operator=(const basic_stringli
     return *this;
 }
 
-template<typename CharT>
-basic_stringlist<CharT>::basic_stringlist() : vector<string_type>()
-{}
+// template<typename CharT>
+// basic_stringlist<CharT>::basic_stringlist() : vector<string_type>()
+// {}
 
 template<typename CharT>
 basic_stringlist<CharT>::basic_stringlist(int size, CharT** content, int begin, int end)

@@ -110,9 +110,8 @@ public:
     size_t all_size();
 
 public:
-    explicit basic_stringlist();
     explicit basic_stringlist(int size, CharT** content, int begin = 0, int end = -1);
-    basic_stringlist(initializer_list<string_type> build);
+    basic_stringlist(initializer_list<string_type> build = {});
     basic_stringlist(const basic_stringlist& l);
     explicit basic_stringlist(const string_type& s);
     explicit basic_stringlist(CharT s);
