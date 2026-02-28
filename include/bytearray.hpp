@@ -28,12 +28,19 @@ using wstringlist = basic_stringlist<wchar_t>;
 // #undef byte
 // typedef unsigned char byte;
 
+// simplify byte literal construction, so that users can write std::byte{0x08} as B(0x08) instead. Still explicit, but less verbose.
+// The reason not to use BYTE is because of Microsoft's obnoxious definition of EVERYTHING
+#ifndef BYTEARRAY_NODEFINE
+    #define B(IN) std::byte{IN}
+    #define PCB(IN) reinterpret_cast<const std::byte*>(&IN)
+#endif
+
 class bytearray : public vector<byte>
 {
 public:
     bytearray();
     bytearray(const bytearray &ba);
-    explicit bytearray(byte b);
+    bytearray(byte b); // Single-Element Constructor is fine to be implicit, since std::byte is safe.
     explicit bytearray(const std::string &str); // note: assumes raw data, does not include length and null terminator
     explicit bytearray(const char *raw, size_t size);
     explicit bytearray(const byte *raw, size_t size);
@@ -45,7 +52,9 @@ public:
 
     template<typename _Any>
     requires (std::is_trivially_copyable_v<_Any>)
-    explicit bytearray(const _Any& in) {
+    explicit bytearray(const _Any& in)
+        : vector<byte>(sizeof(_Any))
+    {
         const std::byte* src = reinterpret_cast<const std::byte*>(&in);
         ::std::vector<std::byte>::insert(end(), src, src + sizeof(_Any));
     }
