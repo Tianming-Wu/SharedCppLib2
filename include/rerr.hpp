@@ -1,12 +1,31 @@
 /*
     Rust-like error handling by return for C++23.
 
-    Header-only.
+    This library is header-only.
 
     But of course without memory management in Rust.
     Can still use C++'s object-based memory management though.
 
     STL, why not? This whole project is heavily based on STL.
+
+    Usage Example:
+        rerr myFunction() {
+            if (somethingWentWrong) {
+                return RERROR("Something went wrong");
+            }
+            return RSUCCESS;
+        }
+        auto [success, message] = myFunction();
+
+        rerr_val<int> myFunction2() {
+            if (somethingWentWrong) {
+                return rerr_val<int>(false, 0, "Something went wrong");
+            }
+            return rerr_val<int>(true, 42);
+        }
+
+        auto [success, value, message] = myFunction2();
+
 */
 
 #pragma once
@@ -160,3 +179,6 @@ namespace std {
     template<typename _Type, typename _ErrType, _ErrType _ErrSuccessValue>
     struct tuple_element<2, rerr_eval<_Type, _ErrType, _ErrSuccessValue>> { using type = string; };
 }
+
+
+// } // namespace rustlike

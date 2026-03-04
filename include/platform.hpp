@@ -48,7 +48,6 @@ fs::path findExecutableInPath(const std::string& name);
 namespace windows {
 
 std::string TranslateError(DWORD errorCode);
-
 inline std::string TranslateLastError() { return TranslateError(GetLastError()); }
 
 // Get Argument in WinMain(), only Unicode is supported

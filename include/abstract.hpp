@@ -1,5 +1,9 @@
 /*
     Abstract types used by some libraries
+
+    This is NOT abstract classes in the OOP sense, but rather
+    some general-purpose types that are not tied to any specific
+    library or context, and can be used in various ways.
 */
 
 #pragma once
@@ -18,6 +22,7 @@ namespace std {
 }
 
 // Abstract path used for tree-like path structures
+// for example, filesystem
 class abstract_path {
 public:
     abstract_path() = default;

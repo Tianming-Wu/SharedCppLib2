@@ -1,3 +1,20 @@
+/*
+    sha256 module for SharedCppLib2
+
+    I'm not the author of some of its code. I do added some features and adapt it
+    to the bytearray class in this library.
+
+    This module is almost stand-alone, and only depends on bytearray (basic.hpp).
+    It can be extracted, but it's not suggested.
+
+
+    Currently, this module only provides the most basic functionality of SHA256,
+    which is to use it as a hash function.
+    It cannot actually encrypt data in the sense of a cipher, and it does not support HMAC or other features.
+    It also does not support incremental hashing, which means you have to provide the whole message at once.
+
+*/
+
 #pragma once
 
 #include <stdint.h>
@@ -24,5 +41,5 @@ bool encrypt(const std::bytearray& message,
 std::string getHexMessageDigest(const std::string& message);
 std::bytearray getMessageDigest(std::bytearray message);
 
-} // namespace shaunit
+} // namespace sha256
 
