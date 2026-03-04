@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.10)
 # endif()
 
 project(SharedCppLib2
-    VERSION 1.20.0
+    VERSION 1.21.0
     LANGUAGES CXX
 )
 
@@ -60,6 +60,18 @@ add_library(arguments STATIC src/arguments.cpp)
 add_library(ini STATIC src/ini.cpp)
 add_library(xml STATIC src/xml.cpp)
 add_library(abstract STATIC src/abstract.cpp)
+add_library(debug STATIC src/debug.cpp)
+
+# Network module (commented out until ready for main branch)
+# add_library(network STATIC 
+#     src/network.cpp 
+#     src/dns.cpp 
+#     src/tcpserver.cpp 
+#     src/tcpclient.cpp
+#     src/httpserver.cpp
+#     src/httpclient.cpp
+#     src/http.cpp
+# )
 
 # 禁用 MSVC 的显式模板实例化警告
 if(MSVC)
@@ -70,7 +82,13 @@ endif()
 target_link_libraries(logd PUBLIC variant)
 target_link_libraries(logf PUBLIC logd)
 target_link_libraries(logc PUBLIC logt)
+
+# 平台依赖
 target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要平台相关支持
+# target_link_libraries(debug PUBLIC platform) # 需要用户自行链接以使用 platform 提供的功能
+
+# Network module dependencies (commented out until ready)
+# target_link_libraries(network PUBLIC basic platform)
 
 # 按需链接：bytearray_base64.cpp 会引用 Base64，但只有在用户代码调用相关函数时才会被链接
 target_link_libraries(basic PRIVATE Base64)
@@ -81,7 +99,7 @@ foreach(target regexfilter logc sha256 arguments ini abstract xml)
 endforeach()
 
 # 库列表
-set(TARGET_LIST variant logd logf sha256 basic indexer regexfilter logt logc Base64 platform arguments ini abstract xml)
+set(TARGET_LIST variant logd logf sha256 basic indexer regexfilter logt logc Base64 platform arguments ini abstract xml debug)
 
 # 安装目标
 install(TARGETS ${TARGET_LIST}
