@@ -101,3 +101,21 @@ int main(int argc, char** argv) {
 Detailed documentation is available in header files as Doxygen comments.
 
 **Full Changelog**: [WhatsNew](WhatsNew)
+
+
+### Some comments left by Dev:
+Microsoft is doing a bad job at there api (windows.h explicitly). 
+
+It contains SO MANY macros that pollute the global namespace. Some of them can not even work with the C++ standard.
+
+In development, if you are using VSCode for example, be careful when some of your code turned blue, which probably indicates that some macro is messing with your code.
+
+I have no idea how to fix these. I tried to re-package some of the windows.h content in a more modern, standard and namespace nested way in another project, but it is just too much work and it is almost impossible to cover all the use cases.
+
+If you are developing something on Windows, espeacially some shared modules, I recommend that you avoid including windows.h in any of your header files. Only include them in the .cpp files.
+
+And always define `NOMINMAX` and `WIN32_LEAN_AND_MEAN` before including windows.h, to reduce the pollution. If some names are really unusable, like Process32First and Process32Next that somehow Microsoft developers completely covered the ANSI version, you can just `#undef` them.
+
+Note that it would ALWAYS be a good habit of using A and W suffix version of Windows API. I think the macros defined in windows.h is completely for compatibility with old codes (which is a main goal for them). But it has nothing good with modern C++ code. So just use the A and W version directly, and you can avoid a lot of problems.
+
+I added some warnings in the code. You can experience some of my fixes in the `platform_windows` module. They are hardly enough, so add your thing if you also finds something.
