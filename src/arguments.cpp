@@ -37,6 +37,12 @@ basic_arguments<CharT>::basic_arguments(int argc, CharT **argv, parse_policy pol
 }
 
 template <typename CharT>
+bool basic_arguments<CharT>::fail() const
+{
+    return m_failed;
+}
+
+template <typename CharT>
 bool basic_arguments<CharT>::addParameter(const string_type &name, string_type &value, const string_type &default_value)
 {
     auto it = m_parameters.find(name);
@@ -144,6 +150,74 @@ bool basic_arguments<CharT>::addEnum(const string_type &name, int &value, const 
         value = default_value;
         return false;
     }
+}
+
+template <typename CharT>
+basic_arguments<CharT>::string_type basic_arguments<CharT>::anyAfter(const string_type &name) const
+{
+    auto it = m_parameters.find(name);
+    if (it != m_parameters.end()) {
+        size_t idx = it->second.position;
+        if(idx + 1 < this->size()) {
+            return this->xjoin(idx + 1); // merge everything after idx into a single string and return
+        }
+    }
+    return string_type();
+}
+
+template <typename CharT>
+basic_arguments<CharT>::string_type basic_arguments<CharT>::anyAfter(size_t index) const
+{
+    if(index + 1 < this->size()) {
+        return this->xjoin(index + 1); // merge everything after index into a single string and return
+    }
+    return string_type();
+}
+
+template <typename CharT>
+basic_arguments<CharT>::string_type basic_arguments<CharT>::anyBefore(const string_type &name) const
+{
+    auto it = m_parameters.find(name);
+    if (it != m_parameters.end()) {
+        size_t idx = it->second.position;
+        if(idx > 0) {
+            return this->xjoin(1, idx); // merge everything before idx into a single string and return
+        }
+    }
+    return string_type();
+}
+
+template <typename CharT>
+basic_arguments<CharT>::string_type basic_arguments<CharT>::anyBefore(size_t index) const
+{
+    if(index > 0) {
+        return this->xjoin(1, index); // merge everything before index into a single string and return
+    }
+    return string_type();
+}
+
+template <typename CharT>
+basic_arguments<CharT>::string_type basic_arguments<CharT>::anyBetween(const string_type &name1, const string_type &name2) const
+{
+    auto it1 = m_parameters.find(name1);
+    auto it2 = m_parameters.find(name2);
+    if (it1 != m_parameters.end() && it2 != m_parameters.end()) {
+        size_t idx1 = it1->second.position;
+        size_t idx2 = it2->second.position;
+        if(idx1 < idx2) {
+            return this->xjoin(idx1 + 1, idx2); // merge everything between idx1 and idx2 into a single string and return
+        }
+    }
+    return string_type();
+}
+
+template <typename CharT>
+basic_arguments<CharT>::string_type basic_arguments<CharT>::anyBetween(size_t index1, size_t index2) const
+{
+    if(index1 < index2 && index2 < this->size()) {
+        return this->xjoin(index1 + 1, index2); // merge everything between index1 and index2 into a single string and return
+    }
+    return string_type();
 }
 
 template <typename CharT>

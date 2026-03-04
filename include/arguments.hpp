@@ -1,5 +1,17 @@
 /*
     A simple argument parser library. Supports many cool features.
+
+    However, the current implementation can only support specific formats of
+    arguments, so if you want some complex grammar, you should parse it yourself.
+
+    This library supports the most commonly used formats of arguments, and is also
+    adjustable to some extent. It should be enough for most use cases.
+
+    Multiple plain arguments like the ones used by git is not fully supported.
+    Currently, the library only supports one primary command.
+
+    The full document can be found at the bottom of this file.
+
     classes:
         std::arguments, std::warguments
     link target:
@@ -70,6 +82,10 @@ public:
     /// Check if there are any arguments (excluding argv[0])
     /// @return true if there are arguments besides program name
     bool empty() const;
+
+    /// Check if parse is successful.
+    /// @return true if parsing failed
+    bool fail() const;
 
     // Key feature: everything was actually parsed afterwards, and the behavior is actually in parse_policy.
     bool addParameter(const string_type &name, string_type& value, const string_type& default_value = string_type());
@@ -208,6 +224,33 @@ public:
         return true;
     }
 
+    /// @brief Returns whatever comes after the first occurrence of the specified name.
+    /// @param name 
+    /// @return the string after the name, or empty string if not found.
+    string_type anyAfter(const string_type &name) const;
+
+    string_type anyAfter(size_t index) const;
+
+    /// @brief Returns whatever comes before the first occurrence of the specified name.
+    /// @param name 
+    /// @return the string before the name, or empty string if not found.
+    string_type anyBefore(const string_type &name) const;
+
+    string_type anyBefore(size_t index) const;
+
+    /**
+     * @brief Returns whatever comes between the first occurrence of name1 and name2.
+     * @param name1 The first name, must be in front of name2
+     * @param name2 The second name, must be behind name1, otherwise it will not be recognized.
+     * @return the string between name1 and name2, or empty string if not found.
+     * 
+     * This is useful for some cases like mytool `--multioption opt1 opt2 set --` where "--" means the end of dynamic options.
+    */
+    string_type anyBetween(const string_type &name1, const string_type &name2) const;
+
+    
+    string_type anyBetween(size_t index1, size_t index2) const;
+
     bool addHelp(std::function<void()> helpFunction);
     bool addVersion(std::function<void()> versionFunction);
 
@@ -267,6 +310,8 @@ private:
     argument_style m_style;
     string_type m_primaryCommand;
 
+    bool m_failed = false; // indicates if parsing failed due to invalid arguments or policy violations
+
     struct param_info {
         size_t position;
         string_type value;
@@ -284,3 +329,10 @@ typedef basic_arguments<char> arguments;
 typedef basic_arguments<wchar_t> warguments;
 
 } // namespace std
+
+
+/*
+    Work document
+
+
+*/
