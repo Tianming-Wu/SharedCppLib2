@@ -17,6 +17,13 @@
 // #include "stream.hpp"
 #include "bytearray.hpp"
 
+/*
+    Future Dev Plan:
+    - Support parsing escape characters in split and join functions. This
+      is actually an important feature, but is not yet supported.
+
+*/
+
 namespace std {
 
 template<typename CharT>
@@ -53,6 +60,7 @@ public:
     string_type join(const string_type &i = string_type(1, ' ')) const;
     string_type join(size_t begin, size_t size = -1, const string_type &i = string_type(1, ' ')) const;
     string_type xjoin(const string_type &i = string_type(1, ' '), const string_type &binding = string_type(1, '\"')) const;
+    string_type xjoin(size_t begin, size_t size = -1, const string_type &i = string_type(1, ' '), const string_type &binding = string_type(1, '\"')) const;
 
     string_type dbgjoin(string_type i = string_type(1, '\'')) const;
 

@@ -38,6 +38,20 @@ basic_stringlist<CharT>::string_type basic_stringlist<CharT>::xjoin(const basic_
     return re;
 }
 
+template <typename CharT>
+basic_stringlist<CharT>::string_type basic_stringlist<CharT>::xjoin(size_t begin, size_t size, const string_type &i, const string_type &binding) const
+{
+    string_type re{}; size_t j = begin;
+    if(size == -1) size = this->size();
+    for(; j < size; j++) {
+        const basic_stringlist<CharT>::string_type &s = this->at(j);
+        basic_stringlist<CharT>::string_type add = s;
+        if(s.contains(i)) add = binding + s + binding;
+        re += (re.empty()?string_type():i) + add;
+    }
+    return re;
+}
+
 template<typename CharT>
 basic_stringlist<CharT>::string_type basic_stringlist<CharT>::dbgjoin(basic_stringlist<CharT>::string_type i) const {
     string_type re{};
