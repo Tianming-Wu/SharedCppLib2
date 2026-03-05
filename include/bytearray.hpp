@@ -37,6 +37,7 @@ using wstringlist = basic_stringlist<wchar_t>;
 
 class bytearray : public vector<byte>
 {
+    typedef ::std::vector<byte> vector_type;
 public:
     bytearray();
     bytearray(const bytearray &ba);
@@ -45,6 +46,7 @@ public:
     explicit bytearray(const char *raw, size_t size);
     explicit bytearray(const byte *raw, size_t size);
     explicit bytearray(size_t count, byte value);
+    explicit bytearray(size_t count);
     bytearray(std::initializer_list<byte> init);
 
     template<typename InputIt>
@@ -53,10 +55,9 @@ public:
     template<typename _Any>
     requires (std::is_trivially_copyable_v<_Any>)
     explicit bytearray(const _Any& in)
-        : vector<byte>(sizeof(_Any))
     {
         const std::byte* src = reinterpret_cast<const std::byte*>(&in);
-        ::std::vector<std::byte>::insert(end(), src, src + sizeof(_Any));
+        vector_type::assign(src, src + sizeof(_Any));
     }
 
     template<typename _T>
