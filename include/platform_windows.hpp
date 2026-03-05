@@ -39,8 +39,10 @@
 // ---- Event Related Macros ----
 
 // This collided with my Eventloop (similar to Qt) CreateEvent widget event.
-#undef CreateEvent
-#undef OpenEvent
+// #undef CreateEvent
+// #undef OpenEvent
+
+// Breaks some programs, removed for now.
 
 
 // ---- Error Code Macros ----

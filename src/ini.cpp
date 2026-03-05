@@ -164,7 +164,7 @@ std::bytearray ini::getValueAsByteArray(const std::string &section, const std::s
 
 void ini::setValue(const std::string &section, const std::string &key, const std::bytearray &value)
 {
-    data[section][key] = value.tohex();
+    data[section][key] = value.toHex();
 }
 
 std::optional<std::string> ini::getValueOptional(const std::string& section, const std::string& key) const

@@ -139,7 +139,7 @@ public:
 
         appendSize(count);
         appendSize(elemSize);
-        ::std::vector<std::byte>::insert(end(), src, src + in.size() * sizeof(_Ty));
+        vector_type::insert(end(), src, src + in.size() * sizeof(_Ty));
     }
 
     void reverse();
@@ -152,12 +152,12 @@ public:
 
     bytearray subarr(size_t begin, size_t size = -1) const;
 
-    std::string tostdstring() const;
-    std::stringlist tostringlist(const std::string& split = " ") const;
-    std::wstring tostdwstring() const;
-    std::wstringlist towstringlist(const std::wstring& split = L" ") const;
-    std::string tohex() const;
-    std::string tohex(size_t begin, size_t size = -1) const;
+    std::string toStdString() const;
+    std::stringlist toStringlist(const std::string& split = " ") const;
+    std::wstring toStdWString() const;
+    std::wstringlist toWStringlist(const std::wstring& split = L" ") const;
+    std::string toHex() const;
+    std::string toHex(size_t begin, size_t size = -1) const;
     std::string toEscapedString() const;
     std::string xtoEscapedString() const;
 
@@ -182,6 +182,9 @@ public:
     static bytearray fromHex(const std::string& hex);
     static bytearray fromRaw(const char* raw, size_t size);
     static bytearray fromRaw(const unsigned char* raw, size_t size);
+
+    static bytearray fromStdString(const std::string& str);
+    static bytearray fromStdWString(const std::wstring& wstr);
 
     static bytearray fromUtf8(const std::u8string& utf8str);
     static bytearray fromUtf16(const std::u16string& utf16str);

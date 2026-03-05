@@ -95,7 +95,7 @@ std::string variant::toString() const {
         case Type::Int: return std::to_string(intValue);
         case Type::String: return stringValue;
         case Type::StringList: return stringListValue.join(",");
-        case Type::ByteArray: return byteArrayValue.tohex();
+        case Type::ByteArray: return byteArrayValue.toHex();
         default: return "";
     }
 }
@@ -149,7 +149,7 @@ std::string variant::serialize() const {
             }
             return escapedList.join(",");
         }
-        case Type::ByteArray: return byteArrayValue.tohex();
+        case Type::ByteArray: return byteArrayValue.toHex();
         default: return "";
     }
 }

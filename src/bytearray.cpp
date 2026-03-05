@@ -89,20 +89,21 @@ bytearray bytearray::subarr(size_t begin, size_t size) const {
     return re;
 }
 
-std::string bytearray::tostdstring() const {
-    std::string re;
-    for(const byte &b : *this) {
-        re += static_cast<char>(b);
-    }
-    return re;
+std::string bytearray::toStdString() const {
+    if (this->empty()) return std::string();
+    return std::string(reinterpret_cast<const char*>(this->data()), this->size());
 }
 
-std::stringlist bytearray::tostringlist(const std::string& split) const {
-    return std::stringlist(this->tostdstring(), split);
+std::stringlist bytearray::toStringlist(const std::string& split) const {
+    return std::stringlist(this->toStdString(), split);
 }
 
-std::wstring bytearray::tostdwstring() const {
+std::wstring bytearray::toStdWString() const {
     if (this->empty()) return std::wstring();
+
+    if (this->size() % sizeof(wchar_t) != 0) {
+        throw std::runtime_error("bytearray::toStdWString: size must be multiple of wchar_t size");
+    }
 
     return std::wstring(
         reinterpret_cast<const wchar_t*>(this->data()),
@@ -110,11 +111,11 @@ std::wstring bytearray::tostdwstring() const {
     );
 }
 
-std::wstringlist bytearray::towstringlist(const std::wstring& split) const {
-    return std::wstringlist(this->tostdwstring(), split);
+std::wstringlist bytearray::toWStringlist(const std::wstring& split) const {
+    return std::wstringlist(this->toStdWString(), split);
 }
 
-std::string bytearray::tohex() const {
+std::string bytearray::toHex() const {
     std::ostringstream oss;
     oss << std::hex << std::setfill('0');
     for (const byte &b : *this) {
@@ -123,7 +124,7 @@ std::string bytearray::tohex() const {
     return oss.str();
 }
 
-std::string bytearray::tohex(size_t begin, size_t size) const {
+std::string bytearray::toHex(size_t begin, size_t size) const {
     std::ostringstream oss;
     oss << std::hex << std::setfill('0');
     if (size == -1) size = this->size();
@@ -308,6 +309,10 @@ bytearray::bytearray(size_t count, byte value)
 : vector<byte>(count, value)
 {}
 
+bytearray::bytearray(size_t count)
+    : vector<byte>(count)
+{}
+
 bytearray::bytearray(std::initializer_list<byte> init)
 : vector<byte>(init)
 {}
@@ -360,6 +365,21 @@ bytearray bytearray::fromRaw(const char* raw, size_t size) {
 bytearray bytearray::fromRaw(const unsigned char *raw, size_t size)
 {
     return bytearray(reinterpret_cast<const char*>(raw), size);
+}
+
+bytearray bytearray::fromStdString(const std::string &str)
+{
+    if (str.empty()) return bytearray();
+    return bytearray(reinterpret_cast<const byte*>(str.data()), str.size());
+}
+
+bytearray bytearray::fromStdWString(const std::wstring &wstr)
+{
+    if (wstr.empty()) return bytearray();
+    return bytearray(
+        reinterpret_cast<const byte*>(wstr.data()),
+        wstr.size() * sizeof(wchar_t)
+    );
 }
 
 bytearray bytearray::fromUtf8(const std::u8string& utf8str)
