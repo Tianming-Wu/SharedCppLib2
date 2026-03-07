@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.10)
 # endif()
 
 project(SharedCppLib2
-    VERSION 1.21.0
+    VERSION 1.22.6
     LANGUAGES CXX
 )
 
@@ -61,6 +61,8 @@ add_library(ini STATIC src/ini.cpp)
 add_library(xml STATIC src/xml.cpp)
 add_library(abstract STATIC src/abstract.cpp)
 add_library(debug STATIC src/debug.cpp)
+add_library(stream STATIC src/stream.cpp)
+add_library(console STATIC src/console.cpp)
 
 # Network module (commented out until ready for main branch)
 # add_library(network STATIC 
@@ -99,7 +101,11 @@ foreach(target regexfilter logc sha256 arguments ini abstract xml)
 endforeach()
 
 # 库列表
-set(TARGET_LIST variant logd logf sha256 basic indexer regexfilter logt logc Base64 platform arguments ini abstract xml debug)
+set(TARGET_LIST
+    variant logd logf sha256 basic indexer regexfilter
+    logt logc Base64 platform arguments ini abstract xml debug stream
+    console
+)
 
 # 安装目标
 install(TARGETS ${TARGET_LIST}
