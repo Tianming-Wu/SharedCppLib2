@@ -234,6 +234,7 @@ public:
     /// @brief Returns whatever comes before the first occurrence of the specified name.
     /// @param name 
     /// @return the string before the name, or empty string if not found.
+    /// @warning Does include the executable name.
     string_type anyBefore(const string_type &name) const;
 
     string_type anyBefore(size_t index) const;
@@ -244,7 +245,11 @@ public:
      * @param name2 The second name, must be behind name1, otherwise it will not be recognized.
      * @return the string between name1 and name2, or empty string if not found.
      * 
-     * This is useful for some cases like mytool `--multioption opt1 opt2 set --` where "--" means the end of dynamic options.
+     * This is useful for some cases like mytool `--multioption opt1 opt2 set --` where "--" 
+     * means the end of dynamic options.
+     * 
+     * (Note: that is not actually supported, since the current parse logic does not recognize
+     * `--`. This is just a function.)
     */
     string_type anyBetween(const string_type &name1, const string_type &name2) const;
 
@@ -260,6 +265,8 @@ public:
 
     // should this be protected?
     bool testPolicy(parse_policy p);
+
+    string_type joinArgs() const;
 
     // trigger re-parse with current policy and style, doesn't do anything yet
     // because setting policy/style after construction is not supported yet.

@@ -253,6 +253,12 @@ bool basic_arguments<CharT>::testPolicy(parse_policy p)
 }
 
 template <typename CharT>
+basic_arguments<CharT>::string_type basic_arguments<CharT>::joinArgs() const
+{
+    return std::basic_stringlist<CharT>::join(1); // Join all arguments except argv[0]
+}
+
+template <typename CharT>
 void basic_arguments<CharT>::parse()
 {
     m_primaryCommand.clear();
@@ -295,6 +301,7 @@ void basic_arguments<CharT>::parse_GNU()
                 // Long option: --option
                 string_type name = arg.substr(2);
                 string_type value;
+                size_t param_pos = i;  // Save position before consuming value
                 
                 // Check for --option=value syntax if policy allows
                 if (testPolicy(AllowEqualSign)) {
@@ -302,7 +309,7 @@ void basic_arguments<CharT>::parse_GNU()
                     if (eq_pos != string_type::npos) {
                         value = name.substr(eq_pos + 1);
                         name = name.substr(0, eq_pos);
-                        m_parameters[name] = { i, value };
+                        m_parameters[name] = { param_pos, value };
                         continue;
                     }
                 }
@@ -312,17 +319,19 @@ void basic_arguments<CharT>::parse_GNU()
                     value = this->at(i + 1);
                     i++;  // Skip next argument
                 }
-                m_parameters[name] = { i, value };
+                m_parameters[name] = { param_pos, value };
             } else if (testPolicy(AllowCombinedOptions) && arg.length() > 2) {
                 // Combined short options: -abc
+                size_t param_pos = i;  // Save position before consuming
                 for (size_t j = 1; j < arg.length(); j++) {
                     string_type name(1, arg[j]);
-                    m_parameters[name] = { i, S("") };
+                    m_parameters[name] = { param_pos, S("") };
                 }
             } else {
                 // Short option: -o or -ovalue
                 string_type name(1, arg[1]);
                 string_type value;
+                size_t param_pos = i;  // Save position before consuming value
                 
                 if (arg.length() > 2) {
                     // -ovalue (attached)
@@ -332,7 +341,7 @@ void basic_arguments<CharT>::parse_GNU()
                     value = this->at(i + 1);
                     i++;  // Skip next argument
                 }
-                m_parameters[name] = { i, value };
+                m_parameters[name] = { param_pos, value };
             }
         }
     }
@@ -360,6 +369,7 @@ void basic_arguments<CharT>::parse_POSIX()
                 // Long option: --option
                 string_type name = arg.substr(2);
                 string_type value;
+                size_t param_pos = i;  // Save position before consuming value
                 
                 // Check for --option=value syntax if policy allows
                 if (testPolicy(AllowEqualSign)) {
@@ -367,7 +377,7 @@ void basic_arguments<CharT>::parse_POSIX()
                     if (eq_pos != string_type::npos) {
                         value = name.substr(eq_pos + 1);
                         name = name.substr(0, eq_pos);
-                        m_parameters[name] = { i, value };
+                        m_parameters[name] = { param_pos, value };
                         continue;
                     }
                 }
@@ -377,11 +387,12 @@ void basic_arguments<CharT>::parse_POSIX()
                     value = this->at(i + 1);
                     i++;  // Skip next argument
                 }
-                m_parameters[name] = { i, value };
+                m_parameters[name] = { param_pos, value };
             } else {
                 // Short option: -o or -ovalue
                 string_type name(1, arg[1]);
                 string_type value;
+                size_t param_pos = i;  // Save position before consuming value
                 
                 if (arg.length() > 2) {
                     // -ovalue (attached)
@@ -391,7 +402,7 @@ void basic_arguments<CharT>::parse_POSIX()
                     value = this->at(i + 1);
                     i++;  // Skip next argument
                 }
-                m_parameters[name] = { i, value };
+                m_parameters[name] = { param_pos, value };
             }
         }
     }
