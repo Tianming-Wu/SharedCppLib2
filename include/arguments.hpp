@@ -267,6 +267,7 @@ public:
     bool testPolicy(parse_policy p);
 
     string_type joinArgs() const;
+    string_type xjoinArgs() const;
 
     // trigger re-parse with current policy and style, doesn't do anything yet
     // because setting policy/style after construction is not supported yet.

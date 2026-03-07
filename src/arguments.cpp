@@ -259,6 +259,12 @@ basic_arguments<CharT>::string_type basic_arguments<CharT>::joinArgs() const
 }
 
 template <typename CharT>
+basic_arguments<CharT>::string_type basic_arguments<CharT>::xjoinArgs() const
+{
+    return std::basic_stringlist<CharT>::xjoin(1);
+}
+
+template <typename CharT>
 void basic_arguments<CharT>::parse()
 {
     m_primaryCommand.clear();
