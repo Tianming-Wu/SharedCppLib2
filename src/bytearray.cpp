@@ -42,8 +42,14 @@ void bytearray::append(uint8_t val) {
 
 void bytearray::addString(const std::string &str)
 {
-    append(str.length()); // now size_t is carefully appended
+    appendSize(str.length()); // now size_t is carefully appended
     append(str.data(), str.size());
+}
+
+void bytearray::addWString(const std::wstring &wstr)
+{
+    appendSize(wstr.length());
+    append(reinterpret_cast<const byte*>(wstr.data()), wstr.size() * sizeof(wchar_t));
 }
 
 void bytearray::reverse()
@@ -341,6 +347,13 @@ bytearray::bytearray(const byte *raw, size_t size) {
         push_back(raw[i]);
 }
 
+bytearray::bytearray(const void *raw, size_t size) {
+    if (raw == nullptr || size == 0) return;
+    const byte* src = reinterpret_cast<const byte*>(raw);
+    for (size_t i = 0; i < size; i++)
+        push_back(src[i]);
+}
+
 bytearray bytearray::fromHex(const std::string& hex) {
     if (hex.size() % 2 != 0) throw std::invalid_argument("[bytearray::fromHex()] Invalid hex string (odd length)");
 
@@ -364,7 +377,7 @@ bytearray bytearray::fromRaw(const char* raw, size_t size) {
 
 bytearray bytearray::fromRaw(const unsigned char *raw, size_t size)
 {
-    return bytearray(reinterpret_cast<const char*>(raw), size);
+    return bytearray(reinterpret_cast<const byte*>(raw), size);
 }
 
 bytearray bytearray::fromStdString(const std::string &str)
@@ -517,6 +530,27 @@ std::string bytearray_view::readString() const
 {
     std::string result = peekString();
     cursor += sizeof(size_t) + result.size();
+    return result;
+}
+
+std::wstring bytearray_view::peekWString() const
+{
+    std::wstring result;
+
+    if(!available(sizeof(size_t))) throw std::out_of_range("bytearray_view: not enough size data");
+    size_t str_size = ba.subarr(cursor, sizeof(size_t)).as<size_t>();
+
+    if(!available(str_size * sizeof(wchar_t))) throw std::out_of_range("bytearray_view: not enough string data");
+    result.resize(str_size);
+
+    std::memcpy(result.data(), ba.data() + sizeof(size_t), str_size * sizeof(wchar_t));
+    return result;
+}
+
+std::wstring bytearray_view::readWString() const
+{
+    std::wstring result = peekWString();
+    cursor += sizeof(size_t) + result.size() * sizeof(wchar_t);
     return result;
 }
 

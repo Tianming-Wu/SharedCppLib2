@@ -45,6 +45,7 @@ public:
     explicit bytearray(const std::string &str); // note: assumes raw data, does not include length and null terminator
     explicit bytearray(const char *raw, size_t size);
     explicit bytearray(const byte *raw, size_t size);
+    explicit bytearray(const void *raw, size_t size);
     explicit bytearray(size_t count, byte value);
     explicit bytearray(size_t count);
     bytearray(std::initializer_list<byte> init);
@@ -126,6 +127,7 @@ public:
 
     // special one for safe string storage. extract with bytearray_view::readString().
     void addString(const std::string& str);
+    void addWString(const std::wstring& wstr);
 
     // special one for containers of trivially copyable types
     template<typename _T>
@@ -247,6 +249,9 @@ public:
 
     std::string peekString() const;
     std::string readString() const;
+
+    std::wstring peekWString() const;
+    std::wstring readWString() const;
 
     std::bytearray readBytes(size_t size) const;
     std::bytearray peekBytes(size_t size) const;

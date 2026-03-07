@@ -1,5 +1,15 @@
 # Changelog
 
+### v1.22.7
+- New: console module for better console output control, including several helper classes
+- New: stream module for a unified io device handling.
+
+### v1.22.6
+- **IMPORTANT** Bug fix: bytearray constructor for trivially copyable types now correctly assigns data instead of inserting, preventing unintended resizing and data corruption. Also, size based constructor added.
+- Note: If you need to store a size_t into bytearray, use the std::bytearray<size_t>( mysize ) or it will just create a bytearray with sizeof(size_t) bytes, which is not what you want. Or, create an empty one and use append(), which is guaranteed to work correctly.
+
+### v1.22.5
+- ///TODO: update changelog
 
 ### v1.21.0
 - New: version.hpp for compile-time version information.
