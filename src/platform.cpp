@@ -188,12 +188,12 @@ wargProvider::~wargProvider() {
 
 } // namespace windows
 #else // linux
-// platform::linux
-namespace linux {
+// platform::linux_os
+namespace linux_os {
 
 
     
-} // namespace platform::linux
+} // namespace platform::linux_os
 #endif
 
 } // namespace platform

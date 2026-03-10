@@ -7,7 +7,7 @@
         SharedCppLib2::platform
 
     Note that some apis are only available on specific platforms, since they makes
-    no sense on other platforms. Those apis are under platform::windows or platform::linux
+    no sense on other platforms. Those apis are under platform::windows or platform::linux_os
     namespaces.
 */
 #pragma once
@@ -65,12 +65,12 @@ public:
 } // namespace platform::windows
 
 #else // linux
-// platform::linux
-namespace linux {
+// platform::linux_os
+namespace linux_os {
 
 
 
-} // namespace platform::linux
+} // namespace platform::linux_os
 #endif
 
 /*
