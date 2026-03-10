@@ -166,7 +166,7 @@ std::string bytearray::xtoEscapedString() const
             case '\v': ss << "\\v"; break;
             case '\f': ss << "\\f"; break;
             case '\r': ss << "\\r"; break;
-            case '\\\\': ss << "\\\\\\\\"; // 转义反斜杠
+            case '\\': ss << R"(\\)"; break; // 转义反斜杠
             default:
                 if (isprint(c)) {
                     ss << static_cast<char>(c);
