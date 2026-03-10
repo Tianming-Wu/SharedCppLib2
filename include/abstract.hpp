@@ -11,15 +11,9 @@
 #include <basics.hpp>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include <stringlist.hpp>
-
-// forward declaration
-namespace std {
-    namespace filesystem {
-        class path;
-    }
-}
 
 // Abstract path used for tree-like path structures
 // for example, filesystem
