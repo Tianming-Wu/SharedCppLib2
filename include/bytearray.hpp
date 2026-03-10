@@ -13,6 +13,7 @@
 #include <iostream>
 #include <cctype>
 #include <iomanip>
+#include <cstring>
 #include <bit>
 #include <cstdint>
 #include <initializer_list>
@@ -313,7 +314,7 @@ inline ostream& operator<<(ostream& os, const std::bytearray& ba) {
 inline istream& operator>>(istream& is, std::bytearray& ba) {
     ba.clear();
     auto* file_stream = dynamic_cast<std::istream*>(&is);
-    if (file_stream && (file_stream->flags() & std::ios::binary)) {
+    if (file_stream) {
         // read the entire file content
         file_stream->seekg(0, std::ios::end);
         auto size = file_stream->tellg();
