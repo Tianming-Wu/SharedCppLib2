@@ -50,6 +50,7 @@ public:
     inline colorctl(int r, int g, int b, int a = 255): type(cctlt_rgba),v1(r),v2(g),v3(b),v4(a) {}
     inline colorctl cmyk(int c, int m, int y, int k) {
         ///TODO: Complete convertion.
+        return colorctl(0, 0, 0);
     }
 
     std::string to_ansi_code() const;
@@ -170,70 +171,5 @@ void progress_bar_texted(double progress, int length = 140);
  */
 void progress_bar_colored(int current, int all, int length = 140, int color = colors::tGreen);
 void progress_bar_texted(int current, int all, int length = 140);
-
-/** @brief Move the cursor to a specified position.
- * @param row The row number to move to (1-based).
- * @param col The column number to move to (1-based).
- * 
- * This function uses ANSI escape codes to move the cursor
- * to the specified position in the terminal.
- */
-[[deprecated]]
-inline string movecursor(int row, int col)
-{
-    return string("\033[" + std::to_string(row) + ";" + std::to_string(col) + "H");
-}
-
-/// @brief Hide the cursor.
-[[deprecated]]
-const string hidecursor { "\033[?25l" };
-
-/// @brief Show the cursor.
-[[deprecated]]
-const string showcursor { "\033[?25h" };
-
-/// @brief Save the current cursor position.
-[[deprecated]]
-const string savecursorpos { "\033[s" };
-
-/// @brief Restore the cursor position saved by savecursorpos
-[[deprecated]]
-const string restorecursorpos { "\033[u" };
-
-
-/** @brief Get the current cursor position (rows and columns).
- * 
- * This function uses ANSI escape codes to get the current cursor
- * position and returns a struct containing the number of rows and columns.
- * 
- * @warning uses sscanf which is unsafe. Will be fixed in a newer release.
- */
-[[deprecated]]
-inline cursor_position get_cursor_position() {
-    std::cout << "\033[6n";
-
-    std::string response;
-    std::getline(std::cin, response);
-
-    int rows, cols;
-    // sscanf(response.c_str(), "\033[%d;%dR", &rows, &cols);
-    sscanf_s(response.c_str(), "\033[%d;%dR", &rows, &cols);
-
-    return cursor_position {.rows = rows, .cols = cols};
-}
-
-/** @brief Get the terminal size (rows and columns).
- * 
- * This function uses ANSI escape codes to get the terminal
- * size and returns a struct containing the number of rows and columns.
- */
-[[deprecated]]
-inline cursor_position get_terminal_size() {
-    std::cout << savecursorpos;
-    movecursor(999,999);
-    cursor_position pos = get_cursor_position();
-    std::cout << restorecursorpos;
-    return pos;
-}
 
 };
