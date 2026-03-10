@@ -1,5 +1,9 @@
 #include "debug.hpp"
 
+#ifndef OS_WINDOWS
+    #include <syslog.h>
+#endif
+
 // If whatever something needs to be initialized
 ods::ods()
 {
