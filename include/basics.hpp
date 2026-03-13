@@ -181,42 +181,6 @@ std::vector<E> enum_bitwiden_range(E value, size_t min, size_t max) {
 //     for()
 // }
 
-#define Define_Enum_BitOperators(NAME) \
-    inline constexpr NAME operator|(NAME a, NAME b) noexcept { \
-        using T = std::underlying_type_t<NAME>; \
-        return static_cast<NAME>(static_cast<T>(a) | static_cast<T>(b)); \
-    } \
-    inline constexpr NAME operator^(NAME a, NAME b) noexcept { \
-        using T = std::underlying_type_t<NAME>; \
-        return static_cast<NAME>(static_cast<T>(a) ^ static_cast<T>(b)); \
-    } \
-    inline constexpr NAME operator&(NAME a, NAME b) noexcept { \
-        using T = std::underlying_type_t<NAME>; \
-        return static_cast<NAME>(static_cast<T>(a) & static_cast<T>(b)); \
-    } \
-    inline constexpr NAME operator~(NAME a) noexcept { \
-        using T = std::underlying_type_t<NAME>; \
-        return static_cast<NAME>(~static_cast<T>(a)); \
-    }
-
-#define Define_Enum_BitOperators_Inclass(NAME) \
-    friend inline constexpr NAME operator|(NAME a, NAME b) noexcept { \
-        using T = std::underlying_type_t<NAME>; \
-        return static_cast<NAME>(static_cast<T>(a) | static_cast<T>(b)); \
-    } \
-    friend inline constexpr NAME operator^(NAME a, NAME b) noexcept { \
-        using T = std::underlying_type_t<NAME>; \
-        return static_cast<NAME>(static_cast<T>(a) ^ static_cast<T>(b)); \
-    } \
-    friend inline constexpr NAME operator&(NAME a, NAME b) noexcept { \
-        using T = std::underlying_type_t<NAME>; \
-        return static_cast<NAME>(static_cast<T>(a) & static_cast<T>(b)); \
-    } \
-    friend inline constexpr NAME operator~(NAME a) noexcept { \
-        using T = std::underlying_type_t<NAME>; \
-        return static_cast<NAME>(~static_cast<T>(a)); \
-    }
-
 #define disable_copy(CLASS) \
     CLASS(const CLASS&) = delete; \
     CLASS& operator=(const CLASS&) = delete;
