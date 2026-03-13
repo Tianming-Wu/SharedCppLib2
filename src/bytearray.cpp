@@ -380,6 +380,12 @@ bytearray bytearray::fromRaw(const unsigned char *raw, size_t size)
     return bytearray(reinterpret_cast<const byte*>(raw), size);
 }
 
+bytearray bytearray::fromPointer(const void* ptr)
+{
+    uintptr_t pointer_value = reinterpret_cast<uintptr_t>(ptr);
+    return bytearray(reinterpret_cast<const byte*>(&pointer_value), sizeof(pointer_value));
+}
+
 bytearray bytearray::fromStdString(const std::string &str)
 {
     if (str.empty()) return bytearray();

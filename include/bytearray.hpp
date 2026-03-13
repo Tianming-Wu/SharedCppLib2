@@ -17,12 +17,22 @@
 #include <bit>
 #include <cstdint>
 #include <initializer_list>
+#include <type_traits>
 
 namespace std {
 
 template<typename> class basic_stringlist;
 using stringlist = basic_stringlist<char>;
 using wstringlist = basic_stringlist<wchar_t>;
+
+class bytearray;
+
+template<typename _T>
+concept _is_bytearray_constructable =
+    std::is_trivially_copyable_v<std::remove_cvref_t<_T>>
+    && !std::is_pointer_v<std::remove_cvref_t<_T>>
+    && !std::is_array_v<std::remove_cvref_t<_T>>
+    && !std::is_same_v<std::remove_cvref_t<_T>, bytearray>;
 
 // now using std::byte. I'm not really satisfied, because it it so EXPLICIT. There are no any implicit conversions at all.
 // Fine. I just need to warn the users to use append(std::byte{0x08}) instead of append(0x08), which is a fucking INTEGER.
@@ -55,11 +65,11 @@ public:
     bytearray(InputIt first, InputIt last) : vector<byte>(first, last) {}
 
     template<typename _Any>
-    requires (std::is_trivially_copyable_v<_Any>)
+    requires (_is_bytearray_constructable<_Any>)
     explicit bytearray(const _Any& in)
     {
         const std::byte* src = reinterpret_cast<const std::byte*>(&in);
-        vector_type::assign(src, src + sizeof(_Any));
+        vector_type::assign(src, src + sizeof(std::remove_cvref_t<_Any>));
     }
 
     template<typename _T>
@@ -185,6 +195,12 @@ public:
     static bytearray fromHex(const std::string& hex);
     static bytearray fromRaw(const char* raw, size_t size);
     static bytearray fromRaw(const unsigned char* raw, size_t size);
+    static bytearray fromPointer(const void* ptr);
+
+    template<typename _T>
+    static bytearray fromPointer(const _T* ptr) {
+        return fromPointer(static_cast<const void*>(ptr));
+    }
 
     static bytearray fromStdString(const std::string& str);
     static bytearray fromStdWString(const std::wstring& wstr);
