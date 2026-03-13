@@ -37,16 +37,16 @@ struct bits {
             off += 8;
         }
         off %= 8;
-        return bits{std::byte{(static_cast<unsigned char>(b) << off) | (static_cast<unsigned char>(b) >> (8 - off))}};
+        return bits{std::byte((static_cast<unsigned char>(b) << off) | (static_cast<unsigned char>(b) >> (8 - off)))};
     }
 
     inline constexpr bits shift(int off) const {
         // shifted out of range, so all bits are lost.
         if (off < -8 || off > 8) return { std::byte{0} };
         if (off < 0) {
-            return bits{std::byte{static_cast<unsigned char>(b) >> (-off)}};
+            return bits{std::byte(static_cast<unsigned char>(b) >> (-off))};
         } else {
-            return bits{std::byte{static_cast<unsigned char>(b) << off}};
+            return bits{std::byte(static_cast<unsigned char>(b) << off)};
         }
     }
 };
@@ -55,8 +55,8 @@ struct bits {
 template <typename T>
     requires std::is_trivially_copyable_v<T>
 struct ebits {
-    constexpr size_t bitSize = sizeof(T) * 8;
-    constexpr size_t size = sizeof(T);
+    const size_t bitSize = sizeof(T) * 8;
+    const size_t size = sizeof(T);
     std::byte bs[sizeof(T)];
 
     ebits() = default;

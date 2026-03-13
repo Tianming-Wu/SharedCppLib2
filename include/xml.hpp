@@ -35,6 +35,7 @@
 #include <stdexcept>
 
 #include "basics.hpp"
+#include "bits.hpp"
 
 // forward declaration
 namespace std {

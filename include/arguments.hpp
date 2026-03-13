@@ -21,6 +21,7 @@
 
 #include "stringlist.hpp"
 #include "basics.hpp"
+#include "bits.hpp"
 #include "platform.hpp" // unluckily needed for string conversion helpers
 
 #include <map>
