@@ -63,6 +63,7 @@ add_library(abstract STATIC src/abstract.cpp)
 add_library(debug STATIC src/debug.cpp)
 add_library(stream STATIC src/stream.cpp)
 add_library(console STATIC src/console.cpp)
+add_library(keydb STATIC src/keydb.cpp)
 
 # Network module (commented out until ready for main branch)
 # add_library(network STATIC 
@@ -96,7 +97,7 @@ target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要
 target_link_libraries(basic PRIVATE Base64)
 
 # basic 库依赖关系
-foreach(target regexfilter logc sha256 arguments ini abstract xml)
+foreach(target regexfilter logc sha256 arguments ini abstract xml keydb)
     target_link_libraries(${target} PUBLIC basic)
 endforeach()
 
@@ -104,7 +105,7 @@ endforeach()
 set(TARGET_LIST
     variant logd logf sha256 basic indexer regexfilter
     logt logc Base64 platform arguments ini abstract xml debug stream
-    console
+    console keydb
 )
 
 # 安装目标
