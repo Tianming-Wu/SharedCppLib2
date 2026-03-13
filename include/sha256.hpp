@@ -24,22 +24,24 @@
 
 #include "bytearray.hpp"
 
+///TODO: Change naming of the below function to hash(). (API definition)
+
 namespace sha256 {
 
 /** @brief: 使用SHA256算法，获取输入信息的摘要（数字指纹）
 @param[in] message: 输入信息
-@param[out] _digest: 摘要（数字指纹）
-@return: 是否成功
+@return: 摘要（数字指纹）
+@throw: std::runtime_error if failed
 */
-bool encrypt(const std::bytearray& message, 
-                std::bytearray* _digest);
+std::bytearray encrypt(const std::bytearray& message);
 
 /** @brief: 获取十六进制表示的信息摘要（数字指纹）
 @param[in] message: 输入信息
 @return: 十六进制表示的信息摘要（数字指纹）
+@throw: std::runtime_error if failed
 */
 std::string getHexMessageDigest(const std::string& message);
-std::bytearray getMessageDigest(std::bytearray message);
+std::bytearray getMessageDigest(const std::bytearray& message);
 
 } // namespace sha256
 

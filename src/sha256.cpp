@@ -2,6 +2,7 @@
 
 #include <iomanip>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 namespace sha256 {
@@ -39,274 +40,235 @@ inline uint32_t small_sigma1(uint32_t x) { return (x >> 17 | x << 15) ^ (x >> 19
 附加填充比特: 在报文末尾进行填充，先补第一个比特为1，然后都补0，直到长度满足对512取模后余数是448。需要注意的是，信息必须进行填充。
 附加长度值: 用一个64位的数据来表示原始消息（填充前的消息）的长度，并将其补到已经进行了填充操作的消息后面。
 @param[in][out] _message: 待处理的信息
-@return: 是否成功
 */
-bool preprocessing(std::bytearray* _message);
+void preprocessing(std::bytearray* _message);
 
 /** @brief: 将信息分解成连续的64Byte大小的数据块
 @param[in] message: 输入信息，长度为64Byte的倍数
 @param[out] _chunks: 输出数据块
-@return: 是否成功
 */
-bool breakTextInto64ByteChunks(const std::bytearray& message, 
+void breakTextInto64ByteChunks(const std::bytearray& message, 
                                 std::vector<std::bytearray >* _chunks);
 
 /** @brief: 由64Byte大小的数据块，构造出64个4Byte大小的字。
 构造算法：前16个字直接由数据块分解得到，其余的字由如下迭代公式得到：
-        W[t] = small_sigma1(W[t-2]) + W[t-7] + small_sigma0(W[t-15]) + W[t-16]
+    W[t] = small_sigma1(W[t-2]) + W[t-7] + small_sigma0(W[t-15]) + W[t-16]
 @param[in] chunk: 输入数据块，大小为64Byte
 @param[out] _words: 输出字
-@return: 是否成功
 */
-bool structureWords(const std::bytearray& chunk, 
-                    std::vector<uint32_t>* _words);
+void structureWords(const std::bytearray& chunk, 
+            std::vector<uint32_t>* _words);
 
 /** @breif: 基于64个4Byte大小的字，进行64次循环加密
 @param[in] words: 64个4Byte大小的字
 @param[in][out] _message_digest: 信息摘要
-@return: 是否成功
 */
-bool transform(const std::vector<uint32_t>& words, 
+void transform(const std::vector<uint32_t>& words, 
                 std::vector<uint32_t>* _message_digest);
 
 /** @brief: 输出最终的哈希值（数字指纹）
 @param[in] input: 步长为32bit的哈希值
-@param[out] _output: 步长为8bit的哈希值
-@return: 是否成功
+@return: 步长为8bit的哈希值
 */
-bool produceFinalHashValue(const std::vector<uint32_t>& input,
-                            std::bytearray* _output);
+std::bytearray produceFinalHashValue(const std::vector<uint32_t>& input);
 
 
-bool encrypt(const std::bytearray& input_message, 
-                     std::bytearray* _digest)
+std::bytearray encrypt(const std::bytearray& input_message)
 {
-    if (!input_message.empty() && _digest)
+    // 预处理
+    std::bytearray message = input_message;
+    preprocessing(&message);
+
+    // 将数据分解成 64Byte 大小的数据块
+    std::vector<std::bytearray> chunks;
+    breakTextInto64ByteChunks(message, &chunks);
+
+    // 64Byte数据块构造64个4Byte字
+    std::vector<uint32_t> message_digest(initial_message_digest_); // 信息摘要
+    std::vector<uint32_t> words;
+    for (const auto& chunk : chunks)
     {
-        // 预处理
-        std::bytearray message = input_message;
-        preprocessing(&message);
-
-        // 将数据分解成 64Byte 大小的数据块
-        std::vector<std::bytearray> chunks;
-        breakTextInto64ByteChunks(message, &chunks);
-
-        // 64Byte数据块构造64个4Byte字
-        std::vector<uint32_t> message_digest(initial_message_digest_); // 信息摘要
-        std::vector<uint32_t> words;
-        for (const auto& chunk : chunks)
-        {
-            structureWords(chunk, &words);
-            transform(words, &message_digest);
-        }
-
-        // 生成最终的哈希值（数字指纹）
-        produceFinalHashValue(message_digest, _digest);
-
-        return true;
+        structureWords(chunk, &words);
+        transform(words, &message_digest);
     }
-    else
-    {
-        return false;
-    }
+
+    // 生成最终的哈希值（数字指纹）
+    return produceFinalHashValue(message_digest);
 }
 
 std::string getHexMessageDigest(const std::string& message)
 {
-    if (!message.empty())
+    std::bytearray message_bytes(message);
+    std::bytearray digest = encrypt(message_bytes);
+
+    std::ostringstream o_s;
+    o_s << std::hex << std::setiosflags(std::ios::uppercase);
+    for (auto it = digest.begin(); it != digest.end(); ++it)
     {
-        std::bytearray __message;
-        for (auto it = message.begin(); it != message.end(); ++it)
-        {
-            __message.push_back(static_cast<std::byte>(*it));
-        }
-
-        std::bytearray digest;
-        encrypt(__message, &digest);
-
-        std::ostringstream o_s;
-        o_s << std::hex << std::setiosflags(std::ios::uppercase);
-        for (auto it = digest.begin(); it != digest.end(); ++it)
-        {
-            o_s << std::setw(2) << std::setfill('0')
-                << static_cast<unsigned short>(*it);
-        }
-
-        return o_s.str();
+        o_s << std::setw(2) << std::setfill('0')
+            << static_cast<unsigned short>(*it);
     }
-    else
-    {
-        return "";
-    }
+
+    return o_s.str();
 }
 
-std::bytearray getMessageDigest(std::bytearray message) {
-    if (!message.empty())
-    {
-        std::bytearray digest;
-        encrypt(message, &digest);
-        return digest;
-    }
-    else
-    {
-        return std::bytearray();
-    }
+std::bytearray getMessageDigest(const std::bytearray& message) {
+    return encrypt(message);
 }
 
-bool preprocessing(std::bytearray* _message)
+void preprocessing(std::bytearray* _message)
 {
-    if (_message)
+    if (!_message)
     {
-        const uint64_t original_bit_size = _message->size() * 8;
+        throw std::runtime_error("sha256::preprocessing: null message pointer");
+    }
 
-        //! ??????????
-        size_t remainder = _message->size() % 64;
-        if (remainder < 56)
-        {
-            _message->append(std::byte{0x80}); // 0x80 == 10000000
-            for (size_t i = 1; i < 56 - remainder; ++i)
-            {
-                _message->append(std::byte{0x00});
-            }
-        }
-        else if (remainder == 56)
-        {
-            _message->append(std::byte{0x80});
-            for (size_t i = 1; i < 64; ++i)
-            {
-                _message->append(std::byte{0x00});
-            }
-        }
-        else
-        {
-            _message->append(std::byte{0x80});
-            for (size_t i = 1; i < 64 - remainder + 56; ++i)
-            {
-                _message->append(std::byte{0x00});
-            }
-        }
+    const uint64_t original_bit_size = _message->size() * 8;
 
-        //! ???????????????
-        for (int i = 1; i <= 8; ++i)
+    size_t remainder = _message->size() % 64;
+    if (remainder < 56)
+    {
+        _message->append(std::byte{0x80}); // 0x80 == 10000000
+        for (size_t i = 1; i < 56 - remainder; ++i)
         {
-            std::byte c = static_cast<std::byte>(original_bit_size >> (64 - 8 * i));
-            _message->append(c);
+            _message->append(std::byte{0x00});
         }
-
-        return true;
+    }
+    else if (remainder == 56)
+    {
+        _message->append(std::byte{0x80});
+        for (size_t i = 1; i < 64; ++i)
+        {
+            _message->append(std::byte{0x00});
+        }
     }
     else
     {
-        return false;
+        _message->append(std::byte{0x80});
+        for (size_t i = 1; i < 64 - remainder + 56; ++i)
+        {
+            _message->append(std::byte{0x00});
+        }
+    }
+
+    for (int i = 1; i <= 8; ++i)
+    {
+        std::byte c = static_cast<std::byte>(original_bit_size >> (64 - 8 * i));
+        _message->append(c);
     }
 }
 
-bool breakTextInto64ByteChunks(const std::bytearray& message, 
+void breakTextInto64ByteChunks(const std::bytearray& message, 
                                        std::vector<std::bytearray>* _chunks)
 {
-    if (_chunks && 0 == message.size() % 64)
+    if (!_chunks)
     {
-        _chunks->clear(); // 清空缓冲区
-
-        size_t quotient = message.size() / 64;
-        for (size_t i = 0; i < quotient; ++i)
-        {
-            std::bytearray temp(message.begin() + i * 64, message.begin() + (i + 1) * 64);
-            _chunks->push_back(temp);
-        }
-        return true;
+        throw std::runtime_error("sha256::breakTextInto64ByteChunks: null chunks pointer");
     }
-    else
+    if (message.size() % 64 != 0)
     {
-        return false;
+        throw std::runtime_error("sha256::breakTextInto64ByteChunks: message size is not multiple of 64");
+    }
+
+    _chunks->clear(); // 清空缓冲区
+
+    size_t quotient = message.size() / 64;
+    for (size_t i = 0; i < quotient; ++i)
+    {
+        std::bytearray temp = message.subarr(i * 64, 64);
+        _chunks->push_back(temp);
     }
 }
 
-bool structureWords(const std::bytearray& chunk, 
+void structureWords(const std::bytearray& chunk, 
                             std::vector<uint32_t>* _words)
 {
-    if (_words && 64 == chunk.size())
+    if (!_words)
     {
-        _words->resize(64);
-
-        auto& words = *_words;
-        for (int i = 0; i < 16; ++i)
-        {
-            words[i] = (static_cast<uint32_t>(chunk[i * 4]) << 24)
-                       | (static_cast<uint32_t>(chunk[i * 4 + 1]) << 16)
-                       | (static_cast<uint32_t>(chunk[i * 4 + 2]) << 8)
-                       | static_cast<uint32_t>(chunk[i * 4 + 3]);
-        }
-        for (int i = 16; i < 64; ++i)
-        {
-            words[i] = small_sigma1(words[i - 2])
-                       + words[i - 7]
-                       + small_sigma0(words[i - 15])
-                       + words[i - 16];
-        }
-        return true;
+        throw std::runtime_error("sha256::structureWords: null words pointer");
     }
-    else
+    if (chunk.size() != 64)
     {
-        return false;
+        throw std::runtime_error("sha256::structureWords: chunk size must be 64");
+    }
+
+    _words->resize(64);
+
+    auto& words = *_words;
+    for (int i = 0; i < 16; ++i)
+    {
+        words[i] = (static_cast<uint32_t>(chunk[i * 4]) << 24)
+                   | (static_cast<uint32_t>(chunk[i * 4 + 1]) << 16)
+                   | (static_cast<uint32_t>(chunk[i * 4 + 2]) << 8)
+                   | static_cast<uint32_t>(chunk[i * 4 + 3]);
+    }
+    for (int i = 16; i < 64; ++i)
+    {
+        words[i] = small_sigma1(words[i - 2])
+                   + words[i - 7]
+                   + small_sigma0(words[i - 15])
+                   + words[i - 16];
     }
 }
 
-bool transform(const std::vector<uint32_t>& words, 
+void transform(const std::vector<uint32_t>& words, 
                        std::vector<uint32_t>* _message_digest)
 {
-    if (_message_digest && 8 == _message_digest->size() && 64 == words.size())
+    if (!_message_digest)
     {
-        std::vector<uint32_t> d = *_message_digest;
-
-        for (int i = 0; i < 64; ++i)
-        {
-            uint32_t temp1 = d[7] + big_sigma1(d[4]) + ch(d[4], d[5], d[6]) + add_constant_[i] + words[i];
-            uint32_t temp2 = big_sigma0(d[0]) + maj(d[0], d[1], d[2]);
-            
-            d[7] = d[6];
-            d[6] = d[5];
-            d[5] = d[4];
-            d[4] = d[3] + temp1;
-            d[3] = d[2];
-            d[2] = d[1];
-            d[1] = d[0];
-            d[0] = temp1 + temp2;
-        }
-
-        for (int i = 0; i < 8; ++i)
-        {
-            (*_message_digest)[i] += d[i];
-        }
-
-        return true;
+        throw std::runtime_error("sha256::transform: null message digest pointer");
     }
-    else
+    if (_message_digest->size() != 8)
     {
-        return false;
+        throw std::runtime_error("sha256::transform: message digest size must be 8");
+    }
+    if (words.size() != 64)
+    {
+        throw std::runtime_error("sha256::transform: words size must be 64");
+    }
+
+    std::vector<uint32_t> d = *_message_digest;
+
+    for (int i = 0; i < 64; ++i)
+    {
+        uint32_t temp1 = d[7] + big_sigma1(d[4]) + ch(d[4], d[5], d[6]) + add_constant_[i] + words[i];
+        uint32_t temp2 = big_sigma0(d[0]) + maj(d[0], d[1], d[2]);
+        
+        d[7] = d[6];
+        d[6] = d[5];
+        d[5] = d[4];
+        d[4] = d[3] + temp1;
+        d[3] = d[2];
+        d[2] = d[1];
+        d[1] = d[0];
+        d[0] = temp1 + temp2;
+    }
+
+    for (int i = 0; i < 8; ++i)
+    {
+        (*_message_digest)[i] += d[i];
     }
 }
 
-bool produceFinalHashValue(const std::vector<uint32_t>& input, 
-                                   std::bytearray* _output)
+std::bytearray produceFinalHashValue(const std::vector<uint32_t>& input)
 {
-    if (_output)
+    if (input.size() != 8)
     {
-        _output->clear();
+        throw std::runtime_error("sha256::produceFinalHashValue: input size must be 8");
+    }
 
-        for (auto it = input.begin(); it != input.end(); ++it)
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                _output->append(static_cast<std::byte>((*it) >> (24 - 8 * i)));
-            }
-        }
-        return true;
-    }
-    else
+    std::bytearray output;
+    output.reserve(32);
+
+    for (auto it = input.begin(); it != input.end(); ++it)
     {
-        return false;
+        for (int i = 0; i < 4; i++)
+        {
+            output.append(static_cast<std::byte>((*it) >> (24 - 8 * i)));
+        }
     }
+
+    return output;
 }
 
 } // namespace sha256
