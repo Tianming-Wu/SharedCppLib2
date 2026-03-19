@@ -11,7 +11,7 @@
 | Namespace | `SharedCppLib2` |
 | Library | `logt` |
 
-To include:
+Include usage:
 ```cmake
 find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(target SharedCppLib2::logt)
@@ -19,280 +19,341 @@ target_link_libraries(target SharedCppLib2::logt)
 
 ## Description
 
-Logt stands for "log threaded" - a high-performance asynchronous logging library designed for C++23. It employs a dedicated logging thread to handle all write operations, ensuring that the main application thread is never blocked by logging activities, making it ideal for performance-critical applications.
+Logt means "log threaded" — a high-performance asynchronous logging library for C++23.
+It uses a dedicated logging worker thread for all write operations, so application threads are not blocked by logging I/O.
+This design is suitable for performance-sensitive applications.
 
 > [!WARNING]
-> This library uses complex wrapping mechanisms that may be difficult to understand from source code alone. Please refer to this documentation for proper usage.
+> This library uses a complex wrapping model. Reading source code alone may not be enough to fully understand intended usage. Please follow this document.
 
-## Key Features
+## Main Features
 
-- **Fully Asynchronous Design**: All logging operations are processed in a background thread with zero blocking on calling threads
-- **Intelligent Thread Identification**: Automatically captures and displays thread context information in log messages
-- **Multiple Output Support**: Flexible support for file output, standard output, and custom streams
-- **Modular Signature System**: Provides class-level, module-level, and function-level log identification
-- **High-Precision Timing**: Optional millisecond/microsecond timestamp accuracy
-- **Powerful Extensibility**: Supports custom preprocessors for formatting and colored output
+- **Fully asynchronous architecture**: all writes happen in the background worker thread.
+- **Thread context capture**: automatically includes claimed thread names (or thread id fallback).
+- **Multiple output channels**: stdout, file channels, and custom `std::ostream` channels.
+- **Signature-based routing**: class/module/function level signatures.
+- **High-precision timestamps**: optional millisecond/microsecond timestamp mode.
+- **Extensible preprocessing**: supports message preprocessors (for example color formatting).
 
 ## Quick Start
 
-### Basic Usage
+### Basic usage
 
 ```cpp
 #include <SharedCppLib2/logt.hpp>
 
+// Module signature for this cpp file.
+// Not the recommended style; see "Log Signatures" section.
 LOGT_MODULE("Main");
 
 int main() {
-    logt::stdcout();  // Output to console
-    logt::claim("MainThread");  // Name current thread
-    
-    logt.info() << "Application initialization completed";
+    logt::stdcout(true, true);
+    logt::claim("MainThread");
+
+    logt.info() << "Application initialization finished";
     logt.warn() << "Non-critical issue detected";
-    logt.error() << "Operation failed with error code: " << error_code;
-    
-    logt::shutdown();  // Must be called before program exit
-    return 0;
-}
-```
+    logt.error() << "Operation failed, error code: " << error_code;
 
-### Class-Level Logging
-
-```cpp
-class DatabaseManager {
-    LOGT_DECLARE
-    
-public:
-    void connect() {
-        logt.info() << "Establishing database connection...";
-        logt.debug() << "Connection parameters: " << connection_params;
-    }
-};
-
-// In corresponding implementation file:
-LOGT_DEFINE(DatabaseManager, "Database");
-```
-
-### Function-Level Logging
-
-```cpp
-// network.cpp file
-LOGT_MODULE("Network");
-
-void send_data() {
-    logt.info() << "Starting data packet transmission";
-    logt.debug() << "Packet details - size: " << packet_size << " bytes";
-}
-```
-
-## Core API Reference
-
-### System Configuration Methods
-
-#### addfile - Add File Channel
-```cpp
-static int addfile(const std::filesystem::path& filename, bool default_enable = true);
-```
-Opens (append mode) a file output channel and returns its channel id. `default_enable` controls whether new signatures enable this channel by default. Returns `-1` if channel slots are exhausted.
-
-#### addostream - Add Custom Stream
-```cpp
-static int addostream(std::ostream& os, bool default_enable = true);
-```
-Registers a custom stream channel and returns its channel id. The provided stream must outlive logging.
-
-#### stdcout - Console Channel
-```cpp
-static void stdcout(bool enable = true, bool default_enable = true);
-```
-Controls channel 0 (stdout). It is always registered; you can disable it or exclude it from defaults.
-
-#### claim - Thread Naming
-```cpp
-static void claim(const std::string& name);
-```
-Sets a readable name for the current thread; the name appears in subsequent log lines from this thread.
-
-#### setFilterLevel - Log Filtering
-```cpp
-static void setFilterLevel(LogLevel level);
-```
-Sets the minimum level to queue. Levels: `l_DEBUG`, `l_INFO`, `l_WARN`, `l_ERROR`, `l_FATAL`, special `l_QUIET`.
-
-#### enableSuperTimestamp - High-Precision Timestamps
-```cpp
-static void enableSuperTimestamp(bool enabled);
-```
-Adds milliseconds/microseconds to timestamps when enabled.
-
-#### install_preprocessor - Preprocessor
-```cpp
-static void install_preprocessor(preprocessor_t preprocessor);
-```
-Installs a preprocessing hook. It now runs inside `write_message()`, so you can let it color stdout/custom streams while file channels still see the original unprocessed content (e.g., no ANSI codes in files).
-
-#### shutdown - System Shutdown
-```cpp
-static void shutdown();
-```
-Gracefully stops the worker thread and flushes all pending messages. **Call before program exit.**
-
-### Logging Methods
-
-Log level methods provided through logt_sig objects:
-
-#### info - Information Level
-```cpp
-logt_sso info() const;
-```
-Creates an INFO-level log message stream for recording normal application operation information.
-
-#### warn - Warning Level
-```cpp
-logt_sso warn() const;
-```
-Creates a WARN-level log message stream for recording potentially concerning abnormal conditions.
-
-#### error - Error Level
-```cpp
-logt_sso error() const;
-```
-Creates an ERROR-level log message stream for recording error conditions that don't prevent program continuation.
-
-#### fatal - Fatal Level
-```cpp
-logt_sso fatal() const;
-```
-Creates a FATAL-level log message stream for recording critical errors that prevent program continuation.
-
-#### debug - Debug Level
-```cpp
-logt_sso debug() const;
-```
-Creates a DEBUG-level log message stream for recording detailed debugging information, typically used during development.
-
-## Macro Reference
-
-### LOGT_DECLARE
-Declares a static log signature object inside a class declaration. Must be placed in the private access section of the class.
-
-### LOGT_PUBLIC_DECLARE
-Public version of `LOGT_DECLARE`, exposing the static log signature for external configuration (e.g., channel changes).
-
-### LOGT_DEFINE(Class, Name)
-Defines the log signature for a specific class in the implementation file. The Class parameter specifies the target class name, and the Name parameter defines the log identifier for that class.
-
-### LOGT_MODULE(Name)
-Creates a module-level log signature suitable for global functions, namespace scope, or main program entry points.
-
-### LOGT_LOCAL(Name)
-Creates a function-scoped local log signature for temporary use within functions.
-
-### LOGT_TEMP(Name)
-Creates a temporary log signature object for one-time use scenarios that don't require persistent state.
-
-## Channel Management
-
-- **Channel 0**: stdout is always registered; `stdcout(enable, default_enable)` controls it.
-- **Adding channels**: `addfile()` / `addostream()` return channel ids. They set `default_enable` for new signatures.
-- **Per-signature control**: `logt_sig::setChannel(id, enable)` / `setChannels({ids...})` return `bool` and validate id registration.
-- **Public access**: use `LOGT_PUBLIC_DECLARE` if a class needs external code to adjust its channels.
-- **Preprocessor scope**: runs inside `write_message()`; stdout/custom streams use processed content (e.g., colors), file channels use original content (no ANSI codes).
-
-## Log Level Details
-
-- `l_QUIET` = -1 - Complete silent mode, no logging
-- `l_DEBUG` = 0 - Debug level, most detailed operational information
-- `l_INFO` = 1 - Information level, normal operational status
-- `l_WARN` = 2 - Warning level, potential abnormal conditions
-- `l_ERROR` = 3 - Error level, error conditions
-- `l_FATAL` = 4 - Fatal level, critical errors
-
-## Complete Application Example
-
-```cpp
-#include <SharedCppLib2/logt.hpp>
-#include <thread>
-
-class DataProcessor {
-    LOGT_DECLARE
-public:
-    void process() {
-        logt.info() << "Starting data processing pipeline";
-        logt.debug() << "Input dataset size: " << input_data.size();
-        // Processing logic...
-    }
-};
-
-LOGT_DEFINE(DataProcessor, "DataProcessor");
-LOGT_MODULE("MainApplication");
-
-int main() {
-    // System initialization configuration
-    int file_channel = logt::addfile("application.log");  // Output to file
-    logt::stdcout(true);              // stdout channel 0
-    logt::claim("MainThread");       // Main thread naming
-    logt::setFilterLevel(LogLevel::Debug);  // Set log level
-    logt::enableSuperTimestamp(true); // Enable high-precision timestamps
-    // Route module logs to stdout + file
-    logt.setChannels({0, file_channel});
-    
-    // Color preprocessor: colors stay on stdout/custom streams, files get plain text
-    // logt::install_preprocessor(logc::logPreprocessor);
-    
-    // Record startup information
-    logt.info() << "Main application initialization completed";
-    logt.warn() << "Using default configuration parameters";
-    
-    // Use class logging functionality
-    DataProcessor data_processor;
-    data_processor.process();
-    
-    // Multi-threaded logging example
-    std::thread worker_thread([](){
-        logt::claim("WorkerThread");  // Worker thread naming
-        LOGT_LOCAL("Worker");         // Local log signature
-        
-        for(int task_id = 0; task_id < 5; task_id++) {
-            logt.info() << "Executing work task ID: " << task_id;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    });
-    
-    worker_thread.join();
-    logt.info() << "All processing tasks completed";
-    
-    // Critical step: shutdown logging system
     logt::shutdown();
     return 0;
 }
 ```
 
-## Output Format Specification
+### Class usage
 
-Standard output format:
+```cpp
+class DatabaseManager {
+    LOGT_DECLARE
+
+public:
+    void connect() {
+        logt.info() << "Opening database connection...";
+        logt.debug() << "Connection parameters: " << connection_params;
+    }
+};
+
+// In implementation file:
+LOGT_DEFINE(DatabaseManager, "Database");
 ```
-[YYYY/MM/DD HH:MM:SS] [LEVEL] [THREAD] [SIGNATURE] Log message content
+
+### Function-level logging
+
+```cpp
+// network.cpp
+
+void send_data() {
+    LOGT_LOCAL("Network::send_data"); // Recommended signature style.
+
+    logt.info() << "Start packet transmission";
+    logt.debug() << "Packet details - size: " << packet_size << " bytes";
+}
 ```
 
-Format with high-precision timestamps enabled:
+### Enable debug mode
+```cpp
+#include <SharedCppLib2/logt.hpp>
+#include <SharedCppLib2/arguments.hpp>
+
+int main(int argc, char** argv) {
+    std::arguments args(argc, argv);
+
+    // ... other log initialization code ...
+
+    if(args.addFlag("debug")) {
+        logt::setFilterLevel(LogLevel::Debug);
+    }
+
+    LOGT_LOCAL("main");
+    logt.debug() << "Debug mode enabled";
+
+    logt::shutdown();
+    return 0;
+}
 ```
-[YYYY/MM/DD HH:MM:SS.MMM.UUU] [LEVEL] [THREAD] [SIGNATURE] Log message content
+
+### Exit when execution cannot continue
+```cpp
+void some_critical_function() {
+    LOGT_LOCAL("CriticalFunction");
+
+    if(!initialize_critical_resource()) {
+        logt.fatal() << "Critical resource initialization failed, program will exit";
+        logt::exit(EXIT_FAILURE);
+    }
+
+    // ...
+}
 ```
 
-Format explanation:
-- Timestamp: Complete date and time information
-- Level: Log severity identifier (DEBUG/INFO/WARN/ERROR/FATAL)
-- Thread: Name of the thread that produced the log
-- Signature: Source module or class identifier of the log message
-- Message content: Specific log information provided by the user
+## Core API Reference
 
-## Performance Optimization Recommendations
+### System configuration methods
 
-- **Zero-Blocking Advantage**: Leverage the asynchronous nature - logging operations won't impact main thread performance
-- **Preprocessing Optimization**: Complex string concatenation and formatting should be completed before logging calls to reduce processing time in the queue
-- **Production Configuration**: In production environments, consider setting `setFilterLevel(LogLevel::Warn)` or higher to reduce unnecessary log output
-- **Resource Cleanup**: Always call the `shutdown()` method before program exit to prevent log message loss and resource leaks
+#### addfile - add file channel
+```cpp
+static int addfile(const std::filesystem::path& filename, bool default_enable = true);
+```
+Opens a file channel in append mode and returns channel id. `default_enable` controls whether new signatures enable this channel by default. Returns `-1` if channel slots are exhausted.
+
+#### addostream - add custom stream
+```cpp
+static int addostream(std::ostream& os, bool default_enable = true);
+```
+Registers a custom output stream and returns channel id. The provided stream must remain valid during logging. logt does not own it.
+
+#### stdcout - console channel control
+```cpp
+static void stdcout(bool enable = true, bool default_enable = true);
+```
+Controls channel 0 (stdout). This channel always exists and can be disabled or removed from default channel set.
+
+#### claim - thread naming
+```cpp
+static void claim(const std::string& name);
+```
+Sets a readable name for current thread. If a thread is not claimed, logt falls back to thread id display.
+
+#### setFilterLevel - log filtering
+```cpp
+static void setFilterLevel(LogLevel level);
+```
+Sets minimum queued level. Levels: `LogLevel::Debug`, `LogLevel::Info`, `LogLevel::Warn`, `LogLevel::Error`, `LogLevel::Fatal`, special `LogLevel::Quiet`.
+
+#### enableSuperTimestamp - high precision timestamp
+```cpp
+static void enableSuperTimestamp(bool enabled);
+```
+When enabled, timestamps include milliseconds and microseconds.
+
+#### install_preprocessor - preprocessor
+```cpp
+static void install_preprocessor(preprocessor_t preprocessor);
+```
+Installs preprocessing hook.
+Preprocessing currently happens in `write_message()`: stdout/custom streams use processed content (can keep color), while file channels use original unprocessed content (to avoid ANSI codes in files).
+
+#### shutdown - graceful shutdown
+```cpp
+static void shutdown();
+```
+Gracefully stops worker thread and flushes pending messages. **Must be called before program exit.**
+
+#### exit - shutdown + process exit
+```cpp
+static void exit(int exitcode);
+```
+Calls `shutdown()` and then exits process.
+
+### Logging methods
+
+Log level methods are provided through `logt_sig`:
+
+#### info
+```cpp
+logt_sso info() const;
+```
+Creates INFO level message stream.
+
+#### warn
+```cpp
+logt_sso warn() const;
+```
+Creates WARN level message stream.
+
+#### error
+```cpp
+logt_sso error() const;
+```
+Creates ERROR level message stream.
+
+#### fatal
+```cpp
+logt_sso fatal() const;
+```
+Creates FATAL level message stream.
+
+#### debug
+```cpp
+logt_sso debug() const;
+```
+Creates DEBUG level message stream. With default filter (`LogLevel::Info`), debug messages are dropped.
+
+## Macro Reference
+
+Note: due to current implementation constraints, `LOGT_LOCAL` is strongly recommended. See "Log Signatures" section for details.
+
+At main entry points, place `LOGT_LOCAL` after channel initialization, otherwise channel reuse optimization may produce unexpected channel configuration behavior. This area is under refactoring.
+
+### LOGT_DECLARE
+Declares class static log signature (private).
+
+### LOGT_PUBLIC_DECLARE
+Public version of `LOGT_DECLARE` for external channel adjustment.
+
+### LOGT_DEFINE(Class, Name)
+Defines class signature in implementation file.
+
+### LOGT_MODULE(Name)
+Defines module-level signature (global / namespace scope).
+
+### LOGT_LOCAL(Name)
+Defines function-scope local signature.
+
+### LOGT_TEMP(Name)
+Defines one-shot temporary signature object.
+
+### LOGT_LINEINFO
+```cpp
+#define LOGT_LINEINFO std::format("{}:{} {}", __FILE__, __LINE__, __FUNCTION__)
+```
+Convenience macro for embedding source location in log messages.
+
+## Channel Management
+
+- **Channel 0**: stdout is always registered; controlled via `stdcout(enable, default_enable)`.
+- **Adding channels**: `addfile()` / `addostream()` return ids and define default enable state for new signatures.
+- **Per-signature control**: `logt_sig::setChannel(id, enable)` / `setChannels({ids...})` return `bool` and validate registration.
+- **Public access**: if external code must modify class channels, use `LOGT_PUBLIC_DECLARE`.
+- **Preprocessor scope**: preprocessing is applied in `write_message()`; stdout/custom streams keep processed content, file channels keep original content.
+
+## Log Levels
+
+- `LogLevel::Quiet` = -1 — log nothing.
+- `LogLevel::Debug` = 0 — detailed debug information.
+- `LogLevel::Info` = 1 — normal runtime information.
+- `LogLevel::Warn` = 2 — potentially abnormal conditions.
+- `LogLevel::Error` = 3 — error conditions.
+- `LogLevel::Fatal` = 4 — unrecoverable failures.
+
+## Complete Example
+
+```cpp
+#include <SharedCppLib2/logt.hpp>
+#include <SharedCppLib2/logc.hpp>
+#include <thread>
+
+class DataProcessor {
+public:
+    void process() {
+        LOGT_LOCAL("DataProcessor::process");
+
+        logt.info() << "Start data processing";
+        logt.debug() << "Input size: " << input_data.size();
+        // ...
+    }
+};
+
+int main() {
+    int file_channel = logt::addfile("application.log");
+    logt::stdcout(true);
+    logt::claim("MainThread");
+    logt::setFilterLevel(LogLevel::Debug);
+    logt::enableSuperTimestamp(true);
+    logt.setChannels({0, file_channel});
+
+    LOGT_LOCAL("main");
+
+    // logt::install_preprocessor(logc::logPreprocessor);
+
+    logt.info() << "Main application initialized";
+    logt.warn() << "Using default configuration";
+
+    DataProcessor data_processor;
+    data_processor.process();
+
+    std::thread worker_thread([](){
+        logt::claim("WorkerThread");
+        LOGT_LOCAL("Worker");
+
+        for(int task_id = 0; task_id < 5; task_id++) {
+            logt.info() << "Execute task: " << task_id;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    });
+
+    worker_thread.join();
+    logt.info() << "All tasks completed";
+
+    logt::shutdown();
+    return 0;
+}
+```
+
+## Log Signatures
+
+Log signatures are source labels attached to each message in logt. They can be defined at class/module/function scope to make origin tracing explicit.
+
+However, due to current design limitations, `LOGT_MODULE` and `LOGT_DECLARE` are not recommended for now because their scope is broader and less precise for troubleshooting.
+Prefer defining local signatures with `LOGT_LOCAL` inside functions for clearer and more accurate log origins.
+
+## Output Format
+
+Standard format:
+```
+[YYYY/MM/DD HH:MM:SS] [LEVEL] [THREAD] [SIGNATURE] Message content
+```
+
+With high-precision timestamp enabled:
+```
+[YYYY/MM/DD HH:MM:SS.MMM.UUU] [LEVEL] [THREAD] [SIGNATURE] Message content
+```
+
+Field meaning:
+- Timestamp: date/time of log generation.
+- Level: severity marker (`DEBUG/INFO/WARN/ERROR/FATAL`).
+- Thread: claimed thread name (or thread id fallback).
+- Signature: source signature (module/class/function).
+- Message: actual user log payload.
+
+## Performance Recommendations
+
+- **Async advantage**: logging does not block caller threads, use it to keep critical paths responsive.
+- **Preprocessing cost**: complete heavy formatting before enqueueing where possible.
+- **Production filter**: consider `setFilterLevel(LogLevel::Warn)` or higher in production.
+- **Shutdown discipline**: always call `shutdown()` before process exit to avoid message loss.
 
 ## Extension Integration
 
-Through the preprocessor mechanism, logt can seamlessly integrate with other functional modules. Particularly when used with the [`logc`](logc.md) color output library, it can add rich color identifiers to terminal logs, enhancing log readability. Preprocessors also support advanced features like custom format conversion, sensitive information filtering, and log auditing.
+With preprocessors, logt integrates cleanly with auxiliary modules.
+For example, using [`logc`](logc.md) can apply colorized terminal output while keeping file output plain.
+Preprocessors can also be used for custom formatting, sensitive data masking, and audit pipelines.
