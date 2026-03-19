@@ -43,6 +43,29 @@ configure_file(
 # 构建输出目录
 # set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
+# API 定义文件
+add_library(api INTERFACE include/api.hpp)
+
+# Header-only modules (INTERFACE targets)
+set(INTERFACE_TARGET_LIST
+    hmac logh rerr bits cache exexception engineering multindex percentage RAII singleinst
+    structural_binding typemask
+)
+
+add_library(hmac INTERFACE include/hmac.hpp)
+add_library(logh INTERFACE include/logh.hpp)
+add_library(rerr INTERFACE include/rerr.hpp)
+add_library(bits INTERFACE include/bits.hpp)
+add_library(cache INTERFACE include/cache.hpp)
+add_library(exexception INTERFACE include/exexception.hpp)
+add_library(engineering INTERFACE include/engineering.hpp)
+add_library(multindex INTERFACE include/multindex.hpp)
+add_library(percentage INTERFACE include/percentage.hpp)
+add_library(RAII INTERFACE include/RAII.hpp)
+add_library(singleinst INTERFACE include/singleinst.hpp)
+add_library(structural_binding INTERFACE include/structural_binding.hpp)
+add_library(typemask INTERFACE include/typemask.hpp)
+
 # 定义所有库
 add_library(variant STATIC src/variant.cpp)
 add_library(basic STATIC src/bytearray.cpp src/bytearray_base64.cpp src/ansiio.cpp src/stringlist.cpp src/basics.cpp)
@@ -55,7 +78,7 @@ add_library(logt STATIC src/logt.cpp)
 add_library(logc STATIC src/logc.cpp)
 add_library(Base64 STATIC src/Base64.cpp)
 add_library(platform STATIC src/platform.cpp)
-# add_library(process STATIC src/process.cpp)
+# add_library(process STATIC src/process.cpp) # A major update in progress, not ready to use
 add_library(arguments STATIC src/arguments.cpp)
 add_library(ini STATIC src/ini.cpp)
 add_library(xml STATIC src/xml.cpp)
@@ -64,6 +87,7 @@ add_library(debug STATIC src/debug.cpp)
 add_library(stream STATIC src/stream.cpp)
 add_library(console STATIC src/console.cpp)
 add_library(keydb STATIC src/keydb.cpp)
+add_library(types STATIC src/scltypes.cpp)
 
 # Network module (commented out until ready for main branch)
 # add_library(network STATIC 
@@ -85,6 +109,7 @@ endif()
 target_link_libraries(logd PUBLIC variant)
 target_link_libraries(logf PUBLIC logd)
 target_link_libraries(logc PUBLIC logt)
+target_link_libraries(hmac INTERFACE api basic)
 
 # 平台依赖
 target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要平台相关支持
@@ -105,7 +130,7 @@ endforeach()
 set(TARGET_LIST
     variant logd logf sha256 basic indexer regexfilter
     logt logc Base64 platform arguments ini abstract xml debug stream
-    console keydb
+    console keydb types
 )
 
 # 安装目标
@@ -136,6 +161,20 @@ foreach(target_name ${TARGET_LIST})
     )
 
 endforeach()
+
+# INTERFACE-only targets 导出属性
+foreach(target_name api ${INTERFACE_TARGET_LIST})
+    target_include_directories(${target_name} INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+endforeach()
+
+install(TARGETS api ${INTERFACE_TARGET_LIST}
+    EXPORT SharedCppLib2Targets
+    INCLUDES DESTINATION ${INSTALL_INCLUDEDIR}
+)
 
 
 # 安装头文件

@@ -2,6 +2,9 @@
     Variant project inspired by QVariant.
     This project is currently deprecated, but may restart if good
     solutions are found.
+
+    Note: This module is finally deprecated, because there are already some good solutions
+        in intergration of module bytearray and scl2api.
 */
 
 #pragma once

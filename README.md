@@ -29,6 +29,7 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **`Base64`** - Base64 encoding and decoding utilities
 - **[`bytearray`](doc/bytearray.md)** - Binary data management and serialization
 - **[`sha256`](doc/sha256.md)** - SHA-256 cryptographic hash implementation
+- **[`hmac`](doc/hmac.md)** - Header-only HMAC implementation based on hash providers
 - **[`logt`](doc/logt.md)** - High-performance asynchronous logging
 - **[`logc`](doc/logc.md)** - Colored console output for logt
 - **`indexer`** - Data indexing and search utilities
@@ -85,7 +86,7 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(your_target SharedCppLib2::basic)
 ```
 
-**Available targets:** `variant`, `logd`, `logf`, `sha256`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`
+**Available targets:** `variant`, `logd`, `logf`, `sha256`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
 
 ### 4. Code Example
 ```cpp
@@ -97,6 +98,23 @@ int main(int argc, char** argv) {
     return 0;
 }
 ```
+
+### 5. HMAC Example (with SHA256 provider)
+
+`hmac` is provider-agnostic. The sample below uses `sha256` as provider.
+
+```cpp
+#include <SharedCppLib2/hmac.hpp>
+#include <SharedCppLib2/sha256.hpp>
+
+std::bytearray key(std::string("secret-key"));
+std::bytearray payload(std::string("binary-message"));
+
+std::bytearray tag = scl2::hmac<scl2::sha256>::compute(payload, key);
+```
+
+For tag verification, use constant-time comparison:
+- [constant_time_compare](doc/constant_time_compare.md)
 
 Detailed documentation is available in header files as Doxygen comments.
 

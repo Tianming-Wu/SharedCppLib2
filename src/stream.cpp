@@ -19,3 +19,8 @@ bool basic_sclistream::waitForReadyRead(std::chrono::milliseconds timeout)
     // Final check at deadline
     return readyRead();
 }
+
+bool basic_sclistream::reset()
+{
+    return false;
+}

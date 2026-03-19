@@ -3,6 +3,20 @@
 
 namespace std {
 
+void bytearray::copy_from(const void *raw, size_t size)
+{
+    if(raw == nullptr) throw std::invalid_argument("bytearray::copy_from: raw pointer cannot be null");
+    clear(); resize(size);
+    std::memcpy(data(), raw, size);
+}
+
+void bytearray::copy_to(void *raw, size_t size) const
+{
+    if(raw == nullptr) throw std::invalid_argument("bytearray::copy_to: raw pointer cannot be null");
+    if(size > this->size()) throw std::invalid_argument("bytearray::copy_to: size exceeds bytearray size");
+    std::memcpy(raw, this->data(), size);
+}
+
 byte bytearray::at(size_t i) const{
     return ::std::vector<byte>::at(i);
 }

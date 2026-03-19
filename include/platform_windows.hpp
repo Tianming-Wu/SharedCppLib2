@@ -26,8 +26,6 @@
 #include <windows.h>
 
 
-
-
 // ---- Process Related Macros ----
 
 // Comment: these functions completely missed the A version, so they are inaccessible when UNICODE is defined.

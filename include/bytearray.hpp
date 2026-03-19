@@ -72,12 +72,15 @@ public:
         vector_type::assign(src, src + sizeof(std::remove_cvref_t<_Any>));
     }
 
+    // Alignment related things are not yet tested. Furthur tests are required before
+    // saying that this is safe and works for all trivially copyable types. Use with caution.
     template<typename _T>
     // requires (std::is_aggregate_v<_T>)
     requires (std::is_trivially_copyable_v<_T>)
     _T convert_to() const {
         if (size() != sizeof(_T)) throw std::runtime_error("bytearray::convert_to: type size mismatch");
-        if (reinterpret_cast<uintptr_t>(data()) % alignof(_T) != 0) throw std::runtime_error("bytearray::convert_to: alignment mismatch");
+        if (reinterpret_cast<uintptr_t>(data()) % alignof(_T) != 0)
+            throw std::runtime_error("bytearray::convert_to: alignment mismatch");
         return *std::bit_cast<const _T*>(data());
     }
 
@@ -91,13 +94,16 @@ public:
     // construct _T from raw data pointer and size, for some STL containers
     template<typename _T>
     requires ( std::is_class_v<_T> && std::is_trivially_copyable_v<typename _T::value_type> )
-    _T convert_to_constructer() {
+    _T toContainer() {
         using _Tp = typename _T::value_type;
         return _T(
             reinterpret_cast<const _Tp*>(this->data()),
             this->size() / sizeof(_Tp)
         );
     }
+
+    void copy_from(const void* raw, size_t size);
+    void copy_to(void* raw, size_t size) const;
 
     inline const byte* rawData() const { return data(); }
     inline size_t rawSize() const { return size(); }
@@ -115,11 +121,11 @@ public:
 
     // fuck you std standard for no explicit parameters
     inline void append(uint16_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(uint16_t))); }
-    inline void append(int16_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int16_t))); }
+    inline void append(int16_t val)  { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int16_t)));  }
     inline void append(uint32_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(uint32_t))); }
-    inline void append(int32_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int32_t))); }
+    inline void append(int32_t val)  { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int32_t)));  }
     inline void append(uint64_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(uint64_t))); }
-    inline void append(int64_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int64_t))); }
+    inline void append(int64_t val)  { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int64_t)));  }
 
     // explicit overloads for unsigned long and long (only when distinct from fixed-width types)
     template<typename T>
@@ -134,6 +140,7 @@ public:
               !std::is_same_v<long, int64_t>)
     inline void append(T val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(long))); }
 
+    // appending size_t (to avoid ambiguity with everything else)
     inline void appendSize(size_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(size_t))); }
 
     // special one for safe string storage. extract with bytearray_view::readString().

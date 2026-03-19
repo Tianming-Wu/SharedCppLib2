@@ -38,6 +38,8 @@ Rect Rect::expand(int d) const { return Rect(x - d, y - d, w + 2 * d, h + 2 * d)
 Rect Rect::shrink(int dw, int dh) const { return Rect(x + dw, y + dh, w - 2 * dw, h - 2 * dh); }
 Rect Rect::shrink(int d) const { return Rect(x + d, y + d, w - 2 * d, h - 2 * d); }
 
+bool Rect::contains(Point pt) const { return pt.x >= x && pt.x < x + w && pt.y >= y && pt.y < y + h; }
+
 #ifdef OS_WINDOWS
 Rect::Rect(const RECT& rc) : x(rc.left), y(rc.top), w(rc.right - rc.left), h(rc.bottom - rc.top) {}
 #endif

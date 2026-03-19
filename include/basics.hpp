@@ -16,27 +16,13 @@
 
 namespace std {
 
+// Deprecated: use scl2::Rect in scltypes.hpp instead.
+// Will be removed in future versions.
 struct rect {
     int x, y, w, h;
     rect() {}
     rect(int x, int y, int w, int h) : x(x), y(y), w(w), h(h) {}
 };
-
-[[deprecated]]
-inline string itos(int d)
-{
-	stringstream ss; string stl;
-	ss << d; ss >> stl;
-	return stl;
-}
-
-[[deprecated]]
-inline wstring itows(int d)
-{
-	wstringstream ss; wstring stl;
-	ss << d; ss >> stl;
-	return stl;
-}
 
 template<typename T>
 requires requires(const T& t, std::stringstream& test_ss) { test_ss << t; }
@@ -47,6 +33,7 @@ std::string streamed_to_string(const T& value) {
 }
 
 #ifndef lower
+
 inline std::string lower(const std::string& orig) {
     constexpr int offset = 'a' - 'A';
     std::string result = orig;
@@ -55,6 +42,7 @@ inline std::string lower(const std::string& orig) {
     }
     return result;
 }
+
 inline std::wstring lower(const std::wstring& orig) {
     constexpr int offset = L'a' - L'A';
     std::wstring result = orig;
@@ -63,9 +51,11 @@ inline std::wstring lower(const std::wstring& orig) {
     }
     return result;
 }
-#endif
+
+#endif // lower
 
 #ifndef upper
+
 inline std::string upper(const std::string& orig) {
     constexpr int offset = 'A' - 'a';
     std::string result = orig;
@@ -74,6 +64,7 @@ inline std::string upper(const std::string& orig) {
     }
     return result;
 }
+
 inline std::wstring upper(const std::wstring& orig) {
     constexpr int offset = L'A' - L'a';
     std::wstring result = orig;
@@ -82,32 +73,34 @@ inline std::wstring upper(const std::wstring& orig) {
     }
     return result;
 }
-#endif
 
+#endif // upper
+
+// Return true if the character c is in the string ms, otherwise return false.
 inline bool charmatch(char c, std::string ms) {
     for(char cs : ms) if(c == cs) return true;
     return false;
 }
 
+// Return true if the character c is in the string ms, otherwise return false.
 inline bool charmatch(wchar_t c, std::wstring ms) {
     for(wchar_t cs : ms) if(c == cs) return true;
     return false;
 }
 
+// Return the number of occurrences of character c in the string ms.
 inline size_t numberof(char c, std::string ms) {
-    size_t result;
+    size_t result = 0;
     for(char cs: ms) if(c == cs) result ++;
     return result;
 }
 
+// Return the number of occurrences of character c in the string ms.
 inline size_t numberof(wchar_t c, std::wstring ms) {
     size_t result = 0;
     for(wchar_t cs: ms) if(c == cs) result ++;
     return result;
 }
-
-// #define runOnce(FN_NAME) static int FN_NAME##_runonce = FN_NAME()
-
 
 }; // namespace std
 
@@ -174,12 +167,20 @@ std::vector<E> enum_bitwiden_range(E value, size_t min, size_t max) {
 
 #endif // SHAREDCPPLIB2_MINMAX_AVOID
 
+
+// Not implemented for tecnical reasons.
 // /// @brief Get the number of keys in the enum
 // template<typename E>
 // requires std::is_enum_v<E>
 // constexpr size_t __sizeof_enum() {
 //     for()
 // }
+
+
+
+
+
+
 
 #define disable_copy(CLASS) \
     CLASS(const CLASS&) = delete; \
@@ -214,11 +215,13 @@ std::vector<E> enum_bitwiden_range(E value, size_t min, size_t max) {
     enable_move(CLASS)
 
 namespace scl2 {
-/// Get the version string of SharedCppLib2
+
+    /// Get the version string of SharedCppLib2
 /// @return Version in format "major.minor.patch"
 std::string version();
 
 /// Get detailed information about SharedCppLib2
 /// @return Detailed version and build information
 std::string about();
+
 } // namespace scl2

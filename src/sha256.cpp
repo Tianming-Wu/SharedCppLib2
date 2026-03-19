@@ -5,7 +5,9 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-namespace sha256 {
+namespace scl2 {
+
+namespace {
 
 // 在SHA256算法中的初始信息摘要，这些常量是对自然数中前8个质数的平方根的小数部分取前32bit而来。
 std::vector<uint32_t> initial_message_digest_ = 
@@ -35,6 +37,8 @@ inline uint32_t big_sigma0(uint32_t x) { return (x >> 2 | x << 30) ^ (x >> 13 | 
 inline uint32_t big_sigma1(uint32_t x) { return (x >> 6 | x << 26) ^ (x >> 11 | x << 21) ^ (x >> 25 | x << 7); }
 inline uint32_t small_sigma0(uint32_t x) { return (x >> 7 | x << 25) ^ (x >> 18 | x << 14) ^ (x >> 3); }
 inline uint32_t small_sigma1(uint32_t x) { return (x >> 17 | x << 15) ^ (x >> 19 | x << 13) ^ (x >> 10); }
+
+} // namespace <anonymous>
 
 /** @brief: SHA256算法对输入信息的预处理，包括“附加填充比特”和“附加长度值”
 附加填充比特: 在报文末尾进行填充，先补第一个比特为1，然后都补0，直到长度满足对512取模后余数是448。需要注意的是，信息必须进行填充。
@@ -73,7 +77,7 @@ void transform(const std::vector<uint32_t>& words,
 std::bytearray produceFinalHashValue(const std::vector<uint32_t>& input);
 
 
-std::bytearray encrypt(const std::bytearray& input_message)
+std::bytearray sha256::hash(const std::bytearray& input_message)
 {
     // 预处理
     std::bytearray message = input_message;
@@ -96,10 +100,10 @@ std::bytearray encrypt(const std::bytearray& input_message)
     return produceFinalHashValue(message_digest);
 }
 
-std::string getHexMessageDigest(const std::string& message)
+std::string sha256::getHexMessageDigest(const std::string& message)
 {
     std::bytearray message_bytes(message);
-    std::bytearray digest = encrypt(message_bytes);
+    std::bytearray digest = hash(message_bytes);
 
     std::ostringstream o_s;
     o_s << std::hex << std::setiosflags(std::ios::uppercase);
@@ -112,8 +116,8 @@ std::string getHexMessageDigest(const std::string& message)
     return o_s.str();
 }
 
-std::bytearray getMessageDigest(const std::bytearray& message) {
-    return encrypt(message);
+std::bytearray sha256::getMessageDigest(const std::bytearray& message) {
+    return hash(message);
 }
 
 void preprocessing(std::bytearray* _message)
@@ -271,5 +275,5 @@ std::bytearray produceFinalHashValue(const std::vector<uint32_t>& input)
     return output;
 }
 
-} // namespace sha256
+} // namespace scl2
 

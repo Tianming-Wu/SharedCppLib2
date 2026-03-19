@@ -389,7 +389,7 @@ std::bytearray compute_file_hash(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
     std::bytearray content;
     content.readAllFromStream(file);
-    return sha256::getMessageDigest(content);
+    return scl2::sha256::getMessageDigest(content);
 }
 ```
 

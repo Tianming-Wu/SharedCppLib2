@@ -132,6 +132,12 @@ std::string logt_sso::default_formatter(const logt_format::formatSettings& setti
     std::string format_result;
     format_result = logt::level_labels_[static_cast<int>(info.level)];
 
+    if(settings.enableAlignment) {
+        if(info.level == LogLevel::Info || info.level == LogLevel::Warn) {
+            format_result += " "; // add an extra space for alignment
+        }
+    }
+
     if(settings.enableThreadTag) {
         format_result += std::string(" ");
         auto thread_name = logt::get_thread_name();

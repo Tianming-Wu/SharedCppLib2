@@ -343,5 +343,8 @@ typedef basic_arguments<wchar_t> warguments;
 /*
     Work document
 
+    I wonder if we do need some other types support like u8string, or u16string.
+    Whatever, although this is a template, it is not possible for downstream users to use
+    other character types since the implementation is instanced only for two types.
 
 */

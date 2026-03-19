@@ -7,6 +7,12 @@
 
 #include "variant.hpp"
 
+/*
+    This module is discarded. Most of the features are available under other forms,
+    like logt for much powerful logging. And the formatting in this library is not
+    better than using std::format.
+*/
+
 namespace logd {
 
 enum loglevel {

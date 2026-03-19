@@ -28,8 +28,9 @@
 
     Note 5:
         These types are designed to be compatible with the corresponding types in WinAPI,
-        so they can be easily converted back and forth. But they are not dependent on WinAPI,
-        so you can use them in any platform.
+        so they can be easily converted back and forth. But they do not depend on WinAPI,
+        so you can use them on any platform, where these features will be automatically
+        disabled.
 
         If you can not see the WinAPI support available, you need to check your include file.
         You'de better include platform.hpp instead of windows.h directly, since these file does
@@ -56,6 +57,9 @@
 
 #include "scalable.hpp"
 #include "structural_binding.hpp"
+
+#pragma warning(push, 0) // disable useless warnings here
+#pragma warning(disable: 4244) // Conversion warning may pop up in scaling macros
 
 namespace scl2 {
 
@@ -108,6 +112,8 @@ struct Rect
     Rect expand(int d) const;
     Rect shrink(int dw, int dh) const;
     Rect shrink(int d) const;
+
+    bool contains(Point pt) const;
 
 #ifdef OS_WINDOWS
     Rect(const RECT& rc);
@@ -247,3 +253,5 @@ STRUCTURAL_BINDING_DEFINE_GET(scl2::RectF, 0, x)
 STRUCTURAL_BINDING_DEFINE_GET(scl2::RectF, 1, y)
 STRUCTURAL_BINDING_DEFINE_GET(scl2::RectF, 2, w)
 STRUCTURAL_BINDING_DEFINE_GET(scl2::RectF, 3, h)
+
+#pragma warning(pop) // restore warnings

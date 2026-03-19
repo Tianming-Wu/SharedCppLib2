@@ -28,6 +28,7 @@ Other languages: [English](README.md)
 - **`Base64`** - Base64 编码和解码工具
 - **[`bytearray`](doc/zh_CN/bytearray.md)** - 二进制数据管理和序列化
 - **[`sha256`](doc/zh_CN/sha256.md)** - SHA-256 加密哈希实现
+- **[`hmac`](doc/zh_CN/hmac.md)** - 基于哈希提供者的 Header-only HMAC 实现
 - **[`logt`](doc/zh_CN/logt.md)** - 高性能异步日志记录
 - **[`logc`](doc/zh_CN/logc.md)** - 为 logt 提供彩色控制台输出
 - **`indexer`** - 数据索引和搜索工具
@@ -84,7 +85,7 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(您的目标 SharedCppLib2::basic)
 ```
 
-**可用目标：** `variant`, `logd`, `logf`, `sha256`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`
+**可用目标：** `variant`, `logd`, `logf`, `sha256`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
 
 上述列表可能不完整，以顶部列表为准。
 
@@ -98,6 +99,23 @@ int main(int argc, char** argv) {
     return 0;
 }
 ```
+
+### 5. HMAC 示例（使用 SHA256 作为 provider）
+
+`hmac` 本身与具体哈希算法解耦。下面示例仅演示使用 `sha256` 作为 provider。
+
+```cpp
+#include <SharedCppLib2/hmac.hpp>
+#include <SharedCppLib2/sha256.hpp>
+
+std::bytearray key(std::string("secret-key"));
+std::bytearray payload(std::string("binary-message"));
+
+std::bytearray tag = scl2::hmac<scl2::sha256>::compute(payload, key);
+```
+
+关于验签时的常量时间比较，请参考：
+- [constant_time_compare](doc/zh_CN/constant_time_compare.md)
 
 详细的文档可在头文件的注释中找到，或者查看 `doc/zh_CN` 目录下的文档。
 

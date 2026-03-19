@@ -1,5 +1,15 @@
 # Changelog
 
+### v2.0.0
+- New: Introduced generic hash-provider compatibility layer enhancements in `api.hpp`, including fixed/dynamic hash result-size metadata support.
+- New: Added header-only `hmac` module with provider-agnostic design (`scl2::hmac<HashProvider>`), plus digest-size validation behavior for fixed and dynamic providers.
+- Changed: SHA256 API is now integrated as `scl2::sha256` provider style with hash metadata (`result_size`, `block_size`) for compatibility-layer usage.
+- Changed: SHA256/bytearray related docs and READMEs were synchronized to the new provider-style API and HMAC usage patterns.
+- New: Added dedicated constant-time comparison guides (English/Chinese) for HMAC tag verification recommendations.
+- Build: Updated CMake export/install target listing to include compatibility and header-only targets used by current integration.
+- Test: SHA256 and HMAC tests were refreshed with deterministic vectors and aligned with public API usage.
+- Release Scope Note: Network and condition related changes are intentionally excluded from this release.
+
 ### v1.22.7
 - New: console module for better console output control, including several helper classes
 - New: stream module for a unified io device handling.

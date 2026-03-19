@@ -128,6 +128,7 @@ public:
         bool enableTimestamp = true;
         bool enableThreadTag = true;
         bool enableLocalTag = true;
+        bool enableAlignment = false; // Align log level tags to the same width.
     };
 
     struct formatInfo {
@@ -351,3 +352,9 @@ public: \
 // 临时签名（用于一次性使用）
 #define LOGT_TEMP(Name) \
     ::logt_sig(Name)
+
+
+
+// 简化日志输出的宏定义
+// 使用示例：logt.fatal() << LOGT_LINEINFO << " Failed to allocate memory";
+#define LOGT_LINEINFO std::format("{}:{} {}", __FILE__, __LINE__, __FUNCTION__)
