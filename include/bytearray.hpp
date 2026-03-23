@@ -39,6 +39,15 @@ concept _is_bytearray_constructable =
 // #undef byte
 // typedef unsigned char byte;
 
+// For a better fixed-size construction api which will later be added
+// into the mainstream.
+template<size_t ContentSize>
+struct bytes
+{
+    const size_t content_size = ContentSize;
+    std::byte data[ContentSize];
+};
+
 // simplify byte literal construction, so that users can write std::byte{0x08} as B(0x08) instead. Still explicit, but less verbose.
 // The reason not to use BYTE is because of Microsoft's obnoxious definition of EVERYTHING
 #ifndef BYTEARRAY_NODEFINE
@@ -140,6 +149,11 @@ public:
               !std::is_same_v<long, int64_t>)
     inline void append(T val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(long))); }
 
+    // special handle for enum types.
+    template<typename E>
+    requires std::is_enum_v<E>
+    inline void append(E val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(E))); }
+
     // appending size_t (to avoid ambiguity with everything else)
     inline void appendSize(size_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(size_t))); }
 
@@ -189,6 +203,8 @@ public:
 #endif
 
     bool operator== (const bytearray &ba) const;
+
+    std::bytearray operator+ (const bytearray &ba) const;
 
     std::bytearray operator << (size_t offset) const;
     std::bytearray operator >> (size_t offset) const;
