@@ -136,6 +136,8 @@ public:
     inline void append(uint64_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(uint64_t))); }
     inline void append(int64_t val)  { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int64_t)));  }
 
+    inline void append(bool val)     { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(bool)));     }
+
     // explicit overloads for unsigned long and long (only when distinct from fixed-width types)
     template<typename T>
     requires (std::is_same_v<T, unsigned long> && 
