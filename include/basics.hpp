@@ -177,9 +177,17 @@ std::vector<E> enum_bitwiden_range(E value, size_t min, size_t max) {
 // }
 
 
+/** @brief Format size_type to a more readable string, like "1.5 KB" instead of "1536 bytes".
+ * @param bytes The size in bytes to format.
+ * @param isi If true, use 1000 as the divisor (SI units), otherwise use 1024 (binary units). Default is false (binary units).
+*/
+std::string prettySize(size_t bytes, bool isi = false);
 
-
-
+/** @brief Format size_type to a more readable string, like "1.5 KB" instead of "1536 bytes".
+ * @param bytes The size in bytes to format.
+ * @param isi If true, use 1000 as the divisor (SI units), otherwise use 1024 (binary units). Default is false (binary units).
+*/
+std::wstring prettySizeW(size_t bytes, bool isi = false);
 
 
 #define disable_copy(CLASS) \

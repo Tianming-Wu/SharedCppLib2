@@ -21,7 +21,7 @@
 
 #include "stringlist.hpp"
 #include "basics.hpp"
-#include "bits.hpp"
+#include "enum.hpp"
 #include "platform.hpp" // unluckily needed for string conversion helpers
 
 #include <map>
@@ -54,7 +54,7 @@ public:
         HelpAboutBlocking = 1 << 3, // Stop parsing options if help/version detected
         EnablePrimaryCommand = 1 << 4, // Allow a primary command (first argument and non-option) (off by default)
     };
-    Define_Enum_BitOperators_Inclass(parse_policy)
+    scl2_enum_bitop_inclass(parse_policy)
 
     static constexpr parse_policy default_policy = 
         basic_arguments<CharT>::AllowEqualSign;

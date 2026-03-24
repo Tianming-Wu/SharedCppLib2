@@ -17,7 +17,9 @@
 */
 
 #pragma once
+#include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 template <class TClass>
 requires std::is_class_v<TClass>
@@ -43,3 +45,25 @@ public: \
 
 #define SINGLE_INSTANCE_IMPL(CLASS) \
     SingleInstance<CLASS> CLASS::s_single_instance;
+
+
+/*
+    Use inside a class:
+
+class myclass: {
+public:
+    SINGLE_INSTANCE(myclass)
+
+    si_static_access(myfunc, _myfunc)
+private:
+    void _myfunc() {}
+};
+*/
+#define si_static_access(NAME, IMPL) \
+    template <typename... Args> \
+    inline static decltype(auto) NAME(Args&&... args) { \
+        if (!s_single_instance.hasInstance()) { \
+            throw std::runtime_error("SingleInstance::" #NAME ": instance not created"); \
+        } \
+        return s_single_instance.instance()->IMPL(std::forward<Args>(args)...); \
+    }

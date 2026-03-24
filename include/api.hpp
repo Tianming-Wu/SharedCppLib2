@@ -4,7 +4,7 @@
     For your compatible layer to work with SharedCppLib2:
 
     These are the "compatible layers" that if your type supports, SharedCppLib2
-    can automatically recognize them and use them for simplicity and efficiency:  
+    can automatically recognize them and use them for simplicity and efficiency:
 
     - Structure serialization and deserialization (string-type):
         These forms are supported for both:
@@ -34,6 +34,17 @@
         copyable types when constructing to a bytearray.
         If load() is supported, it will be automatically called for non-trivially
         copyable types when converting from a bytearray.
+
+    
+    In short:
+        Type -> serialize() -> string_type
+        Type <- deserialize() <- string_type
+
+        Type -> dump() -> bytearray
+        Type <- load() <- bytearray
+
+        Type -> save() -> file (not implemented yet)
+        Type <- load() <- file
 
     
     Note: read/write part of the compatible layer is seperated, meaning
@@ -128,6 +139,8 @@ concept has_generic_serialize = __has_generic_serialize_memberfx<T> || __has_gen
 template<typename T>
 concept has_generic_deserialize = __has_generic_deserialize_memberfx<T> || __has_generic_static_deserialize_memberfx<T>;
 
+#define scl2_check_generic_serialize(T) static_assert(::scl2::has_generic_serialize<T>, "Type " #T " does not support generic serialization");
+#define scl2_check_generic_deserialize(T) static_assert(::scl2::has_generic_deserialize<T>, "Type " #T " does not support generic deserialization");
 
 // Generic wrapper functions that will be used in API implementations.
 // You can use them in your own code as well for convenience.
@@ -237,6 +250,13 @@ template<typename T>
 concept has_generic_load = __has_generic_load_memberfx<T> || __has_generic_static_load_memberfx<T>;
 
 
+#define scl2_check_generic_dump(T) static_assert(::scl2::has_generic_dump<T>, "Type " #T " does not support generic dumping");
+#define scl2_check_generic_load(T) static_assert(::scl2::has_generic_load<T>, "Type " #T " does not support generic loading");
+#define scl2_check_generic_dump_load(T) \
+    static_assert(::scl2::has_generic_dump<T>, "Type " #T " does not support generic dumping"); \
+    static_assert(::scl2::has_generic_load<T>, "Type " #T " does not support generic loading");
+
+
 template<typename T>
 std::bytearray generic_dump(const T& value) {
     if constexpr (__has_generic_dump_memberfx<T>) {
@@ -300,8 +320,8 @@ template<typename T, typename key_type = __get_key_type<T>>
 concept has_decryption_support = __has_decryption_support<T>;
 
 
-#define scl2_check_encryption_support(T) static_assert(has_encryption_support<T>, "Type " #T " does not support encryption");
-#define scl2_check_decryption_support(T) static_assert(has_decryption_support<T>, "Type " #T " does not support decryption");
+#define scl2_check_encryption_support(T) static_assert(::scl2::has_encryption_support<T>, "Type " #T " does not support encryption");
+#define scl2_check_decryption_support(T) static_assert(::scl2::has_decryption_support<T>, "Type " #T " does not support decryption");
 
 
 
@@ -343,7 +363,7 @@ concept has_streamed_encryption_support = requires {
     __has_streamed_encrpytion_begin<T> && __has_streamed_encryption_update<T> && __has_streamed_encryption_end<T>;
 };
 
-#define scl2_check_streamed_encryption_support(T) static_assert(has_streamed_encryption_support<T>, "Type " #T " does not support streamed encryption");
+#define scl2_check_streamed_encryption_support(T) static_assert(::scl2::has_streamed_encryption_support<T>, "Type " #T " does not support streamed encryption");
 
 
 // Streamed decryption api definition:
@@ -400,7 +420,7 @@ constexpr size_t generic_hash_result_size() {
 }
 
 
-#define scl2_check_hashing_support(T) static_assert(has_hashing_support<T>, "Type " #T " does not support hashing");
+#define scl2_check_hashing_support(T) static_assert(::scl2::has_hashing_support<T>, "Type " #T " does not support hashing");
 
 
 

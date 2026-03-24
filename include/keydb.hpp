@@ -48,7 +48,7 @@
 #include <filesystem>
 #include <type_traits>
 
-#include "bits.hpp"
+#include "enum.hpp"
 #include "bytearray.hpp"
 #include "api.hpp"
 
@@ -82,7 +82,7 @@ enum class policy : uint32_t {
     WAL = 1 << 21,
     WALUnfinished = 1 << 22,
 };
-Define_Enum_BitOperators(policy)
+scl2_enum_bitop(policy)
 
 enum class error_code : uint32_t {
     Success = 0,
@@ -148,7 +148,7 @@ enum class value_type : uint8_t {
     // Deleted mark
     Deleted_Mask = 0x80, // 1000 0000
 };
-Define_Enum_BitOperators(value_type) // to verify deleted mark.
+scl2_enum_bitop(value_type) // to verify deleted mark.
 
 // For future use, not fully implemented yet.
 // This will be the middle layer to support types other than
