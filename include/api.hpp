@@ -423,6 +423,22 @@ constexpr size_t generic_hash_result_size() {
 #define scl2_check_hashing_support(T) static_assert(::scl2::has_hashing_support<T>, "Type " #T " does not support hashing");
 
 
+// ========================================================
+// |           enum utilities compatible layer            |
+// ========================================================
+
+template<typename E>
+concept is_enum_compatible = std::is_enum_v<E>;
+
+template<typename E>
+concept is_enum_ready = is_enum_compatible<E> && requires {
+    false;
+};
+
+
+
+
+
 
 // API versioning
 // These aren't necessary for it to work,

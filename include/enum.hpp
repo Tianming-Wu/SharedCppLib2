@@ -23,6 +23,9 @@
 
 #include <type_traits>
 #include <generator> // for coroutine
+#include <optional>
+#include <map>
+#include <initializer_list>
 
 // Defense against windows.h macros
 // Who would ever use them nowadays?
@@ -41,6 +44,25 @@
 
 namespace scl2 {
 
+// Insert this at the end of your enum definition, to allow automatic
+// detection of enum size. Not for bitenum.
+/*
+    For example:
+
+    enum class MyEnum {
+        ValueA,
+        ValueB,
+        ValueC,
+        scl2_enum_size // This must be the last element, and it is not a real enum value.
+    };
+
+    Then scl2 can automatically detect that MyEnum has 3 valid values (0, 1, 2) and the size is 3.
+    However, you must not assign any value manually, or make sure they started at 0 and are
+    contiguous, since this is just a little trick to avoid editing the size manually wherever
+    needed.
+*/
+#define scl2_enum_size _
+
 // template<typename E>
 // requires std::is_enum_v<E>
 // struct bitenum_traits {
@@ -49,12 +71,12 @@ namespace scl2 {
 // };
 
 
-template<typename E, size_t _min, size_t _max>
-requires std::is_enum_v<E>
-struct bitenum_traits {
-    static constexpr size_t bitwidth = sizeof(std::underlying_type_t<E>) * 8;
-    static constexpr size_t min = _min, max = _max;
-};
+// template<typename E, size_t _min, size_t _max>
+// requires std::is_enum_v<E>
+// struct bitenum_traits {
+//     static constexpr size_t bitwidth = sizeof(std::underlying_type_t<E>) * 8;
+//     static constexpr size_t min = _min, max = _max;
+// };
 
 template<typename E>
 requires std::is_enum_v<E>
@@ -168,6 +190,9 @@ std::generator<E> bitenum_ranged_iterator(E value, size_t minVal, size_t maxVal)
         return static_cast<NAME>(~static_cast<T>(a)); \
     }
 
+// Well the old name is kind of misleading.
+#define scl2_bitenum_op(NAME) scl2_enum_bitop(NAME)
+
 #define scl2_enum_bitop_inclass(NAME) \
     friend inline constexpr NAME operator|(NAME a, NAME b) noexcept { \
         using T = std::underlying_type_t<NAME>; \
@@ -185,5 +210,315 @@ std::generator<E> bitenum_ranged_iterator(E value, size_t minVal, size_t maxVal)
         using T = std::underlying_type_t<NAME>; \
         return static_cast<NAME>(~static_cast<T>(a)); \
     }
+
+
+
+/*
+    Automatic enum lookup map generation.
+
+    This utility allows you to output enum values as strings, which
+    is more readable than raw numeric values.
+
+    Also try magic_enum library, it is much better than this and
+    provides more features. This is just a built-in implementation,
+    since this library cannot depend on any external libraries
+    other than the C++ standard library.
+
+    So, you can only insert values manually.
+*/
+
+
+// This determines the behavior when an enum value is not found in the map.
+enum strenum_fallback_type {
+    strenum_fallback_value = 0, // fallback to raw integer
+    strenum_fallback_empty,     // fallback to empty string
+    strenum_fallback_none,      // fallback to std::nullopt
+};
+
+template<typename E, typename CharT = char>
+class strenum : public std::map<E, std::basic_string<CharT>> {
+public:
+    using string_type = std::basic_string<CharT>;
+    using enum_type = E;
+
+    strenum(
+        std::initializer_list<std::pair<E, std::basic_string<CharT>>> list,
+        strenum_fallback_type fallback = strenum_fallback_none
+    ) : fallback_type(fallback)
+    {
+        for(auto& pair : list) {
+            this->insert(pair);
+        }
+    }
+    
+    std::optional<string_type> to_string(E value) const {
+        auto it = this->find(static_cast<E>(value));
+        if (it != this->end()) {
+            return it->second;
+        } else {
+            return fallback(value);
+        }
+    }
+
+private:
+    strenum_fallback_type fallback_type = strenum_fallback_none;
+
+    std::optional<string_type> fallback(E value) const {
+        switch (fallback_type) {
+            case strenum_fallback_value:
+                return std::to_string(static_cast<std::underlying_type_t<E>>(value));
+            case strenum_fallback_empty:
+                return string_type();
+            case strenum_fallback_none:
+                return std::nullopt;
+        }
+    }
+};
+
+
+enum bitstrenum_fallback_type {
+    bitstrenum_fallback_value = 0, // fallback to raw integer
+    bitstrenum_fallback_empty,     // fallback to empty string
+    bitstrenum_fallback_none,      // fallback to std::nullopt
+    bitstrenum_fallback_partial,   // fallback to partial string for known bits, and ignore unknown bits
+    bitstrenum_fallback_bitset,    // fallback to a string representation of the bitset, e.g. "0b101010"
+    bitstrenum_fallback_combined,  // fallback to something like ValueA | ValueC | 0b10000000 for known and unknown bits combined
+    bitstrenum_fallback_combinedm, // same as combined, but use 1 << n to represent unknown bits.
+};
+
+template<typename E, typename CharT = char>
+class bitstrenum : public std::map<E, std::basic_string<CharT>> {
+public:
+    using string_type = std::basic_string<CharT>;
+    using enum_type = E;
+
+    bitstrenum(
+        std::initializer_list<std::pair<E, std::basic_string<CharT>>> list,
+        bitstrenum_fallback_type fallback = bitstrenum_fallback_none
+    ) : fallback_type(fallback)
+    {
+        for(auto& pair : list) {
+            this->insert(pair);
+        }
+    }
+
+    std::optional<string_type> to_string(E value) const {
+        std::string result;
+        for(auto E : bitenum_iterator(static_cast<E>(value))) {
+            auto it = this->find(E);
+            if (it != this->end()) {
+                if (!result.empty()) {
+                    result += " | ";
+                }
+                result += it->second;
+            } else {
+                return fallback(value);
+            }
+        }
+        return std::make_optional(string_type(result));
+    }
+
+private:
+    bitstrenum_fallback_type fallback_type = bitstrenum_fallback_none;
+
+    std::optional<string_type> fallback(E value) const {
+        switch (fallback_type) {
+            case bitstrenum_fallback_value:
+                return std::to_string(static_cast<std::underlying_type_t<E>>(value));
+            case bitstrenum_fallback_empty:
+                return string_type();
+            case bitstrenum_fallback_none:
+                return std::nullopt;
+            case bitstrenum_fallback_partial: {
+                std::string result;
+                for(auto E : bitenum_iterator(static_cast<E>(value))) {
+                    auto it = this->find(E);
+                    if (it != this->end()) {
+                        if (!result.empty()) {
+                            result += " | ";
+                        }
+                        result += it->second;
+                    }
+                }
+                return std::make_optional(string_type(result));
+            }
+            case bitstrenum_fallback_bitset: {
+                using U = std::make_unsigned_t<std::underlying_type_t<E>>;
+                U raw = static_cast<U>(value);
+                std::string result = "0b";
+                for (size_t i = 0; i < sizeof(U) * 8; ++i) {
+                    result += ((raw & (U{1} << i)) != 0) ? '1' : '0';
+                }
+                return std::make_optional(string_type(result));
+            }
+            case bitstrenum_fallback_combined: {
+                std::string result;
+                for(auto E : bitenum_iterator(static_cast<E>(value))) {
+                    auto it = this->find(E);
+                    if (it != this->end()) {
+                        if (!result.empty()) {
+                            result += " | ";
+                        }
+                        result += it->second;
+                    } else {
+                        // For unknown bits, we can still represent them as a bitset
+                        using U = std::make_unsigned_t<std::underlying_type_t<E>>;
+                        U raw = static_cast<U>(E);
+                        std::string bitset = "0b";
+                        for (size_t i = 0; i < sizeof(U) * 8; ++i) {
+                            bitset += ((raw & (U{1} << i)) != 0) ? '1' : '0';
+                        }
+                        if (!result.empty()) {
+                            result += " | ";
+                        }
+                        result += bitset;
+                    }
+                }
+                return std::make_optional(string_type(result));
+            }
+            case bitstrenum_fallback_combinedm: {
+                std::string result;
+                for(auto E : bitenum_iterator(static_cast<E>(value))) {
+                    auto it = this->find(E);
+                    if (it != this->end()) {
+                        if (!result.empty()) {
+                            result += " | ";
+                        }
+                        result += it->second;
+                    } else {
+                        using U = std::make_unsigned_t<std::underlying_type_t<E>>;
+                        U raw = static_cast<U>(E);
+                        for (size_t i = 0; i < sizeof(U) * 8; ++i) {
+                            if ((raw & (U{1} << i)) != 0) {
+                                if (!result.empty()) {
+                                    result += " | ";
+                                }
+                                result += "1 << " + std::to_string(i);
+                            }
+                        }
+                    }
+                }
+                return std::make_optional(string_type(result));
+            }
+        } // switch()
+    }
+};
+
+template<typename E>
+requires std::is_enum_v<E>
+void get_strenum_map(E) = delete; // This is just a declaration for SFINAE detection. The actual map is generated by the scl2_strenum macro.
+
+template<typename E, typename CharT = char>
+requires std::is_enum_v<E>
+inline std::optional<std::basic_string<CharT>> to_string(E value) {
+    // ADL lookup 
+    return get_strenum_map(value).to_string(value);
+}
+
+///FIXLATER: There is currenly no method to identify between strenum and bitstrenum
+// in template matching. Commented out to avoid compilation error.
+
+// template<typename E>
+// requires std::is_enum_v<E>
+// void get_bitstrenum_map(E) = delete; // This is just a declaration for SFINAE detection. The actual map is generated by the scl2_bitstrenum macro.
+
+// template<typename E, typename CharT = char>
+// requires std::is_enum_v<E>
+// inline std::optional<std::basic_string<CharT>> to_string(E value) {
+//     // ADL lookup 
+//     return get_bitstrenum_map(value).to_string(value);
+// }
+
+
+// macros for better definition
+// In-class enum support is currently not provided
+
+#define scl2_strenum(NAME, LIST, FALLBACK) \
+    static inline const ::scl2::strenum<NAME> NAME##_strenum(LIST, FALLBACK); \
+    static inline const ::scl2::strenum<NAME>& ::scl2::get_bitstrenum_map(NAME) { \
+        return NAME##_strenum; \
+    }
+
+#define scl2_bitstrenum(NAME, LIST, FALLBACK) \
+    static inline const ::scl2::bitstrenum<NAME> NAME##_bitstrenum(LIST, FALLBACK); \
+    static inline const ::scl2::bitstrenum<NAME>& ::scl2::get_bitstrenum_map(NAME) { \
+        return NAME##_bitstrenum; \
+    }
+
+
+// output grammer helper.
+
+// template<typename E, typename CharT = char>
+// requires std::is_enum_v<E>
+// std::optional<std::basic_string<CharT>> to_string(E value) {
+//     if constexpr () {
+        
+//     }
+// }
+
+/*
+    Usage Example:
+
+    enum class Color {
+        Red,
+        Green,
+        Blue
+    };
+    scl2_strenum(Color, {
+        {Color::Red, "Red"},
+        {Color::Green, "Green"},
+        {Color::Blue, "Blue"}
+    }, strenum_fallback_value)
+
+    Then you can do:
+    Color c = Color::Green;
+    std::cout << scl2::to_string(c).value_or("Unknown") << std::endl; // Output: Green
+*/
+
+
+// Enum converter between different enum types
+// For when you have to define two different enums with the same set of values
+// but with different values.
+
+template<typename E1, typename E2>
+class enum_cvrt {
+public:
+    using enum_type_1 = E1;
+    using enum_type_2 = E2;
+
+    // It is suggested that two enums have the same underlying type,
+    // but is not forced.
+
+    enum_cvrt(std::initializer_list<std::pair<E1, E2>> list) {
+        for (const auto& pair : list) {
+            map12[pair.first] = pair.second;
+            map21[pair.second] = pair.first;
+        }
+    }
+
+    enum_type_2 convert(enum_type_1 value) const {
+        auto it = map12.find(value);
+        if (it != map12.end()) {
+            return it->second;
+        } else {
+            throw std::out_of_range("Value not found in enum converter map");
+        }
+    }
+
+    enum_type_1 convert(enum_type_2 value) const {
+        auto it = map21.find(value);
+        if (it != map21.end()) {
+            return it->second;
+        } else {
+            throw std::out_of_range("Value not found in enum converter map");
+        }
+    }
+private:
+    std::map<E1, E2> map12;
+    std::map<E2, E1> map21;
+
+};
+
+
 
 } // namespace scl2

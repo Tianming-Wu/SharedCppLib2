@@ -120,62 +120,6 @@ public:
 #define RUN_ONCE(FN, ...) RunOnce::execute(FN, ##__VA_ARGS__)
 #endif
 
-/// @brief Allow to scroll through bitwide flags using grammer `for (auto bit : enum_bitwiden(flags))`
-/// @tparam E An enum type with bitwise flags, and & operator support.
-/// @param value The enum value containing bitwise flags.
-/// @return A vector of individual bit flags set in the value.
-template<typename E>
-requires std::is_enum_v<E>
-std::vector<E> enum_bitwiden(E value) {
-    using T = std::underlying_type_t<E>;
-    std::vector<E> result;
-    for (T bit = 1; bit != 0; bit <<= 1) {
-        if (static_cast<T>(value) & bit) {
-            result.push_back(static_cast<E>(bit));
-        }
-    }
-    return result;
-}
-
-// Post a warning asking the user to disable windows.h min/max macros
-// That was a terrible namespace pollution. You basically CANT ESCAPE because IT FUCKING POLLUTES ANY NAMESPACE
-#if defined min || defined max
-    #if defined(_MSC_VER)
-        #pragma message("min and max macros are defined, relevant functions were removed to avoid conflict. If you included windows.h, consider defining NOMINMAX before including it to avoid conflicts with std::min and std::max. You may encounter problems like error C2589. It is the namespace pollution caused by windows.h.")
-    #else
-        #warning "min and max macros are defined, relevant functions were removed to avoid conflict. If you included windows.h, consider defining NOMINMAX before including it to avoid conflicts with std::min and std::max. You may encounter problems like error C2589. It is the namespace pollution caused by windows.h."
-    #endif
-
-    #define SHAREDCPPLIB2_MINMAX_AVOID
-#endif
-
-#ifndef SHAREDCPPLIB2_MINMAX_AVOID
-
-template<typename E>
-requires std::is_enum_v<E>
-std::vector<E> enum_bitwiden_range(E value, size_t min, size_t max) {
-    using T = std::underlying_type_t<E>;
-    max = std::min(max, sizeof(T) * 8); // No exceed the number of bits in the underlying type
-    std::vector<E> result;
-    for (T bit = 1 << min; bit != 0 && bit < (1 << max); bit <<= 1) {
-        if (static_cast<T>(value) & bit) {
-            result.push_back(static_cast<E>(bit));
-        }
-    }
-    return result;
-}
-
-#endif // SHAREDCPPLIB2_MINMAX_AVOID
-
-
-// Not implemented for tecnical reasons.
-// /// @brief Get the number of keys in the enum
-// template<typename E>
-// requires std::is_enum_v<E>
-// constexpr size_t __sizeof_enum() {
-//     for()
-// }
-
 
 /** @brief Format size_type to a more readable string, like "1.5 KB" instead of "1536 bytes".
  * @param bytes The size in bytes to format.
