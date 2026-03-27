@@ -77,6 +77,9 @@ cmake --install build
 > [!NOTE]
 > 在 Windows 上，请在管理员提示符下运行，或在 Windows 11 上启用并使用 `sudo`。`--config` 参数仅适用于多配置生成器（如 Visual Studio - MSVC）。
 
+> [!WARNING]
+> 如果您遇到一些奇怪的行为，请确保您正在使用正确的构建配置（Debug/Release）来构建库和您的项目。这是一个常见错误，即使在更新库之后，旧的错误仍然会出现，因为这个库被配置为同时保留 Debug 和 Release 的二进制文件（以便于开发）。
+
 ### 3. 在您的项目中使用
 
 **CMakeLists.txt：**

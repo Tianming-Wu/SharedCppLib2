@@ -99,7 +99,10 @@ public:
         return result;
     }
 
-
 };
+
+///TODO: (Plan) add an example/preset message type and helper functions, as the HMAC signature,
+// to simplify the usage of HMAC in common scenarios, such as signing API requests, or verifying
+// file integrity.
 
 } // namespace scl2

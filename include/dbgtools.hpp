@@ -1,3 +1,9 @@
+/*
+    This is a header-only debugging tools library, used for testing and debugging this library itself.
+
+    It does not contain production logic, and is not for development debugging.
+*/
+
 #pragma once
 
 #include "stringlist.hpp"

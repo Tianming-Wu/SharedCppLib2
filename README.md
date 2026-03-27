@@ -9,6 +9,9 @@ Other languages: [中文](README-zh_CN.md)
 > [!NOTE]
 > This library is a dependency for many of my projects. You need to install it first to use those projects, or utilize [automatic dependency fetching](doc/cmake/autofetch.md).
 
+> [!WARNING]
+> If you encounter some strange behavior, just MAKE SURE you are using the right build configuration (Debug/Release) for both the library and your project. This is a common mistake that can cause the old bugs to appear even after you updated the library, since this library was configured to keep the binaries at the same time for both Debug and Release (for easier development).
+
 **Free software with NO WARRANTY.** Some modules may be incomplete.
 
 You may use this library for personal or commercial purposes. Attribution is appreciated but not required.
