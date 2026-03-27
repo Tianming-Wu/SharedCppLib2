@@ -1,92 +1,95 @@
+/*
+    New condition module for SharedCppLib2.
+    Tianming <github.com/Tianming-Wu> 2026.03.27
+
+
+
+*/
+
 #pragma once
 
 #include <string>
+#include <optional>
+#include <cstdint>
+#include <stdexcept>
 #include <functional>
 
-// inline bool throw_or_false(bool active, const std::string& msg) {
-//     if(active) {
-//         throw std::runtime_error(msg);
-//     } else {
-//         return false;
-//     }
-// }
+#include "bytearray.hpp"
+#include "api.hpp"
 
-namespace condition {
+#include "logical.hpp"
 
-enum condition_item_type {
-    TYPE_NODE,
-    TYPE_BOOLVALUE, TYPE_FUNCTION, TYPE_TIMER,
-    TYPE_PAIR
-};
+namespace scl2 {
 
 class condition_node;
-class condition_item;
-class condition_pair;
 
-enum condition_pair_logic {
-    LOGIC_AND, LOGIC_OR, LOGIC_XOR,
-    LOGIC_NAND, LOGIC_NOR, LOGIC_XNOR,
-    IMPLY_LEFT, IMPLY_RIGHT
-};
+typedef std::function<bool()> condition_function_t;
 
 class condition_node {
 public:
-    virtual bool evaluate() const = 0;
+    enum class Type : uint8_t {
+        Null = 0,
+        Endpoint = 1,
+        Logical = 2 // Basic node
+    };
 
-    condition_item& asItem();
-    condition_pair& asPair();
+    enum class EndpointType : uint8_t {
+        BoolValue = 0,
+        Function = 1
+        // Timer is no longer a thing, if you need it just use function.
+    };
 
-    condition_item_type type() const;
+    // condition_node() : type(Type::Null) {}
+    ~condition_node() = default;
 
-protected:
-    condition_node(condition_item_type type);
-    virtual ~condition_node() = default;
-    
-    condition_item_type m_type;
+    enable_copy_move(condition_node)
+
+    // check the whole node tree to see if it is valid.
+    bool valid() const;
+    bool strong_valid() const; // This checks Null nodes and function validity.
+
+    bool isEndpoint() const;
+    bool isBoolValue() const;
+    bool isFunction() const;
+    bool hasFunction() const; // check if function assigned
+    bool isLogical() const;
+
+    bool evaluate() const;
+
+    // simplify the condition node tree by evaluating and collapsing constant nodes, and flattening logical nodes where possible.
+    condition_node simplify() const;
+
+    // Look through the entire node tree to find the function endpoint with the given func_id.
+    bool setFunction(const std::string& func_id, condition_function_t func);
+
+private:
+    condition_node();
+
+private:
+    struct _endpoint { EndpointType endpoint_type; };
+    struct _func { condition_function_t func; std::string func_id; };
+
+    struct _logical { condition_node left, right; logical_operator op; };
+
+    Type type;
+
+    std::optional<_endpoint> endpoint; // endpoint metadata
+
+    std::optional<_func> endpoint_func; // for functional endpoint
+    std::optional<bool> endpoint_value; // for boolean value endpoint
+
+    std::optional<_logical> logical;
+
+    // runtime flags that does not get stored into files
+    bool dirty = true;
+
+public: // api
+    static condition_node load(const std::bytearray_view& data);
+    static std::bytearray dump(const condition_node& node);
 };
 
-class condition_item : public condition_node
-{
-public:
-    condition_item(const std::string& name, condition_item_type type);
-    ~condition_item();
+scl2_check_generic_dump_load(condition_node)
 
-    const std::string& name() const;
-    bool evaluate() const override;
+using condition_expression = condition_node; // for better readability
 
-    void setInvert(bool invert);
-    void setFunction(const std::function<bool()>& func);
-    void setValue(bool value);
-
-protected:
-    std::string m_name;
-    bool m_invert = false;
-
-    std::function<bool()> m_func;
-    bool m_value = false;
-};
-
-
-class condition_pair : public condition_node
-{
-public:
-    condition_pair(condition_node* left, condition_node* right, const std::string& op);
-    ~condition_pair();
-
-    bool evaluate() const override;
-    void simplify();
-
-protected:
-    condition_pair_logic m_logic;
-
-    condition_node *left = nullptr, *right = nullptr;
-};
-
-using condition_expression = condition_pair;
-
-extern const condition_item condition_false, condition_true;
-
-std::istream& operator >> (std::istream& is, condition_expression& expression);
-std::ostream& operator << (std::ostream& os, condition_expression& expression);
-
-} // namespace condition
+} // namespace scl2

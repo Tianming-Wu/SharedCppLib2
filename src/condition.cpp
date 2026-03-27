@@ -1,133 +1,270 @@
 #include "condition.hpp"
 
-#include <stdexcept>
-#include <strstream>
+/*
+    ///TODO: Support the dirty flag.
+*/
 
-namespace condition {
+namespace scl2 {
 
-condition_item build_const_value_item(const std::string& name, bool val) {
-    condition_item item(name, TYPE_BOOLVALUE);
-    item.setValue(val);
-    return item;
-}
-
-const condition_item condition_false = build_const_value_item("false", false),
-                     condition_true = build_const_value_item("true", true);
-
-
-condition_node::condition_node(condition_item_type type)
-    : m_type(type)
-{}
-
-condition_item &condition_node::asItem() {
-    return *dynamic_cast<condition_item*>(this);
-}
-
-condition_pair &condition_node::asPair() {
-    return *dynamic_cast<condition_pair*>(this);
-}
-
-condition_item::condition_item(const std::string &name, condition_item_type type)
-    : condition_node(type), m_name(name)
+bool condition_node::valid() const
 {
-    switch(type) {
-    case TYPE_BOOLVALUE: case TYPE_FUNCTION: case TYPE_TIMER:
-        break;
-    default:
-        throw std::runtime_error("Initializing condition item with invalid type");
-    }
-}
+    // This could get quite complex (
 
-condition_item::~condition_item()
-{}
+    // We might need to consider a better way to optimize the validation
+    // process, since running it every single time we work on this expression
+    // would be quite expensive.
 
-const std::string &condition_item::name() const { return m_name; }
-void condition_item::setInvert(bool invert) { m_invert = invert; }
-
-void condition_item::setFunction(const std::function<bool()> &func)
-{
-    if(m_type != TYPE_FUNCTION) {
-        throw std::runtime_error("Cannot set function on non-function condition item");
-    }
-    m_func = func;
-}
-
-void condition_item::setValue(bool value)
-{
-    if(m_type != TYPE_BOOLVALUE) {
-        throw std::runtime_error("Cannot assign value to non-value condition item");
-    }
-    m_value = value;
-}
-
-#define _eval_with_invert(target) (m_invert)? !target : target
-
-bool condition_item::evaluate() const {
-    try {
-        switch(m_type) {
-        case TYPE_BOOLVALUE: return _eval_with_invert(m_value);
-        case TYPE_FUNCTION:  return _eval_with_invert(m_func());
+    if(type == Type::Null) {
+        return true; // no payload, always valid
+    } else if(type == Type::Endpoint) {
+        if(!endpoint.has_value()) {
+            return false; // missing endpoint metadata
+        }
+        if(endpoint->endpoint_type == EndpointType::BoolValue) {
+            return endpoint_value.has_value(); // must have a boolean value
+        } else if(endpoint->endpoint_type == EndpointType::Function) {
+            return endpoint_func.has_value(); // must have function data
+        } else {
+            return false; // unknown endpoint type
+        }
+    } else if(type == Type::Logical) {
+        if(!logical.has_value()) {
+            return false; // missing logical operator data
         }
 
-        throw std::runtime_error("Trying to evaluate value of an invalid condition item");
-    } catch(const std::runtime_error& e) {
-        throw e; // passthrough
-    } catch(...) {
-        return false;
+        if(__lo_is_not_only(logical->op)) {
+            // only check left node
+            return logical->left.valid();
+        } else {
+            // check both left and right node
+            return logical->left.valid() && logical->right.valid();
+        }
+    } else {
+        return false; // unknown node type
     }
 }
 
-condition_pair::condition_pair(condition_node *left, condition_node *right, const std::string &op)
-    : condition_node(TYPE_PAIR), left(left), right(right)
+bool condition_node::strong_valid() const
 {
-    if(left == nullptr || right == nullptr) {
-        throw std::invalid_argument("condition_pair: left and right must be valid object");
+    if(type == Type::Null) {
+        return false; // not valid for this case
+    } else if(type == Type::Endpoint) {
+        if(!endpoint.has_value()) {
+            return false; // missing endpoint metadata
+        }
+        if(endpoint->endpoint_type == EndpointType::BoolValue) {
+            return endpoint_value.has_value(); // must have a boolean value
+        } else if(endpoint->endpoint_type == EndpointType::Function) {
+            if (!endpoint_func.has_value()) {
+                return false; // must have function data
+            }
+
+            // also check if the function is actually assigned.
+            return endpoint_func->func != nullptr;
+
+        } else {
+            return false; // unknown endpoint type
+        }
+    } else if(type == Type::Logical) {
+        if(!logical.has_value()) {
+            return false; // missing logical operator data
+        }
+
+        if(__lo_is_not_only(logical->op)) {
+            // only check left node
+            return logical->left.strong_valid();
+        } else {
+            // check both left and right node
+            return logical->left.strong_valid() && logical->right.strong_valid();
+        }
+    } else {
+        return false; // unknown node type
     }
 }
 
-condition_pair::~condition_pair()
+bool condition_node::isEndpoint() const
 {
+    return type == Type::Endpoint && endpoint.has_value();
 }
 
-bool condition_pair::evaluate() const
-{
-    bool r_left = left->evaluate(), r_right = right->evaluate();
+bool condition_node::isBoolValue() const {
+    return isEndpoint() && endpoint->endpoint_type == EndpointType::BoolValue;
+}
 
-    switch(m_logic) {
-    case LOGIC_AND:     return r_left && r_right;       // only true if both are true
-    case LOGIC_OR:      return r_left || r_right;       // is true if any is true
-    case LOGIC_XOR:     return r_left != r_right;       // is true if is different
-    case LOGIC_NAND:    return !(r_left && r_right);    
-    case LOGIC_NOR:     return !(r_left || r_right);
-    case LOGIC_XNOR:    return r_left == r_right;       // is true if is the same
-    case IMPLY_LEFT:    return false;                   // not supported
-    case IMPLY_RIGHT:   return false;                   // not supported
+bool condition_node::isFunction() const {
+    return isEndpoint() && endpoint->endpoint_type == EndpointType::Function;
+}
+
+bool condition_node::hasFunction() const
+{
+    if(isFunction()) {
+        return endpoint_func.has_value() && endpoint_func->func != nullptr;
+    } else {
+        throw std::runtime_error("Performing hasFunction check on a non-function endpoint node");
+    }
+}
+
+bool condition_node::isLogical() const
+{
+    return type == Type::Logical && logical.has_value();
+}
+
+bool condition_node::evaluate() const
+{
+    if(type == Type::Endpoint) {
+        if(endpoint->endpoint_type == EndpointType::BoolValue) {
+            // return the value directly
+            return endpoint_value.value();
+        } else if(endpoint->endpoint_type == EndpointType::Function) {
+            if(!endpoint_func->func) {
+                throw std::runtime_error("Function endpoint not assigned with actual function");
+            }
+            return endpoint_func->func();
+        } else {
+            throw std::runtime_error("Unknown endpoint type in condition node");
+        }
+    } else if(type == Type::Logical) {
+        bool r_left = logical->left.evaluate();
+
+        if(__lo_is_not_only(logical->op)) {
+            // only evaluate left node
+            return lo_eval(logical->op, r_left, false);
+        } else {
+            // also need to evaluate right node
+            bool r_right = logical->right.evaluate();
+            return lo_eval(logical->op, r_left, r_right);
+        }
+    } else {
+        // Yes, null nodes are considered valid, but they cannot be evaluated.
+
+        throw std::runtime_error("Trying to evaluate an invalid condition node");
+    }
+}
+
+condition_node condition_node::simplify() const
+{
+    condition_node simplified_node = *this; // start with a copy of the current node
+}
+
+bool condition_node::setFunction(const std::string &func_id, condition_function_t func)
+{
+    if(!valid()) {
+        throw std::runtime_error("Trying to set function on an invalid condition node");
     }
 
-    throw std::runtime_error("Trying to evaluate value of an invalid condition pair type");
-}
-
-void condition_pair::simplify()
-{
-    if(left->type() == TYPE_PAIR) left->asPair().simplify();
-    if(right->type() == TYPE_PAIR) right->asPair().simplify();
-
-    ///TODO: complete simplify logic...
-}
-
-std::istream &operator>>(std::istream &is, condition_expression &expression)
-{
-    std::string buffer;
-    if(std::getline(is, buffer)) {
-
+    if(type == Type::Endpoint) {
+        if(endpoint->endpoint_type == EndpointType::Function) {
+            endpoint_func = { func, func_id };
+            return true;
+        } else {
+            throw std::runtime_error("Trying to set function on a non-function endpoint");
+        }
     }
-    return is;
 }
 
-std::ostream &operator<<(std::ostream &os, condition_expression &expression)
+condition_node condition_node::load(const std::bytearray_view &data)
 {
-    
-    return os;
+    condition_node node;
+
+    if(data.available(sizeof(Type))) {
+        node.type = data.read<Type>();
+
+        if(node.type == Type::Null) {
+            // no payload, nothing to read
+        } else if(node.type == Type::Endpoint) {
+            if(!data.available(sizeof(EndpointType))) {
+                throw std::runtime_error("Not enough data to load endpoint node");
+            }
+            EndpointType endpoint_type = data.read<EndpointType>();
+            node.endpoint = { endpoint_type };
+
+            if(endpoint_type == EndpointType::BoolValue) {
+                if(!data.available(sizeof(bool))) {
+                    throw std::runtime_error("Not enough data to load bool value endpoint");
+                }
+                node.endpoint_value = data.read<bool>();
+            } else if(endpoint_type == EndpointType::Function) {
+                // read the function id string.
+                // keep func empty for now. The value should be set later.
+                node.endpoint_func = { nullptr, data.readString() };
+            } else {
+                throw std::runtime_error("Unknown endpoint type in condition node");
+            }
+
+        } else if(node.type == Type::Logical) {
+            if(!data.available(sizeof(logical_operator))) {
+                throw std::runtime_error("Not enough data to load logical node operator");
+            }
+            logical_operator op = data.read<logical_operator>();
+
+            node.logical = { condition_node(), condition_node(), op };
+
+            // Load left child node recursively
+            node.logical->left = load(data);
+
+            // If this is not a NOT-only operator, we also need to load the right child node.
+            if(!__lo_is_not_only(op)) {
+                node.logical->right = load(data);
+            }
+        } else {
+            throw std::runtime_error("Unknown node type in condition node");
+        }
+    } else {
+        throw std::runtime_error("Not enough data to load condition node");
+    }
+
+    return node;
 }
 
-} // namespace condition
+std::bytearray condition_node::dump(const condition_node &node)
+{
+    std::bytearray data;
+
+    if(!node.valid()) {
+        throw std::runtime_error("Trying to dump an invalid condition node");
+    }
+
+    data.append(node.type);
+
+    if(node.type == Type::Null) {
+        // no payload at all
+    } else if(node.type == Type::Endpoint) {
+        if(!node.endpoint.has_value()) {
+            throw std::runtime_error("Endpoint node missing endpoint data");
+        }
+        data.append(node.endpoint->endpoint_type);
+
+        if(node.endpoint->endpoint_type == EndpointType::BoolValue) {
+            if(!node.endpoint_value.has_value()) {
+                throw std::runtime_error("BoolValue endpoint missing value");
+            }
+            data.append(node.endpoint_value.value());
+        } else if(node.endpoint->endpoint_type == EndpointType::Function) {
+            // for function types, we keep their id.
+            if(!node.endpoint_func.has_value()) {
+                throw std::runtime_error("Function endpoint missing function data");
+            }
+            data.addString(node.endpoint_func->func_id);
+        } else {
+            throw std::runtime_error("Unknown endpoint type");
+        }
+    } else if(node.type == Type::Logical) {
+        if(!node.logical.has_value()) {
+            throw std::runtime_error("Logical node missing operator data");
+        }
+        data.append(node.logical->op);
+
+        // dump the left and right node recursively.
+        data.append(dump(node.logical->left));
+        if(!__lo_is_not_only(node.logical->op)) {
+            data.append(dump(node.logical->right));
+        }
+
+    } else {
+        throw std::runtime_error("Unknown node type");
+    }
+
+    return data;
+}
+
+} // namespace scl2
