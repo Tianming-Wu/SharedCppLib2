@@ -540,8 +540,14 @@ bool bytearray_view::available(size_t bytes) const {
     if (cursor > ba.size()) return false;
     return bytes <= (ba.size() - cursor);
 }
-size_t bytearray_view::remaining() const { return ba.size() - cursor; }
-void bytearray_view::seek(size_t pos) { cursor = pos; }
+size_t bytearray_view::remaining() const {
+    if (cursor > ba.size()) return 0;
+    return ba.size() - cursor;
+}
+void bytearray_view::seek(size_t pos) {
+    if (pos > ba.size()) throw std::out_of_range("bytearray_view::seek: position out of range");
+    cursor = pos;
+}
 void bytearray_view::reset() { cursor = 0; }
 size_t bytearray_view::tell() const { return cursor; }
 
@@ -550,7 +556,8 @@ std::string bytearray_view::peekString() const
     std::string result;
     
     if(!available(sizeof(size_t))) throw std::out_of_range("bytearray_view: not enough size data");
-    size_t str_size = ba.subarr(cursor, sizeof(size_t)).as<size_t>();
+    size_t str_size = 0;
+    std::memcpy(&str_size, ba.data() + cursor, sizeof(size_t));
 
     if (str_size > (std::numeric_limits<size_t>::max() - sizeof(size_t))) {
         throw std::out_of_range("bytearray_view: string size overflow");
@@ -576,7 +583,8 @@ std::wstring bytearray_view::peekWString() const
     std::wstring result;
 
     if(!available(sizeof(size_t))) throw std::out_of_range("bytearray_view: not enough size data");
-    size_t str_size = ba.subarr(cursor, sizeof(size_t)).as<size_t>();
+    size_t str_size = 0;
+    std::memcpy(&str_size, ba.data() + cursor, sizeof(size_t));
 
     if (str_size > (std::numeric_limits<size_t>::max() / sizeof(wchar_t))) {
         throw std::out_of_range("bytearray_view: wide string size overflow");

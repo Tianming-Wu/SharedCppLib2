@@ -19,6 +19,8 @@
 #include <initializer_list>
 #include <type_traits>
 
+#include "basics.hpp"
+
 namespace std {
 
 template<typename> class basic_stringlist;
@@ -145,6 +147,15 @@ public:
               !std::is_same_v<unsigned long, uint64_t>)
     inline void append(T val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(unsigned long))); }
 
+    // All arithmetic types will be merged into this template in a future version.
+    // template<typename T>
+    // requires (std::is_arithmetic_v<T> &&
+    //           !std::is_same_v<T, long> && 
+    //           !std::is_same_v<T, unsigned long> && 
+    //           !std::is_same_v<unsigned long, uint32_t> && 
+    //           !std::is_same_v<unsigned long, uint64_t>)
+    // inline void append(T val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(T))); }
+
     template<typename T>
     requires (std::is_same_v<T, long> && 
               !std::is_same_v<long, int32_t> && 
@@ -254,6 +265,8 @@ class bytearray_view
 public:
     bytearray_view(const bytearray& data);
     bytearray_view(const bytearray&&) = delete; // prevent binding to temporaries
+
+    enable_move_only(bytearray_view) // Disable copy and allow move
 
     // 穿透底层 bytearray 的信息
     inline size_t size() const { return ba.size(); }
