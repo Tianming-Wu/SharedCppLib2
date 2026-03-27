@@ -261,8 +261,13 @@ public:
     bool addVersion(std::function<void()> versionFunction);
 
     // Primary command handling
+    bool hasPrimaryCommand() const;
     bool addPrimaryCommand(string_type& prim);
     string_type getPrimaryCommand();
+
+    bool hasSecondaryCommand() const;
+    bool addSecondaryCommand(string_type& sec);
+    string_type getSecondaryCommand() const;
 
     // should this be protected?
     bool testPolicy(parse_policy p);
@@ -318,6 +323,7 @@ private:
     parse_policy m_policy;
     argument_style m_style;
     string_type m_primaryCommand;
+    string_type m_secondaryCommand; // 新增：存储 secondary command
 
     bool m_failed = false; // indicates if parsing failed due to invalid arguments or policy violations
 

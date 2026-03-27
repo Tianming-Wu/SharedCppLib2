@@ -268,13 +268,20 @@ template <typename CharT>
 void basic_arguments<CharT>::parse()
 {
     m_primaryCommand.clear();
-    
-    // Extract primary command if policy is enabled
+    m_secondaryCommand.clear();
+    // Extract primary and secondary command if policy is enabled
     if (testPolicy(EnablePrimaryCommand) && this->size() > 1) {
         const string_type &firstArg = this->at(1);
         // Check if first argument is not an option (doesn't start with -)
         if (firstArg.length() > 0 && firstArg[0] != CharT('-')) {
             m_primaryCommand = firstArg;
+            // 检查 secondary command
+            if (this->size() > 2) {
+                const string_type &secondArg = this->at(2);
+                if (secondArg.length() > 0 && secondArg[0] != CharT('-')) {
+                    m_secondaryCommand = secondArg;
+                }
+            }
         }
     }
     
@@ -421,7 +428,13 @@ void basic_arguments<CharT>::parse_Windows()
 }
 
 template <typename CharT>
-bool basic_arguments<CharT>::addPrimaryCommand(string_type& prim)
+bool basic_arguments<CharT>::hasPrimaryCommand() const
+{
+    return !m_primaryCommand.empty();
+}
+
+template <typename CharT>
+bool basic_arguments<CharT>::addPrimaryCommand(string_type &prim)
 {
     prim = m_primaryCommand;
     return !m_primaryCommand.empty();
@@ -431,6 +444,23 @@ template <typename CharT>
 typename basic_arguments<CharT>::string_type basic_arguments<CharT>::getPrimaryCommand()
 {
     return m_primaryCommand;
+}
+
+template <typename CharT>
+bool basic_arguments<CharT>::hasSecondaryCommand() const {
+    return !m_secondaryCommand.empty();
+}
+
+template <typename CharT>
+bool basic_arguments<CharT>::addSecondaryCommand(string_type &sec)
+{
+    sec = m_secondaryCommand;
+    return !m_secondaryCommand.empty();
+}
+
+template <typename CharT>
+typename basic_arguments<CharT>::string_type basic_arguments<CharT>::getSecondaryCommand() const {
+    return m_secondaryCommand;
 }
 
 } // namespace std
