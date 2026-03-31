@@ -36,6 +36,7 @@ public:
     inline test_result result() const { return m_tr; }
 
     inline bool expect_true(bool cond, const std::string& itemName, const std::string& error = "") {
+        ++m_tr.total;
         if (cond) {
             std::printf("[PASS] %s\n", itemName.c_str());
             ++m_tr.passes;
@@ -47,7 +48,6 @@ public:
             std::printf(" - %s", error.c_str());
         }
         std::printf("\n");
-        ++m_tr.total;
         return false;
     }
 
@@ -56,6 +56,7 @@ public:
     }
 
     inline bool expect_value(const auto& actual, const auto& expected, const std::string& itemName) {
+        ++m_tr.total;
         if (actual == expected) {
             std::printf("[PASS] %s\n", itemName.c_str());
             ++m_tr.passes;
@@ -63,8 +64,25 @@ public:
         }
 
         std::printf("[FAIL] %s - expected: %s, actual: %s\n", itemName.c_str(), std::to_string(expected).c_str(), std::to_string(actual).c_str());
-        ++m_tr.total;
         return false;
+    }
+
+    inline bool check_invalid_memory(void* memptr, size_t size, const std::string& itemName) {
+        // on MSVC, check whether memory is 0xCC (-51). This is the pattern used by MSVC debug allocator for uninitialized memory.
+        // This might report false positives if the tested code actually used 0xCC.
+        // But at least you can be aware of that there might be a problem with memory management in the tested code.
+
+        unsigned char* bytes = static_cast<unsigned char*>(memptr);
+        for (size_t i = 0; i < size; ++i) {
+            if (bytes[i] != 0xCC) {
+                std::printf("[FAIL] %s - memory at %p is not invalid (0x%02X at offset %zu)\n", itemName.c_str(), memptr, bytes[i], i);
+                return false;
+            }
+        }
+
+        std::printf("[PASS] %s - memory at %p is invalid (0xCC)\n", itemName.c_str(), memptr);
+
+        return true;
     }
 
 };
