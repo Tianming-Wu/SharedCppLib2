@@ -49,6 +49,13 @@ struct bits {
             return bits{std::byte(static_cast<unsigned char>(b) << off)};
         }
     }
+
+    inline constexpr bits operator~() const { return bits{~b}; }
+    inline constexpr bits operator&(const bits& other) const { return bits{b & other.b}; }
+    inline constexpr bits operator|(const bits& other) const { return bits{b | other.b}; }
+    inline constexpr bits operator^(const bits& other) const { return bits{b ^ other.b}; }
+
+    inline constexpr std::byte value() const { return b; }
 };
 
 
@@ -110,8 +117,46 @@ struct ebits {
         }
         return result;
     }
-
 };
+
+// Compare if two integral values are adjacent, i.e. they differ by exactly one bit.
+template<typename T>
+requires std::is_trivially_copyable_v<T>
+bool is_adjacent(T a, T b) {
+    T diff = a ^ b;
+    return diff && (diff & (diff - 1)) == 0;
+}
+
+
+// Count the number of bits set to 1 in an integral value.
+template<typename T>
+requires std::is_trivially_copyable_v<T>
+size_t count_bits(T value) {
+    size_t count = 0;
+    while (value) {
+        count += value & 1;
+        value >>= 1;
+    }
+    return count;
+}
+
+// get the smallest numeric type that is capable of hoding
+// N bits
+template<size_t N>
+using get_minimum_container = std::conditional_t<
+    N <= 8, uint8_t,
+    std::conditional_t<
+        N <= 16, uint16_t,
+        std::conditional_t<
+            N <= 32, uint32_t,
+            std::conditional_t<
+                N <= 64, uint64_t,
+                void // too big to handle
+            >
+        >
+    >
+>;
+
 
 
 } // namespace bits

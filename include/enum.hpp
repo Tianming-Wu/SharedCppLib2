@@ -211,7 +211,7 @@ std::generator<E> bitenum_ranged_iterator(E value, size_t minVal, size_t maxVal)
         return static_cast<NAME>(~static_cast<T>(a)); \
     }
 
-
+#define scl2_bitenum_op_inclass(NAME) scl2_enum_bitop_inclass(NAME)
 
 /*
     Automatic enum lookup map generation.
