@@ -20,7 +20,9 @@ You may use this library for personal or commercial purposes. Attribution is app
 
 A collection of modern C++ utility libraries designed for performance and ease of use. Built with C++23 standard.
 
-Some part of this project is basically re-inventing the wheel. The purpose is to learn something.
+Some modules of this project are basically re-inventing the wheel. The purpose is to learn something.
+
+This library is building on top of the standard library, with its own convenient set of APIs. The SharedCppLib2 API is designed for extremely easy use, and it is not hard to learn. Check [API Reference](doc/api_reference.md) for details.
 
 I still tried to make the API design as good (friendly, easy-to-use) as possible.
 
