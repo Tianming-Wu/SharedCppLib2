@@ -5,6 +5,13 @@
     Doesn't work well in file mode, disable by yourself.
 
     This library is way too complex to tell you everything here. Just go and check the document.
+
+    Dev note:
+        I just noticed that the exiting of logt is not that graceful. I can take advantage of the C++
+        scope-exit destruction action to exit the logt automatically.
+
+        I don't want to destroy the current pull-up logic though, so a simple logt_guard class instance is enough.
+
 */
 #pragma once
 
@@ -315,6 +322,14 @@ private:
 
     static logt_format formatter_;
 };
+
+
+class logt_guard {
+public:
+    logt_guard() = default;
+    ~logt_guard() { logt::shutdown(); }
+};
+
 
 // 日志文件管理
 // class logt_manager {
