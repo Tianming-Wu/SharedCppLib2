@@ -90,6 +90,9 @@ add_library(console STATIC src/console.cpp)
 add_library(keydb STATIC src/keydb.cpp)
 add_library(types STATIC src/scltypes.cpp)
 add_library(condition STATIC src/condition.cpp)
+add_library(filesystem STATIC src/filesystem.cpp)
+add_library(datauri STATIC src/datauri.cpp)
+add_library(json STATIC src/json.cpp)
 
 add_library(network_core STATIC src/network.cpp)
 add_library(network_dns STATIC src/dns.cpp)
@@ -129,15 +132,28 @@ target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要
 # 按需链接：bytearray_base64.cpp 会引用 Base64，但只有在用户代码调用相关函数时才会被链接
 target_link_libraries(basic PRIVATE Base64)
 
+# datauri 依赖
+target_link_libraries(datauri PUBLIC basic Base64)
+
 # basic 库依赖关系
-foreach(target regexfilter logc sha256 arguments ini abstract xml keydb condition)
+foreach(target regexfilter logc sha256 arguments ini abstract xml keydb condition datauri json)
     target_link_libraries(${target} PUBLIC basic)
 endforeach()
+
+# json 额外依赖
+target_link_libraries(json PUBLIC datauri)
+
+# JSON 扩展功能开关 (默认启用)
+option(SCL2_JSON_ENABLE_EXTENSIONS "Enable JSON extensions (data URI, base64 bytearray)" ON)
+target_compile_definitions(json PUBLIC
+    $<$<BOOL:${SCL2_JSON_ENABLE_EXTENSIONS}>:SCL2_JSON_ENABLE_EXTENSIONS>
+)
 
 # 库列表
 set(TARGET_LIST
     variant logd logf sha256 basic indexer regexfilter
     logt logc Base64 platform arguments ini abstract xml debug stream
+    console keydb types condition filesystem datauri json
     network_core network_dns network_tcp network_udp network_http
 )
 

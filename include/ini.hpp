@@ -39,6 +39,7 @@
 #include <optional>
 
 // forward declaration
+// if you need to use these features, include their specific headers.
 namespace std {
     template<typename CharT> class basic_stringlist;
     using stringlist = basic_stringlist<char>; using wstringlist = basic_stringlist<wchar_t>;
