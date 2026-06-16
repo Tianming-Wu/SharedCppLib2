@@ -628,6 +628,7 @@ json_exporter json_exporter::compact_exporter()
 {
     json_exporter exporter;
     exporter.isCompat = true;
+    exporter.escapeNonAscii = true;
     exporter.indentStyle = indent_style::none;
     return exporter;
 }
@@ -679,24 +680,82 @@ void json_exporter::exportValue(const json_value &value, size_t indentLevel)
 std::string json_exporter::escapeJsonString(const std::string &str)
 {
     std::string escaped;
-    for (char c : str) {
+    size_t i = 0;
+    while (i < str.size()) {
+        unsigned char c = static_cast<unsigned char>(str[i]);
+
+        // Handle standard JSON escapes
         switch (c) {
-            case '"':  escaped += "\\\""; break;
-            case '\\': escaped += "\\\\"; break;
-            case '\b': escaped += "\\b";  break;
-            case '\f': escaped += "\\f";  break;
-            case '\n': escaped += "\\n";  break;
-            case '\r': escaped += "\\r";  break;
-            case '\t': escaped += "\\t";  break;
-            default:
-                if (static_cast<unsigned char>(c) < 0x20) {
-                    // Control characters must be escaped as \uXXXX
-                    char buffer[7];
-                    std::snprintf(buffer, sizeof(buffer), "\\u%04x", static_cast<unsigned char>(c));
-                    escaped += buffer;
-                } else {
-                    escaped += c;
+            case '"':  escaped += "\\\""; ++i; continue;
+            case '\\': escaped += "\\\\"; ++i; continue;
+            case '\b': escaped += "\\b";  ++i; continue;
+            case '\f': escaped += "\\f";  ++i; continue;
+            case '\n': escaped += "\\n";  ++i; continue;
+            case '\r': escaped += "\\r";  ++i; continue;
+            case '\t': escaped += "\\t";  ++i; continue;
+        }
+
+        // Control characters → \uXXXX
+        if (c < 0x20) {
+            char buf[7];
+            std::snprintf(buf, sizeof(buf), "\\u%04x", c);
+            escaped += buf;
+            ++i;
+            continue;
+        }
+
+        // ASCII printable → pass through
+        if (c < 0x80) {
+            escaped += static_cast<char>(c);
+            ++i;
+            continue;
+        }
+
+        // Non-ASCII byte → either escape as \uXXXX or pass through as UTF-8
+        if (escapeNonAscii) {
+            // Decode UTF-8 sequence and emit \uXXXX (or \uXXXX\uXXXX for surrogates)
+            auto decode_utf8 = [&](size_t& pos) -> int {
+                unsigned char b = static_cast<unsigned char>(str[pos]);
+                int cp, extra;
+                if      ((b & 0xE0) == 0xC0) { cp = b & 0x1F; extra = 1; }
+                else if ((b & 0xF0) == 0xE0) { cp = b & 0x0F; extra = 2; }
+                else if ((b & 0xF8) == 0xF0) { cp = b & 0x07; extra = 3; }
+                else { return -1; } // invalid byte — escape as-is
+                for (int j = 0; j < extra; ++j) {
+                    ++pos;
+                    if (pos >= str.size()) return -1;
+                    unsigned char nb = static_cast<unsigned char>(str[pos]);
+                    if ((nb & 0xC0) != 0x80) return -1;
+                    cp = (cp << 6) | (nb & 0x3F);
                 }
+                return cp;
+            };
+            int cp = decode_utf8(i);
+            if (cp >= 0) {
+                if (cp > 0xFFFF) {
+                    // Surrogate pair for code points > U+FFFF
+                    cp -= 0x10000;
+                    char buf[13];
+                    std::snprintf(buf, sizeof(buf), "\\u%04x\\u%04x",
+                                  0xD800 | (cp >> 10), 0xDC00 | (cp & 0x3FF));
+                    escaped += buf;
+                } else {
+                    char buf[7];
+                    std::snprintf(buf, sizeof(buf), "\\u%04x", cp);
+                    escaped += buf;
+                }
+                ++i; // decode_utf8 advanced i to the last byte
+            } else {
+                // Invalid UTF-8 — escape the single byte
+                char buf[7];
+                std::snprintf(buf, sizeof(buf), "\\u%04x", c);
+                escaped += buf;
+            }
+            ++i;
+        } else {
+            // Pass through UTF-8 bytes unchanged
+            escaped += static_cast<char>(c);
+            ++i;
         }
     }
     return escaped;

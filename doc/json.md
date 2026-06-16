@@ -62,6 +62,23 @@ for (const auto& tag : j["tags"].as_array()) {
 std::string author = j["meta"]["author"].as_string(); // "me"
 ```
 
+### UTF-8 and Chinese characters
+
+JSON is a UTF-8 format (RFC 8259). The library stores strings as raw bytes — what you put in is what you get back. For Chinese to work correctly across platforms, ensure inputs are UTF-8:
+
+- **JSON files**: Save them as UTF-8 (recommended for all JSON files).
+- **MSVC source code**: Add `/utf-8` to compiler flags so `std::string("你好")` produces UTF-8 bytes.
+- **Fallback**: Use the `json_u8()` helper with `u8` literals:
+
+```cpp
+// MSVC without /utf-8: "你好" is GBK bytes → wrong
+// With /utf-8 flag:    "你好" is UTF-8 bytes → correct
+// Without /utf-8 flag: use this helper:
+j["name"] = scl2::json_value(scl2::json_u8(u8"你好"));
+```
+
+When reading a UTF-8 JSON file, Chinese is stored as UTF-8 and exported back as UTF-8 — no extra work needed.
+
 ### Build and export
 
 The `json` class provides convenient built-in export methods:
@@ -230,23 +247,27 @@ std::string toFile(const std::string& filename) const;
 
 ### json_exporter
 
-Controls the output format of `json::toString()`.
+Controls the output format of `json::toString()`. All public members can be set directly by the user.
 
 ```cpp
 enum class indent_style { none, space2, space4, tab };
 
 // Factory helpers
-static json_exporter compact_exporter();   // isCompat=true, indent=none
-static json_exporter inline_exporter();    // isInline=true, indent=none
+static json_exporter compact_exporter();   // isCompat + escapeNonAscii + none indent
+static json_exporter inline_exporter();    // isInline + none indent
 
-// Public fields
-bool isCompat;           // compact output
-bool isInline;           // inline simple containers
-indent_style indentStyle;
+// Public fields — set these directly before calling exportToString()
+bool isCompat;             // compact output (no extra whitespace)
+bool isInline;             // inline format (newlines replaced with spaces)
+bool escapeNonAscii;       // escape non-ASCII UTF-8 as \uXXXX for max portability
+indent_style indentStyle;  // indent style (default: space4)
 
 std::string exportToString(const json& j);
 std::string exportToCompatString(const json& j);
 ```
+
+> [!NOTE]
+> `escapeNonAscii` decodes UTF-8 codepoints and emits them as `\uXXXX` escape sequences, making the output safe for environments that cannot handle raw UTF-8. The `compact_exporter()` preset enables this by default. For local-only use, leave it off to keep Chinese and other non-ASCII characters human-readable.
 
 ### json_parser
 

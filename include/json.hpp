@@ -30,6 +30,13 @@
 
 namespace scl2 {
 
+// Helper: convert a u8 string literal to std::string.
+// On MSVC, use with /utf-8 flag or u8"..." prefix:
+//   j["name"] = json_value(json_u8(u8"你好"));
+inline std::string json_u8(const char8_t* s) {
+    return std::string(reinterpret_cast<const char*>(s));
+}
+
 class json_value;
 class json;
 class json_parser;
@@ -230,6 +237,7 @@ public:
     // We aren't multi-threading anyway.
     bool isCompat = false;
     bool isInline = false;
+    bool escapeNonAscii = false;  // escape non-ASCII UTF-8 as \uXXXX for max portability
     indent_style indentStyle = indent_style::space4;
 
 private:

@@ -62,6 +62,23 @@ for (const auto& tag : j["tags"].as_array()) {
 std::string author = j["meta"]["author"].as_string(); // "me"
 ```
 
+### UTF-8 与中文字符
+
+JSON 是一种 UTF-8 格式（RFC 8259）。本库以原始字节存储字符串——输入什么就存什么。为确保中文跨平台正确处理，请保证输入为 UTF-8：
+
+- **JSON 文件**：保存为 UTF-8 编码（所有 JSON 文件的推荐做法）。
+- **MSVC 源码**：添加 `/utf-8` 编译选项，使 `std::string("你好")` 产生 UTF-8 字节。
+- **备用方案**：使用 `json_u8()` 辅助函数配合 `u8` 字面量：
+
+```cpp
+// MSVC 不加 /utf-8 时："你好" 是 GBK 字节 → 错误
+// 加了 /utf-8 时：      "你好" 是 UTF-8 字节 → 正确
+// 不加 /utf-8 时用此辅助函数：
+j["name"] = scl2::json_value(scl2::json_u8(u8"你好"));
+```
+
+从 UTF-8 JSON 文件读取时，中文以 UTF-8 存储，导出时也是 UTF-8——无需额外处理。
+
 ### 构建与导出
 
 `json` 类提供了便捷的内置导出方法：
@@ -230,23 +247,27 @@ std::string toFile(const std::string& filename) const;
 
 ### json_exporter
 
-控制 `json::toString()` 的输出格式。
+控制 `json::toString()` 的输出格式。所有公开成员均可由用户直接设置。
 
 ```cpp
 enum class indent_style { none, space2, space4, tab };
 
 // 工厂辅助方法
-static json_exporter compact_exporter();   // isCompat=true, indent=none
-static json_exporter inline_exporter();    // isInline=true, indent=none
+static json_exporter compact_exporter();   // isCompat + escapeNonAscii + none indent
+static json_exporter inline_exporter();    // isInline + none indent
 
-// 公开字段
-bool isCompat;           // 紧凑输出
-bool isInline;           // 内联简单容器
-indent_style indentStyle;
+// 公开字段 — 在调用 exportToString() 前直接设置即可
+bool isCompat;             // 紧凑输出（无多余空白）
+bool isInline;             // 内联格式（换行替换为空格）
+bool escapeNonAscii;       // 将非 ASCII 的 UTF-8 转义为 \uXXXX（最大化可移植性）
+indent_style indentStyle;  // 缩进风格（默认：space4）
 
 std::string exportToString(const json& j);
 std::string exportToCompatString(const json& j);
 ```
+
+> [!NOTE]
+> `escapeNonAscii` 会将 UTF-8 码点解码并输出为 `\uXXXX` 转义序列，使输出在无法处理原始 UTF-8 的环境中也能安全使用。`compact_exporter()` 预设默认启用此选项。仅在本地使用时，可关闭它以保持中文等非 ASCII 字符的人类可读性。
 
 ### json_parser
 
