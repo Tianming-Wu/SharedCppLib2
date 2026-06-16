@@ -441,6 +441,7 @@ json_value json_parser::parseArray()
     }
 
     while(true) {
+        skipWhitespace();
         auto v = parseJsonValue();
         arr.as_array().push_back(std::move(v));
 
@@ -501,6 +502,11 @@ json_value json_parser::parseNumber()
     // Integer part
     if (json_str[pos] == '0') {
         ++pos;
+        // Leading zero is only valid for the number 0 itself.
+        // "01", "007" etc. are illegal in JSON.
+        if (pos < json_str.size() && jisdigit(json_str[pos])) {
+            throw std::runtime_error("Invalid JSON number: leading zero is not allowed");
+        }
     } else if (jisdigit(json_str[pos])) {
         while (pos < json_str.size() && jisdigit(json_str[pos])) {
             ++pos;
@@ -701,7 +707,7 @@ void json_exporter::exportKey(const std::string &value, size_t indentLevel)
     jindent(indentLevel);
     result_str += std::string(
         jquote(escapeJsonString(value)) +
-        (isCompat ? (":") : (" : "))
+        (isCompat ? ":" : ": ")
     );
 }
 
@@ -731,12 +737,8 @@ void json_exporter::exportObject(const json_value& value, size_t indentLevel)
     for (auto it = value.as_object().begin(); it != value.as_object().end(); ++it) {
         exportKey(it->first, indentLevel + 1);
 
-        // If the value is a container, break to a new line before it.
-        bool is_container = it->second.is_array() || it->second.is_object();
-        if (is_container) {
-            jnline();
-            jindent(indentLevel + 1);
-        }
+        // Non-empty containers: exportKey already provides ": " — bracket follows inline.
+        // Empty arrays/objects stay compact: "key": []
 
         exportValue(it->second, indentLevel + 1);
         if (std::next(it) != value.as_object().end()) result_str += ",";
@@ -787,7 +789,7 @@ void json_exporter::exportNumber(const json_value &value, size_t indentLevel)
 
 void json_exporter::jindent(size_t indentLevel)
 {
-    if (isCompat) return;
+    if (isCompat || isInline) return;
     result_str += [this, indentLevel]() {
         switch (indentStyle) {
             case indent_style::none:
@@ -806,9 +808,9 @@ void json_exporter::jindent(size_t indentLevel)
 
 void json_exporter::jnline()
 {
-    if (!(isCompat || isInline)) {
-        result_str += "\n";
-    }
+    if (isCompat) return;
+    if (isInline) { result_str += " "; return; }
+    result_str += "\n";
 }
 
 std::string json_exporter::jquote(const std::string &str)

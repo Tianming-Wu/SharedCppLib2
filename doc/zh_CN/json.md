@@ -88,15 +88,69 @@ scl2::json_exporter exporter;
 std::string output = exporter.exportToString(j);
 ```
 
-### 自定义导出格式
+### 导出格式示例
 
-```cpp
-scl2::json_exporter exporter;
-exporter.indentStyle = scl2::json_exporter::indent_style::tab;  // 制表符缩进
-exporter.isInline = true;  // 简单的对象/数组保持在一行
+同一 JSON 结构使用不同导出器配置的效果：
 
-std::string output = exporter.exportToString(j);
+**原始结构：**
+```json
+{"debug":false,"person":{"name":"Bob","scores":[95,87]}}
 ```
+
+**默认（`space4`）：**
+```json
+{
+    "debug": false,
+    "person": {
+        "name": "Bob",
+        "scores": [
+            95,
+            87
+        ]
+    }
+}
+```
+
+**紧凑（`isCompat = true`）：**
+```json
+{"debug":false,"person":{"name":"Bob","scores":[95,87]}}
+```
+
+**制表符缩进（`indent_style::tab`）：**
+```json
+{
+	"debug": false,
+	"person": {
+		"name": "Bob",
+		"scores": [
+			95,
+			87
+		]
+	}
+}
+```
+
+**内联模式（`isInline = true`）：**
+```json
+{ "debug": false, "person": { "name": "Bob", "scores": [ 95, 87 ] } }
+```
+
+**两空格缩进（`indent_style::space2`）：**
+```json
+{
+  "debug": false,
+  "person": {
+    "name": "Bob",
+    "scores": [
+      95,
+      87
+    ]
+  }
+}
+```
+
+> [!TIP]
+> 紧凑格式可直接使用 `json::toCompatString()`。其他格式请配置 `json_exporter` 实例后调用 `exportToString()`。
 
 ## 核心 API
 

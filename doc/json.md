@@ -88,15 +88,69 @@ scl2::json_exporter exporter;
 std::string output = exporter.exportToString(j);
 ```
 
-### Custom export format
+### Export format examples
 
-```cpp
-scl2::json_exporter exporter;
-exporter.indentStyle = scl2::json_exporter::indent_style::tab;  // tab indentation
-exporter.isInline = true;  // keep simple objects/arrays on one line
+The same JSON structure exported with different exporter settings:
 
-std::string output = exporter.exportToString(j);
+**Input structure:**
+```json
+{"debug":false,"person":{"name":"Bob","scores":[95,87]}}
 ```
+
+**Default (`space4`):**
+```json
+{
+    "debug": false,
+    "person": {
+        "name": "Bob",
+        "scores": [
+            95,
+            87
+        ]
+    }
+}
+```
+
+**Compact (`isCompat = true`):**
+```json
+{"debug":false,"person":{"name":"Bob","scores":[95,87]}}
+```
+
+**Tab indentation (`indent_style::tab`):**
+```json
+{
+	"debug": false,
+	"person": {
+		"name": "Bob",
+		"scores": [
+			95,
+			87
+		]
+	}
+}
+```
+
+**Inline mode (`isInline = true`):**
+```json
+{ "debug": false, "person": { "name": "Bob", "scores": [ 95, 87 ] } }
+```
+
+**Space2 (`indent_style::space2`):**
+```json
+{
+  "debug": false,
+  "person": {
+    "name": "Bob",
+    "scores": [
+      95,
+      87
+    ]
+  }
+}
+```
+
+> [!TIP]
+> Use `json::toCompatString()` for the compact format. For other styles, configure a `json_exporter` instance and call `exportToString()`.
 
 ## Core API
 
