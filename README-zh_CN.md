@@ -38,6 +38,7 @@ Other languages: [English](README.md)
 - **[`regexfilter`](doc/zh_CN/regexfilter.md)** - 基于正则表达式的黑名单/白名单过滤
 - **`atxsort`** - 通用排序算法
 - **[`ini`](doc/zh_CN/ini.md)** - INI 配置解析与写入库
+- **[`json`](doc/zh_CN/json.md)** - JSON 解析、操作和序列化（早期开发）
 - **`platform`** - 跨平台工具和抽象层
 - **`xml`** - XML 解析和序列化库（开发中）（警告：虽然模块基本功能正常，但某些函数尚不安全，可能导致崩溃。）
 - **`html`** - HTML 解析和操作库（开发中）
@@ -90,7 +91,7 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(您的目标 SharedCppLib2::basic)
 ```
 
-**可用目标：** `variant`, `logd`, `logf`, `sha256`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
+**可用目标：** `variant`, `logd`, `logf`, `sha256`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
 
 上述列表可能不完整，以顶部列表为准。
 

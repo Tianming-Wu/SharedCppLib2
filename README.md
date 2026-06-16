@@ -42,6 +42,7 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **[`regexfilter`](doc/regexfilter.md)** - Regex-based blacklist/whitelist filtering
 - **`atxsort`** - Universal sorting algorithms
 - **[`ini`](doc/ini.md)** - INI configuration parser and writer
+- **[`json`](doc/json.md)** - JSON parsing, manipulation and serialization (early development)
 - **`platform`** - Cross-platform utilities and abstractions
 - **`xml`** - XML parsing and serialization library (in development) (Warning: Though the module is basically functional, some functions are yet unsafe and cause crashes.)
 - **`html`** - HTML parsing and manipulation library (in development)
@@ -91,7 +92,7 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(your_target SharedCppLib2::basic)
 ```
 
-**Available targets:** `variant`, `logd`, `logf`, `sha256`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
+**Available targets:** `variant`, `logd`, `logf`, `sha256`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
 
 ### 4. Code Example
 ```cpp
