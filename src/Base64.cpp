@@ -78,16 +78,51 @@ std::bytearray decode(const std::string &input)
 	int k = 0;
 
     for (unsigned int i  = 0; i < input.size(); i++) {
+        // Skip whitespace and padding — padding is handled at group flush.
+        if (input[i] == '=') {
+            // Flush remaining partial group and finish.
+            if (k > 0) {
+                int saved_k = k;
+                // Pad the incomplete group with zeros
+                while (k < 4) input_char[k++] = 0;
+                output_num = ((int)input_char[0]<<18) + ((int)input_char[1]<<12)
+                           + ((int)input_char[2]<<6)  + ((int)input_char[3]);
+                output_char[0] = (unsigned char)((output_num & 0x00FF0000) >> 16);
+                output_char[1] = (unsigned char)((output_num & 0x0000FF00) >> 8);
+                output_char[2] = (unsigned char)(output_num & 0x000000FF);
+                // k was the number of valid chars read (0 < k <= 3).
+                // A full group of 4 produces 3 bytes; missing n chars reduce output by n-1.
+                int out_bytes = saved_k - 1;
+                if (out_bytes > 0)
+                    output.append(reinterpret_cast<const std::byte*>(output_char), out_bytes);
+            }
+            break;
+        }
+
         input_char[k++] = index(input[i]);
         if (k == 4) {
             output_num = ((int)input_char[0]<<18) + ((int)input_char[1]<<12) + ((int)input_char[2]<<6) + ((int)input_char[3]);
             output_char[0] =(unsigned char)((output_num & 0x00FF0000)>> 16) ;
             output_char[1] =(unsigned char)((output_num & 0x0000FF00) >> 8) ;
             output_char[2] =(unsigned char)(output_num & 0x000000FF);
-            output_char[3] ='\0';
             output.append(reinterpret_cast<const std::byte*>(output_char), 3);
             k = 0;
         }
+    }
+
+    // Flush any remaining partial group (no padding encountered)
+    if (k > 0 && k < 4) {
+        int saved_k = k;
+        while (k < 4) input_char[k++] = 0;
+        output_num = ((int)input_char[0]<<18) + ((int)input_char[1]<<12)
+                   + ((int)input_char[2]<<6)  + ((int)input_char[3]);
+        output_char[0] = (unsigned char)((output_num & 0x00FF0000) >> 16);
+        output_char[1] = (unsigned char)((output_num & 0x0000FF00) >> 8);
+        output_char[2] = (unsigned char)(output_num & 0x000000FF);
+        // For a partial group of size k (1..3), we produce k-1 output bytes.
+        int out_bytes = saved_k - 1;
+        if (out_bytes > 0)
+            output.append(reinterpret_cast<const std::byte*>(output_char), out_bytes);
     }
 
     return output;
