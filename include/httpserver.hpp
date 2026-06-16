@@ -1,111 +1,68 @@
 /*
     HTTP Server module as part of the network library.
-    Tianming Wu <https://github.com/Tianming-Wu> 2026.1.31
+    Tianming Wu <https://github.com/Tianming-Wu> 2026.2.15
+
+    This module provides an HTTP protocol layer on top of TCP server,
+    similar to QHttpServer, with request parsing, routing, and response building.
 
     Note that this is an individual link target and is not included in the main
     network library by default.
     You don't need to link network module separately when using http server module.
-
-    This module provides a simple HTTP server implementation, which can be used for
-    testing or lightweight applications.
 */
 
 #pragma once
 
-#include "network.hpp"
-#include "network_platform.hpp"
-
+#include "tcpserver.hpp"
 #include "http.hpp"
 
-#include "basics.hpp"
-#include "stream.hpp"
-
+#include <functional>
 #include <map>
-#include <vector>
-#include <mutex>
+#include <string>
+#include <memory>
 
-/// @brief HTTP protocol related classes and functions
 namespace network::http {
 
 class server;
-typedef int client_id;
 
-struct client_info {
-    client_id id;
-    socket_t socket;
-    sockaddr_in addr;
-    mutable std::mutex mutex; // to prevent concurrent access to the same client
-};
+/// @brief HTTP route handler function type
+/// Takes a request and returns a response body (status and headers can be set separately)
+using route_handler = std::function<std::string(const request&)>;
 
-
-class server_client_handler : basic_sclstream
-{
-public:
-    server_client_handler(server& srv, client_info& info);
-    ~server_client_handler() = default; // does not have ownership of anything
-
-    enable_copy_move(server_client_handler)
-
-    bool readyRead() override final;
-    size_t available() override final;
-
-    std::bytearray read(size_t bytes) override final;
-    std::bytearray readAll() override final;
-
-    size_t write(const std::bytearray& data);
-
-    bool valid();
-
-    auto lock() -> std::unique_lock<std::mutex>;
-
-private:
-    server& m_server;
-    client_info& m_client_info;
-};
-
-
+/// @brief HTTP server that handles HTTP protocol on top of TCP
 class server {
-    friend class server_client_handler;
 public:
     server();
     server(uint16_t port);
     server(network_address address, uint16_t port);
     ~server();
 
+    /// @brief Start the HTTP server
     void start();
     void start(uint16_t port);
+    
+    /// @brief Stop the HTTP server
     void stop();
+
+    /// @brief Register a route handler for a specific path and method
+    /// @param method HTTP method (GET, POST, etc.)
+    /// @param path URL path (e.g., "/api/users")
+    /// @param handler Function to handle the request
+    void route(http_method method, const std::string& path, route_handler handler);
+
+    /// @brief Process one iteration of the server loop (accept connections, handle requests)
+    /// @return Number of new clients accepted, or -1 if not running
+    int tick();
 
     uint16_t port() const;
     network_address address() const;
 
-    static std::string hostname(size_t max_length = 255);
-    
-    std::vector<client_id> clients();
-
-    server_client_handler selectClient(client_id& id);
-
-    auto lock() -> std::unique_lock<std::mutex>;
-
-protected:
-    int tick(); // the single working loop iteration
-
-
 private:
-    network_address m_address;
-    uint16_t m_port;
-    mutable std::mutex m_mutex;
+    /// @brief Handle incoming data from a TCP client
+    void handleClient(tcp::client_id id);
 
-    std::map<client_id, client_info> m_clients;
-    socket_t m_listen_socket = invalid_socket;
-    client_id m_next_client_id = 1;
-    bool m_running = false;
-
+    tcp::server m_tcp_server;
+    std::map<std::pair<http_method, std::string>, route_handler> m_routes;
+    std::map<tcp::client_id, std::string> m_client_buffers; // Partial HTTP requests
 };
-
-server& operator>> (server& srv, std::string& request);
-server& operator<< (server& srv, const std::string& response);
-
-
 
 } // namespace network::http

@@ -50,6 +50,7 @@ add_library(api INTERFACE include/api.hpp)
 set(INTERFACE_TARGET_LIST
     hmac logh rerr bits cache exexception engineering multindex percentage RAII singleinst
     structural_binding typemask
+    network
 )
 
 add_library(hmac INTERFACE include/hmac.hpp)
@@ -90,16 +91,22 @@ add_library(keydb STATIC src/keydb.cpp)
 add_library(types STATIC src/scltypes.cpp)
 add_library(condition STATIC src/condition.cpp)
 
-# Network module (commented out until ready for main branch)
-# add_library(network STATIC 
-#     src/network.cpp 
-#     src/dns.cpp 
-#     src/tcpserver.cpp 
-#     src/tcpclient.cpp
-#     src/httpserver.cpp
-#     src/httpclient.cpp
-#     src/http.cpp
-# )
+add_library(network_core STATIC src/network.cpp)
+add_library(network_dns STATIC src/dns.cpp)
+add_library(network_tcp STATIC src/tcpclient.cpp src/tcpserver.cpp)
+add_library(network_udp STATIC src/udp.cpp)
+
+add_library(network_http STATIC
+    src/http.cpp
+    src/httpserver.cpp
+    src/httpclient.cpp
+)
+
+# Aggregate target — link this to get all network functionality
+add_library(network INTERFACE)
+target_link_libraries(network INTERFACE
+    network_core network_dns network_tcp network_udp network_http
+)
 
 # 禁用 MSVC 的显式模板实例化警告
 if(MSVC)
@@ -131,7 +138,7 @@ endforeach()
 set(TARGET_LIST
     variant logd logf sha256 basic indexer regexfilter
     logt logc Base64 platform arguments ini abstract xml debug stream
-    console keydb types condition
+    network_core network_dns network_tcp network_udp network_http
 )
 
 # 安装目标
