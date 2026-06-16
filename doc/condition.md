@@ -2,7 +2,7 @@
 
 + Name: condition_node, condition_expression
 + Namespace: `scl2`
-+ Document Version: `1.0.0`
++ Document Version: `1.1.0`
 
 ## CMake Info
 
@@ -87,7 +87,9 @@ std::bytearray enba = scl2::encrypt<scl2::aes128>(ba, key, iv);
 
 ## Format
 
-The format of the condition system is simple.
+The format of the condition system is simple, but diffent from the format that is widely used in boolean algebra.
+
+However, that format is also supported by this library. Check the document below.
 
 Below is the default format of the condition expression string.
 
@@ -127,22 +129,60 @@ This library also provides some other formats that were commonly used.
 
 To use these formats, use their own parser.
 
-### 
-`AB` = `A & B`, `A+B` = `A | B`, `A'` = `!A`.
+### Normal Format
 
+This is the most commonly used format.
+
+- parser: `parseNormal(str)`
+- to_string: `toNormalString(node)`
+
+- AND: `AB`
+- OR: `A+B`
+- NOT: `A'` (postfix)
+- XOR: `A^B`
+
+For NAND, NOR, etc, you can write them as `!(AB)`, `!(A+B)`, `!(A^B)`.
+
+
+### Latex Format
+
+- parser: `parseLatex(str)`
+- to_string: `toLatexString(node)`
+
+This format mode provides direct ability to parse or output logical expressions written in LaTex format.
+
+- NOT: `\overline{A}`
+- AND: `AB`, `A \cdot B`, `A \wedge B`
+- OR: `A + B`, `A \vee B`
 
 
 ## Simplification
 
-The condition system provides a way to simplify the condition tree.
+The condition system provides two levels of simplification.
 
-*(Future) For runtime-constant values, in simplification process they will be folded as normal constants.*
+### Basic Simplification
 
-### Limitations
+Call `condition_node::simplify()` to perform a basic simplification on the condition tree. This process evaluates and collapses constant sub-expressions, and flattens logical nodes where possible.
 
-The current simplification process is not perfect, and there are some limitations.
+> Basic simplification is a single-pass process — it simplifies the tree once. Some simplification opportunities that require iterative passes may be missed.
+
+Limitations:
 
 1. The input is left-combined, and associative operators may not be fully simplified. To make sure it was simplified as much as possible, you need to make sure the first pair is simplifiable.
 2. The simplification process is not iterative, which means it only simplifies the tree once. If there are some simplification opportunities that can only be found after the first simplification, they will not be simplified.
 
-Later we'll introduce deep-simplification feature using Quine-McCluskey algorithm, which can fully simplify the condition.
+### Deep Simplification (Quine-McCluskey Algorithm)
+
+For full simplification, use `condition_simplifier::simplify()`. This implements the Quine-McCluskey algorithm to produce a minimal sum-of-products expression.
+
+**Usage:**
+
+```cpp
+scl2::condition_expression expr("A & (B | C) | !A & B");
+scl2::condition_expression simplified = scl2::condition_simplifier::simplify(expr);
+```
+
+The algorithm generates the truth table from the expression, finds all prime implicants, selects essential prime implicants, and reconstructs a minimal tree.
+
+> [!NOTE]
+> The Quine-McCluskey algorithm currently accepts inputs with up to **8 variables**. Inputs with more variables will be rejected.

@@ -125,6 +125,37 @@ void some_critical_function() {
 }
 ```
 
+### logt_guard - RAII shutdown helper
+
+```cpp
+logt_guard guard;  // Automatically calls logt::shutdown() on destruction
+```
+
+A convenience RAII class whose destructor calls `logt::shutdown()`. Declaring a `logt_guard` instance at the appropriate scope (e.g. in `main()`) ensures the logging system is properly shut down when it goes out of scope.
+
+> [!NOTE]
+> Using `logt_guard` is entirely optional. If you choose not to use it, you **must** call `logt::shutdown()` before program exit, and `shutdown()` must be called from the last exiting thread. Failing to call `shutdown()` will trigger `std::terminate()` when `main()` exits, because the worker thread is still running.
+
+**Example:**
+
+```cpp
+#include <SharedCppLib2/logt.hpp>
+
+LOGT_MODULE("Main");
+
+int main() {
+    logt_guard guard;  // shutdown() will be called automatically
+
+    logt::stdcout(true, true);
+    logt::claim("MainThread");
+
+    logt.info() << "Application initialized";
+
+    // No need to call logt::shutdown() explicitly
+    return 0;
+}
+```
+
 ## Core API Reference
 
 ### System configuration methods
@@ -176,7 +207,17 @@ Preprocessing currently happens in `write_message()`: stdout/custom streams use 
 ```cpp
 static void shutdown();
 ```
-Gracefully stops worker thread and flushes pending messages. **Must be called before program exit.**
+Gracefully stops worker thread and flushes pending messages. **Must be called before program exit.** Must be called from the last exiting thread. Failing to call `shutdown()` will trigger `std::terminate()` when `main()` exits.
+
+#### logt_guard - RAII shutdown guard
+```cpp
+class logt_guard {
+public:
+    logt_guard() = default;
+    ~logt_guard() { logt::shutdown(); }
+};
+```
+A simple RAII wrapper that calls `shutdown()` automatically on destruction. This is a convenience alternative to calling `logt::shutdown()` manually. If you use `logt_guard`, no explicit `shutdown()` call is needed.
 
 #### exit - shutdown + process exit
 ```cpp

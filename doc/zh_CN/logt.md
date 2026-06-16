@@ -127,6 +127,37 @@ void some_critical_function() {
 ```
 
 
+### logt_guard - RAII 关闭辅助
+
+```cpp
+logt_guard guard;  // 析构时自动调用 logt::shutdown()
+```
+
+一个便捷的 RAII 包装类，其析构函数自动调用 `logt::shutdown()`。在合适的作用域（例如 `main()` 中）声明一个 `logt_guard` 实例，即可确保离开作用域时日志系统被正确关闭。
+
+> [!NOTE]
+> `logt_guard` 仅为便利性提供，完全可选。如果你选择不使用它，则**必须**在程序退出前调用 `logt::shutdown()`，并且必须在最后一个退出的线程中调用。未调用 `shutdown()` 会在 `main()` 退出时触发 `std::terminate()`，因为工作线程仍在运行。
+
+**示例：**
+
+```cpp
+#include <SharedCppLib2/logt.hpp>
+
+LOGT_MODULE("Main");
+
+int main() {
+    logt_guard guard;  // shutdown() 将自动调用
+
+    logt::stdcout(true, true);
+    logt::claim("MainThread");
+
+    logt.info() << "应用程序初始化完成";
+
+    // 无需显式调用 logt::shutdown()
+    return 0;
+}
+```
+
 ## 核心 API 参考
 
 ### 系统配置方法
@@ -177,7 +208,17 @@ static void install_preprocessor(preprocessor_t preprocessor);
 ```cpp
 static void shutdown();
 ```
-优雅停止工作线程并刷新队列中的日志。**程序退出前务必调用。**
+优雅停止工作线程并刷新队列中的日志。**程序退出前务必调用。** 必须在最后一个退出的线程中调用。未调用 `shutdown()` 会在 `main()` 退出时触发 `std::terminate()`。
+
+#### logt_guard - RAII 关闭守卫
+```cpp
+class logt_guard {
+public:
+    logt_guard() = default;
+    ~logt_guard() { logt::shutdown(); }
+};
+```
+一个简单的 RAII 包装类，析构时自动调用 `shutdown()`。这是手动调用 `logt::shutdown()` 的便利替代方案。使用 `logt_guard` 后无需再显式调用 `shutdown()`。
 
 ### 日志记录方法
 
