@@ -6,7 +6,7 @@ To be clear, SharedCppLib2 does not have a built-in configuration system, but it
 
 Below are the options you can choose to use.
 
-If you cannot select one, use ini for simple purposes, and keydb for heavy binary data.
+If you cannot select one, use ini for simple purposes, json for structured data, and keydb for heavy binary data.
 
 
 
@@ -16,11 +16,55 @@ If you cannot select one, use ini for simple purposes, and keydb for heavy binar
 
 SharedCppLib2 provides some simple text-based configuration formats.
 
-No, json's not supported. Go to [jsoncpp](https://github.com/open-source-parsers/jsoncpp).
-
 **Supported Formats:**
+- [Json Format](#json-format)
 - [Ini Format](#ini-format)
 - [Xml Format](#xml-format)
+
+### Json Format
+
+SharedCppLib2 now provides a built-in JSON module. It is still in early development — its functionality may not yet match feature-rich libraries like [jsoncpp](https://github.com/open-source-parsers/jsoncpp), but it is lightweight and can actually be used independently of SharedCppLib2 (just copy the header and source file).
+
+Some of its syntax is intentionally designed to be similar to jsoncpp for familiarity, but mostly it follows what I think is convenient.
+
+```cpp
+#include <SharedCppLib2/json.hpp>
+
+int main() {
+    // Parse from string
+    scl2::json j = scl2::json::fromString(R"({
+        "name": "example",
+        "version": 1,
+        "features": ["a", "b"],
+        "enabled": true
+    })");
+
+    // Access values
+    std::string name = j["name"].as_string();
+    int64_t version = j["version"].as_int();
+    bool enabled = j["enabled"].as_bool();
+
+    // Array access
+    for (const auto& elem : j["features"].as_array()) {
+        std::cout << elem.as_string() << std::endl;
+    }
+
+    // Build and export
+    scl2::json output = scl2::json::fromString(R"({"key": "value"})");
+    output["new_field"] = scl2::json_value(42);
+    std::string text = output.toString();   // formatted output
+    std::string compact = output.toCompatString();  // compact output
+
+    // File I/O
+    scl2::json cfg = scl2::json::fromFile("config.json");
+    cfg.toFile("config_updated.json");
+
+    return 0;
+}
+```
+
+> [!WARNING]
+> The JSON module is in early development. While usable, it may lack some advanced features found in dedicated JSON libraries. Expect improvements in future releases.
 
 ### Ini Format
 

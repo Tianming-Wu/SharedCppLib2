@@ -6,7 +6,7 @@
 
 以下是你可以选择的方案。
 
-如果难以抉择，简单的场景使用 ini，处理大量二进制数据请使用 keydb。
+如果难以抉择，简单的场景使用 ini，结构化数据使用 json，处理大量二进制数据请使用 keydb。
 
 
 
@@ -16,11 +16,55 @@
 
 SharedCppLib2 提供了一些简单的基于文本的配置格式。
 
-不，不支持 json。请使用 [jsoncpp](https://github.com/open-source-parsers/jsoncpp)。
-
 **支持的格式：**
+- [Json 格式](#json-格式)
 - [Ini 格式](#ini-格式)
 - [Xml 格式](#xml-格式)
+
+### Json 格式
+
+SharedCppLib2 现在提供了一个内置的 JSON 模块。它仍处于早期开发阶段——功能性上可能还比不上 [jsoncpp](https://github.com/open-source-parsers/jsoncpp) 等丰富成熟的库，但它更加轻量化，并且实际上可以脱离 SharedCppLib2 单独使用（只需复制头文件和源文件即可）。
+
+它的部分语法被刻意设计成和 jsoncpp 十分接近，但主要还是以我认为方便的想法为准。
+
+```cpp
+#include <SharedCppLib2/json.hpp>
+
+int main() {
+    // 从字符串解析
+    scl2::json j = scl2::json::fromString(R"({
+        "name": "example",
+        "version": 1,
+        "features": ["a", "b"],
+        "enabled": true
+    })");
+
+    // 访问值
+    std::string name = j["name"].as_string();
+    int64_t version = j["version"].as_int();
+    bool enabled = j["enabled"].as_bool();
+
+    // 数组访问
+    for (const auto& elem : j["features"].as_array()) {
+        std::cout << elem.as_string() << std::endl;
+    }
+
+    // 构建并导出
+    scl2::json output = scl2::json::fromString(R"({"key": "value"})");
+    output["new_field"] = scl2::json_value(42);
+    std::string text = output.toString();         // 格式化输出
+    std::string compact = output.toCompatString(); // 紧凑输出
+
+    // 文件 I/O
+    scl2::json cfg = scl2::json::fromFile("config.json");
+    cfg.toFile("config_updated.json");
+
+    return 0;
+}
+```
+
+> [!WARNING]
+> JSON 模块处于早期开发阶段。虽然可用，但可能缺少一些专业 JSON 库中的高级功能。后续版本将不断改进。
 
 ### Ini 格式
 
