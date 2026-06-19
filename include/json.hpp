@@ -10,6 +10,8 @@
     Even if they are enabled, they are still within standard JSON format. It just
     make it easier to use in some cases.
 
+    Also check jbt if you want some even more compact storage of json data.
+
 */
 
 #pragma once
@@ -42,19 +44,39 @@ class json;
 class json_parser;
 class json_exporter;
 
-
-enum class json_value_type {
-    null,
-    boolean,
-    integer,
-    floating,
-    string,
-    array,
-    object,
+enum class json_value_type : uint8_t {
+    null = 0,
+    boolean = 1,
+    integer = 2,
+    floating = 3,
+    string = 4,
+    array = 5,
+    object = 6,
 #ifdef SCL2_JSON_ENABLE_EXTENSIONS
-    bytearray,
-    data_uri,
+    bytearray = 7,
+    data_uri = 8,
 #endif
+};
+// highest 2 bits in the byte are reserved for mark bits.
+// so we can only use 6 bytes, for up to 63 types, which is quite enough for any future
+// use in json. we won't need more.
+
+// abstract pointer layer.
+class json_pointer {
+public:
+    json_pointer(const std::string& pointer_str);
+
+    json_value& apply(const json_value& root) const;
+
+    std::string to_string() const;
+
+private:
+    void split_tokens();
+    std::string unescape_segment(std::string segment) const;
+    json_value& apply_impl(const json_value& current, size_t depth) const;
+
+    std::string pointer_str;
+    std::vector<std::string> tokens;
 };
 
 class json_value {
@@ -122,6 +144,7 @@ public:
     json_value& operator[](const std::string& key);
     const json_value& at(const std::string& key) const;
     size_t object_size() const;
+    bool remove_member(const std::string& key);
 
     // for string
     size_t length() const;
@@ -131,7 +154,14 @@ public:
     size_t size() const;
     void clear(); // clear the value, set it to null
 
+    // json pointer
+    json_value& at(const json_pointer& pointer);
+    const json_value& at(const json_pointer& pointer) const;
+
     json_value_type type() const;
+
+    bool operator==(const json_value& other) const;
+    bool operator!=(const json_value& other) const { return !(*this == other); }
 
 private:
     std::variant<

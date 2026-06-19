@@ -5,6 +5,82 @@
 
 namespace scl2 {
 
+json_pointer::json_pointer(const std::string& pointer_str)
+    : pointer_str(pointer_str)
+{
+    split_tokens();
+}
+
+json_value &json_pointer::apply(const json_value &root) const
+{
+    if (tokens.empty()) return const_cast<json_value&>(root); // empty pointer points to the whole document
+    return apply_impl(root, 0);
+}
+
+std::string json_pointer::to_string() const
+{
+    return pointer_str;
+}
+
+void json_pointer::split_tokens()
+{
+    if (pointer_str.empty()) return; // empty pointer is valid and points to the whole document
+    if (pointer_str[0] != '/')
+        throw std::runtime_error("json_pointer::split_tokens: pointer must start with '/'");
+
+    size_t pos = 0, lpos = 1;
+    while ((pos = pointer_str.find('/', lpos)) != std::string::npos) {
+        std::string current_token = pointer_str.substr(lpos, pos - lpos);
+        tokens.push_back(unescape_segment(current_token));
+        lpos = pos + 1;
+    }
+
+    // get the last token
+    std::string last_token = pointer_str.substr(lpos);
+    tokens.push_back(unescape_segment(last_token));
+}
+
+std::string json_pointer::unescape_segment(std::string segment) const
+{
+    if (segment.empty()) return "";
+    size_t pos = 0, lpos = 0;
+    while((pos = segment.find("~1", lpos)) != std::string::npos) { segment.replace(pos, 2, "/"); lpos = pos + 1; }
+    pos = 0; lpos = 0;
+    while((pos = segment.find("~0", lpos)) != std::string::npos) { segment.replace(pos, 2, "~"); lpos = pos + 1; }
+    return segment;
+}
+
+json_value &json_pointer::apply_impl(const json_value &current, size_t depth) const
+{
+    const std::string& segment = tokens[depth];
+
+    // Navigate into the current level
+    const json_value* next = nullptr;
+    if (current.is_array()) {
+        size_t index;
+        try { index = std::stoul(segment); } catch (const std::exception&) {
+            throw std::runtime_error("json_pointer::apply: invalid array index: " + segment);
+        }
+        if (index >= current.array_size()) {
+            throw std::runtime_error("json_pointer::apply: array index out of bounds: " + segment);
+        }
+        next = &current[index];
+    } else if (current.is_object()) {
+        if (!current.has_key(segment)) {
+            throw std::runtime_error("json_pointer::apply: object key not found: " + segment);
+        }
+        next = &current[segment];
+    } else {
+        throw std::runtime_error("json_pointer::apply: cannot apply pointer to scalar value");
+    }
+
+    // Last token: return the target
+    if (depth == tokens.size() - 1) return const_cast<json_value&>(*next);
+
+    // Intermediate: recurse deeper
+    return apply_impl(*next, depth + 1);
+}
+
 json_value::json_value(std::nullptr_t) : value(nullptr) {}
 json_value::json_value(bool b) : value(b) {}
 json_value::json_value(int64_t i) : value(i) {}
@@ -156,6 +232,16 @@ void json_value::clear()
     value = nullptr;
 }
 
+json_value &json_value::at(const json_pointer &pointer)
+{
+    return pointer.apply(*this);
+}
+
+const json_value &json_value::at(const json_pointer &pointer) const
+{
+    return pointer.apply(*this);
+}
+
 json_value_type json_value::type() const
 {
     if (is_null())
@@ -180,6 +266,21 @@ json_value_type json_value::type() const
 #endif
     else
         throw std::runtime_error("json_value::type: unknown type");
+}
+
+bool json_value::remove_member(const std::string& key)
+{
+    if (!is_object()) return false;
+    return as_object().erase(key) > 0;
+}
+
+bool json_value::operator==(const json_value& other) const
+{
+    if (value.index() != other.value.index()) return false;
+    return std::visit([&other](const auto& a) -> bool {
+        using T = std::decay_t<decltype(a)>;
+        return a == std::get<T>(other.value);
+    }, value);
 }
 
 json::json(json_value &&v)
@@ -252,9 +353,33 @@ json &&json_parser::getResult()
 
 void json_parser::skipWhitespace()
 {
-    while (pos < json_str.size() && std::isspace(json_str[pos]))
-    {
-        ++pos;
+    while (pos < json_str.size()) {
+        char c = json_str[pos];
+        if (std::isspace(static_cast<unsigned char>(c))) {
+            ++pos;
+            continue;
+        }
+#ifdef SCL2_JSON_ENABLE_COMMENTS
+        // Line comment: skip until newline or EOF
+        if (c == '/' && pos + 1 < json_str.size() && json_str[pos + 1] == '/') {
+            pos += 2;
+            while (pos < json_str.size() && json_str[pos] != '\n') ++pos;
+            continue;
+        }
+        // Block comment: skip until */
+        if (c == '/' && pos + 1 < json_str.size() && json_str[pos + 1] == '*') {
+            pos += 2;
+            while (pos + 1 < json_str.size()) {
+                if (json_str[pos] == '*' && json_str[pos + 1] == '/') {
+                    pos += 2;
+                    break;
+                }
+                ++pos;
+            }
+            continue;
+        }
+#endif
+        break;
     }
 }
 
