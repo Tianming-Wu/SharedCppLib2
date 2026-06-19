@@ -2,7 +2,7 @@
 
 + Name: json
 + Namespace: `scl2`
-+ Document Version: `1.0.0`
++ Document Version: `1.1.0`
 
 ## CMake Info
 
@@ -272,6 +272,47 @@ std::string exportToCompatString(const json& j);
 ### json_parser
 
 Internal parser class. Users should use `json::fromString()` / `json::fromFile()` instead.
+
+### json_pointer
+
+Implements RFC 6901 — a path-based navigation syntax for JSON values.
+
+```cpp
+class json_pointer {
+public:
+    explicit json_pointer(const std::string& pointer_str);
+    json_value& apply(json_value& root) const;
+};
+```
+
+**Path syntax:**
+```
+pointer = "" | "/" segment *("/" segment)
+segment = *(unescaped / escaped)
+escaped = "~0" (→ "~") | "~1" (→ "/")
+```
+
+**Examples:**
+
+| Pointer | Result |
+|---------|--------|
+| `""` | Root value itself |
+| `"/foo"` | Key `"foo"` in root object |
+| `"/foo/0"` | Element 0 of array at key `"foo"` |
+| `"/a/b"` | Nested object key `"b"` inside `"a"` |
+| `"/c~1d"` | Key with literal `/`: `"c/d"` |
+| `"/e~0f"` | Key with literal `~`: `"e~f"` |
+
+**Usage:**
+```cpp
+scl2::json j = scl2::json::fromString(R"({"a": {"b": [10, 20]}})");
+
+scl2::json_pointer ptr("/a/b/1");
+scl2::json_value& target = ptr.apply(j);  // → 20
+```
+
+- Returns a **mutable reference** — you can modify the value in-place.
+- Throws `std::runtime_error` on invalid path, missing keys, or index out of bounds.
 
 ## Extensions (`SCL2_JSON_ENABLE_EXTENSIONS`)
 

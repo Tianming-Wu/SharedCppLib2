@@ -2,7 +2,7 @@
 
 + 名称: json
 + 命名空间: `scl2`
-+ 文档版本: `1.0.0`
++ 文档版本: `1.1.0`
 
 ## CMake 配置信息
 
@@ -272,6 +272,47 @@ std::string exportToCompatString(const json& j);
 ### json_parser
 
 内部解析器类。用户应使用 `json::fromString()` / `json::fromFile()` 代替。
+
+### json_pointer
+
+实现 RFC 6901——基于路径的 JSON 值导航语法。
+
+```cpp
+class json_pointer {
+public:
+    explicit json_pointer(const std::string& pointer_str);
+    json_value& apply(json_value& root) const;
+};
+```
+
+**路径语法：**
+```
+pointer = "" | "/" segment *("/" segment)
+segment = *(unescaped / escaped)
+escaped = "~0" (→ "~") | "~1" (→ "/")
+```
+
+**示例：**
+
+| Pointer | 结果 |
+|---------|------|
+| `""` | 根节点自身 |
+| `"/foo"` | 根对象中的键 `"foo"` |
+| `"/foo/0"` | 键 `"foo"` 对应数组的第 0 个元素 |
+| `"/a/b"` | 嵌套对象 `"a"` 中的键 `"b"` |
+| `"/c~1d"` | 含字面 `/` 的键名：`"c/d"` |
+| `"/e~0f"` | 含字面 `~` 的键名：`"e~f"` |
+
+**用法：**
+```cpp
+scl2::json j = scl2::json::fromString(R"({"a": {"b": [10, 20]}})");
+
+scl2::json_pointer ptr("/a/b/1");
+scl2::json_value& target = ptr.apply(j);  // → 20
+```
+
+- 返回**可变引用**——可以直接原地修改值。
+- 路径无效、键缺失或索引越界时抛出 `std::runtime_error`。
 
 ## 扩展功能（`SCL2_JSON_ENABLE_EXTENSIONS`）
 
