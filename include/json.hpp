@@ -12,6 +12,8 @@
 
     Also check jbt if you want some even more compact storage of json data.
 
+    [SCL_STANDALONE_MODULE]
+    version: 1.3.0
 */
 
 #pragma once

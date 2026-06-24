@@ -1,3 +1,7 @@
+/*
+    [SCL_STANDALONE_MODULE]
+    version: 1.3.0
+*/
 #include "json.hpp"
 
 #include <fstream>
