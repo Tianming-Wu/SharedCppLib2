@@ -84,6 +84,10 @@ public:
     const std::bytearray& data() const { return data_; }
     std::bytearray& data() { return data_; }
 
+    bool operator==(const inline_data_uri& other) const {
+        return media_type() == other.media_type() && is_base64() == other.is_base64() && data_ == other.data_;
+    }
+
 private:
     std::bytearray data_;
 };
