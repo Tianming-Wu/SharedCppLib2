@@ -93,6 +93,7 @@ add_library(condition STATIC src/condition.cpp)
 add_library(filesystem STATIC src/filesystem.cpp)
 add_library(datauri STATIC src/datauri.cpp)
 add_library(json STATIC src/json.cpp)
+add_library(yaml STATIC src/yaml.cpp)
 
 add_library(network_core STATIC src/network.cpp)
 add_library(network_dns STATIC src/dns.cpp)
@@ -136,7 +137,7 @@ target_link_libraries(basic PRIVATE Base64)
 target_link_libraries(datauri PUBLIC basic Base64)
 
 # basic 库依赖关系
-foreach(target regexfilter logc sha256 arguments ini abstract xml keydb condition datauri json)
+foreach(target regexfilter logc sha256 arguments ini abstract xml keydb condition datauri json yaml)
     target_link_libraries(${target} PUBLIC basic)
 endforeach()
 
@@ -153,7 +154,7 @@ target_compile_definitions(json PUBLIC
 set(TARGET_LIST
     variant logd logf sha256 basic indexer regexfilter
     logt logc Base64 platform arguments ini abstract xml debug stream
-    console keydb types condition filesystem datauri json
+    console keydb types condition filesystem datauri json yaml
     network_core network_dns network_tcp network_udp network_http
 )
 
