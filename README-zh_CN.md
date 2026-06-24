@@ -39,6 +39,7 @@ Other languages: [English](README.md)
 - **`atxsort`** - 通用排序算法
 - **[`ini`](doc/zh_CN/ini.md)** - INI 配置解析与写入库
 - **[`json`](doc/zh_CN/json.md)** - JSON 解析、操作和序列化（早期开发）
+- **[`yaml`](doc/zh_CN/yaml.md)** - YAML 1.2 解析器，支持流式读取（早期开发，仅读取）
 - **`platform`** - 跨平台工具和抽象层
 - **`xml`** - XML 解析和序列化库（开发中）（警告：虽然模块基本功能正常，但某些函数尚不安全，可能导致崩溃。）
 - **`html`** - HTML 解析和操作库（开发中）

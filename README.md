@@ -43,6 +43,7 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **`atxsort`** - Universal sorting algorithms
 - **[`ini`](doc/ini.md)** - INI configuration parser and writer
 - **[`json`](doc/json.md)** - JSON parsing, manipulation and serialization (early development)
+- **[`yaml`](doc/yaml.md)** - YAML 1.2 parser with streaming support (early development, read-only)
 - **`platform`** - Cross-platform utilities and abstractions
 - **`xml`** - XML parsing and serialization library (in development) (Warning: Though the module is basically functional, some functions are yet unsafe and cause crashes.)
 - **`html`** - HTML parsing and manipulation library (in development)
