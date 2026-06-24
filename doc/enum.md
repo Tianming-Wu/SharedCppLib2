@@ -2,7 +2,7 @@
 
 + Name: enum
 + Namespace: `scl2`
-+ Document Version: `1.0.0`
++ Document Version: `1.1.0`
 
 ## CMake Info
 
@@ -43,11 +43,11 @@ enum class Color {
     Blue
 };
 
-scl2_strenum(Color, {
-    {Color::Red,   "Red"},
-    {Color::Green, "Green"},
-    {Color::Blue,  "Blue"}
-}, strenum_fallback_value)
+scl2_strenum(Color, strenum_fallback_value,
+    scl2_pair(Color::Red,   "Red"),
+    scl2_pair(Color::Green, "Green"),
+    scl2_pair(Color::Blue,  "Blue")
+)
 
 int main() {
     Color c = Color::Green;
@@ -56,6 +56,9 @@ int main() {
     return 0;
 }
 ```
+
+> [!NOTE]
+> Each key-value pair must be wrapped in `scl2_pair(K, V)` because the C/C++ preprocessor does not treat braces `{}` as nesting delimiters — commas inside `{}` would otherwise split the macro arguments.
 
 ### Bit flag enum with operators
 
@@ -94,11 +97,11 @@ enum class Permissions : uint32_t {
 
 scl2_enum_bitop(Permissions)
 scl2_bitenum_traits(Permissions, 0, 3)
-scl2_bitstrenum(Permissions, {
-    {Permissions::Read,  "Read"},
-    {Permissions::Write, "Write"},
-    {Permissions::Exec,  "Exec"},
-}, bitstrenum_fallback_partial)
+scl2_bitstrenum(Permissions, bitstrenum_fallback_partial,
+    scl2_pair(Permissions::Read,  "Read"),
+    scl2_pair(Permissions::Write, "Write"),
+    scl2_pair(Permissions::Exec,  "Exec")
+)
 
 int main() {
     Permissions p = Permissions::Read | Permissions::Write;
@@ -147,26 +150,34 @@ Specializes `bitenum_traits_lookup` for a bit flag enum, specifying the valid bi
 scl2_bitenum_traits(MyFlags, 0, 4)  // Valid bit indices: 0, 1, 2, 3
 ```
 
-### scl2_strenum(NAME, LIST, FALLBACK)
+### scl2_pair(K, V)
 
-Convenience macro to create a `strenum` map for enum-to-string conversion.
+Wraps a key-value pair for use with `scl2_strenum` or `scl2_bitstrenum`. This macro is necessary because the C/C++ preprocessor does not treat braces `{}` as nesting delimiters — commas inside `{}` would incorrectly split the variadic arguments.
 
 ```cpp
-scl2_strenum(MyEnum, {
-    {MyEnum::A, "ValueA"},
-    {MyEnum::B, "ValueB"},
-}, strenum_fallback_value)
+scl2_pair(Color::Red, "Red")  // expands to {Color::Red, "Red"}
 ```
 
-### scl2_bitstrenum(NAME, LIST, FALLBACK)
+### scl2_strenum(NAME, FALLBACK, ...)
 
-Convenience macro to create a `bitstrenum` map for bit flag enum-to-string conversion.
+Convenience macro to create a `strenum` map and register it for ADL-based `to_string` lookup.
 
 ```cpp
-scl2_bitstrenum(MyFlags, {
-    {MyFlags::FlagA, "FlagA"},
-    {MyFlags::FlagB, "FlagB"},
-}, bitstrenum_fallback_partial)
+scl2_strenum(MyEnum, strenum_fallback_value,
+    scl2_pair(MyEnum::A, "ValueA"),
+    scl2_pair(MyEnum::B, "ValueB")
+)
+```
+
+### scl2_bitstrenum(NAME, FALLBACK, ...)
+
+Convenience macro to create a `bitstrenum` map and register it for ADL-based `to_string` lookup.
+
+```cpp
+scl2_bitstrenum(MyFlags, bitstrenum_fallback_partial,
+    scl2_pair(MyFlags::FlagA, "FlagA"),
+    scl2_pair(MyFlags::FlagB, "FlagB")
+)
 ```
 
 ## Core API
@@ -275,3 +286,37 @@ Converts an enum value to its string representation using the registered `strenu
 ```cpp
 auto s = scl2::to_string(myValue).value_or("?");
 ```
+
+### Enum converter
+
+#### enum_cvrt
+
+```cpp
+template<typename E1, typename E2>
+class enum_cvrt;
+```
+
+Bidirectional converter between two enum types that share the same set of logical values but have different underlying representations.
+
+**Constructor:**
+```cpp
+enum_cvrt(std::initializer_list<std::pair<E1, E2>> list);
+```
+
+**Methods:**
+
+- `E2 convert(E1 value)` — Convert from `E1` to `E2`. Throws `std::out_of_range` if not found.
+- `E1 convert(E2 value)` — Convert from `E2` to `E1`. Throws `std::out_of_range` if not found.
+
+**Usage:**
+```cpp
+enum class ApiError { Ok, NotFound, Permission };
+enum class DbError  { Success, Missing, Forbidden };
+
+scl2::enum_cvrt<ApiError, DbError> cvrt({
+    {ApiError::Ok,         DbError::Success},
+    {ApiError::NotFound,   DbError::Missing},
+    {ApiError::Permission, DbError::Forbidden},
+});
+
+ApiError e = cvrt.convert(DbError::Missing);  // ApiError::NotFound

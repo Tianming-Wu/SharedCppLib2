@@ -288,13 +288,14 @@ public:
 private:
     strenum_fallback_type fallback_type = strenum_fallback_none;
 
-    std::optional<string_type> fallback(E value) const {
+    std::optional<string_type> fallback(E val) const {
         switch (fallback_type) {
             case strenum_fallback_value:
-                return std::to_string(static_cast<std::underlying_type_t<E>>(value));
+                return std::to_string(static_cast<std::underlying_type_t<E>>(val));
             case strenum_fallback_empty:
                 return string_type();
             case strenum_fallback_none:
+            default:
                 return std::nullopt;
         }
     }
@@ -329,16 +330,20 @@ public:
 
     std::optional<string_type> to_string(E value) const {
         std::string result;
-        for(auto E : bitenum_iterator(static_cast<E>(value))) {
-            auto it = this->find(E);
+        bool has_unknown = false;
+        for(auto flag : bitenum_iterator(static_cast<E>(value))) {
+            auto it = this->find(flag);
             if (it != this->end()) {
                 if (!result.empty()) {
                     result += " | ";
                 }
                 result += it->second;
             } else {
-                return fallback(value);
+                has_unknown = true;
             }
+        }
+        if (result.empty() || has_unknown) {
+            return fallback(value);
         }
         return std::make_optional(string_type(result));
     }
@@ -346,18 +351,18 @@ public:
 private:
     bitstrenum_fallback_type fallback_type = bitstrenum_fallback_none;
 
-    std::optional<string_type> fallback(E value) const {
+    std::optional<string_type> fallback(E val) const {
         switch (fallback_type) {
             case bitstrenum_fallback_value:
-                return std::to_string(static_cast<std::underlying_type_t<E>>(value));
+                return std::to_string(static_cast<std::underlying_type_t<E>>(val));
             case bitstrenum_fallback_empty:
                 return string_type();
             case bitstrenum_fallback_none:
                 return std::nullopt;
             case bitstrenum_fallback_partial: {
                 std::string result;
-                for(auto E : bitenum_iterator(static_cast<E>(value))) {
-                    auto it = this->find(E);
+                for(auto flag : bitenum_iterator(static_cast<E>(val))) {
+                    auto it = this->find(flag);
                     if (it != this->end()) {
                         if (!result.empty()) {
                             result += " | ";
@@ -369,7 +374,7 @@ private:
             }
             case bitstrenum_fallback_bitset: {
                 using U = std::make_unsigned_t<std::underlying_type_t<E>>;
-                U raw = static_cast<U>(value);
+                U raw = static_cast<U>(val);
                 std::string result = "0b";
                 for (size_t i = 0; i < sizeof(U) * 8; ++i) {
                     result += ((raw & (U{1} << i)) != 0) ? '1' : '0';
@@ -378,8 +383,8 @@ private:
             }
             case bitstrenum_fallback_combined: {
                 std::string result;
-                for(auto E : bitenum_iterator(static_cast<E>(value))) {
-                    auto it = this->find(E);
+                for(auto flag : bitenum_iterator(static_cast<E>(val))) {
+                    auto it = this->find(flag);
                     if (it != this->end()) {
                         if (!result.empty()) {
                             result += " | ";
@@ -388,7 +393,7 @@ private:
                     } else {
                         // For unknown bits, we can still represent them as a bitset
                         using U = std::make_unsigned_t<std::underlying_type_t<E>>;
-                        U raw = static_cast<U>(E);
+                        U raw = static_cast<U>(flag);
                         std::string bitset = "0b";
                         for (size_t i = 0; i < sizeof(U) * 8; ++i) {
                             bitset += ((raw & (U{1} << i)) != 0) ? '1' : '0';
@@ -403,8 +408,8 @@ private:
             }
             case bitstrenum_fallback_combinedm: {
                 std::string result;
-                for(auto E : bitenum_iterator(static_cast<E>(value))) {
-                    auto it = this->find(E);
+                for(auto flag : bitenum_iterator(static_cast<E>(val))) {
+                    auto it = this->find(flag);
                     if (it != this->end()) {
                         if (!result.empty()) {
                             result += " | ";
@@ -412,7 +417,7 @@ private:
                         result += it->second;
                     } else {
                         using U = std::make_unsigned_t<std::underlying_type_t<E>>;
-                        U raw = static_cast<U>(E);
+                        U raw = static_cast<U>(flag);
                         for (size_t i = 0; i < sizeof(U) * 8; ++i) {
                             if ((raw & (U{1} << i)) != 0) {
                                 if (!result.empty()) {
@@ -425,48 +430,60 @@ private:
                 }
                 return std::make_optional(string_type(result));
             }
+            default:
+                return std::nullopt;
         } // switch()
     }
 };
 
+// Fallback templates for SFINAE detection.  Return void so that
+// scl2::to_string can test whether .to_string(value) is callable.
+// When a user defines a map via scl2_strenum/scl2_bitstrenum, the
+// non-template overload (preferred) returns a reference to the map.
 template<typename E>
 requires std::is_enum_v<E>
-void get_strenum_map(E) = delete; // This is just a declaration for SFINAE detection. The actual map is generated by the scl2_strenum macro.
+void get_strenum_map(E) {}
+
+template<typename E>
+requires std::is_enum_v<E>
+void get_bitstrenum_map(E) {}
 
 template<typename E, typename CharT = char>
 requires std::is_enum_v<E>
 inline std::optional<std::basic_string<CharT>> to_string(E value) {
-    // ADL lookup 
-    return get_strenum_map(value).to_string(value);
+    // ADL + unqualified lookup: try strenum first, then bitstrenum.
+    // The non-template overload (from macro) returns a map reference;
+    // the fallback template returns void, so .to_string() is invalid.
+    if constexpr (requires { get_strenum_map(value).to_string(value); }) {
+        return get_strenum_map(value).to_string(value);
+    } else if constexpr (requires { get_bitstrenum_map(value).to_string(value); }) {
+        return get_bitstrenum_map(value).to_string(value);
+    } else {
+        static_assert(sizeof(E) == 0, "No strenum or bitstrenum map defined for this enum type. Use scl2_strenum or scl2_bitstrenum macro.");
+    }
 }
-
-///FIXLATER: There is currenly no method to identify between strenum and bitstrenum
-// in template matching. Commented out to avoid compilation error.
-
-// template<typename E>
-// requires std::is_enum_v<E>
-// void get_bitstrenum_map(E) = delete; // This is just a declaration for SFINAE detection. The actual map is generated by the scl2_bitstrenum macro.
-
-// template<typename E, typename CharT = char>
-// requires std::is_enum_v<E>
-// inline std::optional<std::basic_string<CharT>> to_string(E value) {
-//     // ADL lookup 
-//     return get_bitstrenum_map(value).to_string(value);
-// }
 
 
 // macros for better definition
 // In-class enum support is currently not provided
 
-#define scl2_strenum(NAME, LIST, FALLBACK) \
-    static inline const ::scl2::strenum<NAME> NAME##_strenum(LIST, FALLBACK); \
-    static inline const ::scl2::strenum<NAME>& ::scl2::get_bitstrenum_map(NAME) { \
+// Helper to wrap each key-value pair.  Commas inside braces {} are NOT
+// protected by the preprocessor, so each pair must be wrapped in a
+// function-like macro call like scl2_pair(K, V).
+#define scl2_pair(K, V) {K, V}
+
+// NOTE: scl2_pair() is required to wrap each {K, V} entry because the
+// C/C++ preprocessor does NOT treat braces {} as nesting delimiters —
+// commas inside {} still split macro arguments.
+#define scl2_strenum(NAME, FALLBACK, ...) \
+    static inline const ::scl2::strenum<NAME> NAME##_strenum({__VA_ARGS__}, FALLBACK); \
+    inline const ::scl2::strenum<NAME>& get_strenum_map(NAME) { \
         return NAME##_strenum; \
     }
 
-#define scl2_bitstrenum(NAME, LIST, FALLBACK) \
-    static inline const ::scl2::bitstrenum<NAME> NAME##_bitstrenum(LIST, FALLBACK); \
-    static inline const ::scl2::bitstrenum<NAME>& ::scl2::get_bitstrenum_map(NAME) { \
+#define scl2_bitstrenum(NAME, FALLBACK, ...) \
+    static inline const ::scl2::bitstrenum<NAME> NAME##_bitstrenum({__VA_ARGS__}, FALLBACK); \
+    inline const ::scl2::bitstrenum<NAME>& get_bitstrenum_map(NAME) { \
         return NAME##_bitstrenum; \
     }
 
@@ -489,11 +506,11 @@ inline std::optional<std::basic_string<CharT>> to_string(E value) {
         Green,
         Blue
     };
-    scl2_strenum(Color, {
-        {Color::Red, "Red"},
-        {Color::Green, "Green"},
-        {Color::Blue, "Blue"}
-    }, strenum_fallback_value)
+    scl2_strenum(Color, strenum_fallback_value,
+        scl2_pair(Color::Red, "Red"),
+        scl2_pair(Color::Green, "Green"),
+        scl2_pair(Color::Blue, "Blue")
+    )
 
     Then you can do:
     Color c = Color::Green;

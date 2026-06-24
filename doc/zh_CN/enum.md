@@ -2,7 +2,7 @@
 
 + 名称: enum
 + 命名空间: `scl2`
-+ 文档版本: `1.0.0`
++ 文档版本: `1.1.0`
 
 ## CMake 配置信息
 
@@ -43,11 +43,11 @@ enum class Color {
     Blue
 };
 
-scl2_strenum(Color, {
-    {Color::Red,   "Red"},
-    {Color::Green, "Green"},
-    {Color::Blue,  "Blue"}
-}, strenum_fallback_value)
+scl2_strenum(Color, strenum_fallback_value,
+    scl2_pair(Color::Red,   "Red"),
+    scl2_pair(Color::Green, "Green"),
+    scl2_pair(Color::Blue,  "Blue")
+)
 
 int main() {
     Color c = Color::Green;
@@ -56,6 +56,9 @@ int main() {
     return 0;
 }
 ```
+
+> [!NOTE]
+> 每个键值对必须使用 `scl2_pair(K, V)` 包裹，因为 C/C++ 预处理器不会将花括号 `{}` 视为嵌套分隔符——大括号内的逗号会错误地拆分可变参数。
 
 ### 位标志枚举与运算符
 
@@ -94,11 +97,11 @@ enum class Permissions : uint32_t {
 
 scl2_enum_bitop(Permissions)
 scl2_bitenum_traits(Permissions, 0, 3)
-scl2_bitstrenum(Permissions, {
-    {Permissions::Read,  "Read"},
-    {Permissions::Write, "Write"},
-    {Permissions::Exec,  "Exec"},
-}, bitstrenum_fallback_partial)
+scl2_bitstrenum(Permissions, bitstrenum_fallback_partial,
+    scl2_pair(Permissions::Read,  "Read"),
+    scl2_pair(Permissions::Write, "Write"),
+    scl2_pair(Permissions::Exec,  "Exec")
+)
 
 int main() {
     Permissions p = Permissions::Read | Permissions::Write;
@@ -147,26 +150,34 @@ enum class MyEnum {
 scl2_bitenum_traits(MyFlags, 0, 4)  // 有效位索引: 0, 1, 2, 3
 ```
 
-### scl2_strenum(NAME, LIST, FALLBACK)
+### scl2_pair(K, V)
 
-便捷宏，用于创建枚举转字符串的 `strenum` 映射。
+包裹一个键值对，用于 `scl2_strenum` 或 `scl2_bitstrenum`。此宏是必需的，因为 C/C++ 预处理器不会将花括号 `{}` 视为嵌套分隔符——大括号内的逗号会错误地拆分可变参数。
 
 ```cpp
-scl2_strenum(MyEnum, {
-    {MyEnum::A, "ValueA"},
-    {MyEnum::B, "ValueB"},
-}, strenum_fallback_value)
+scl2_pair(Color::Red, "Red")  // 展开为 {Color::Red, "Red"}
 ```
 
-### scl2_bitstrenum(NAME, LIST, FALLBACK)
+### scl2_strenum(NAME, FALLBACK, ...)
 
-便捷宏，用于创建位标志枚举转字符串的 `bitstrenum` 映射。
+便捷宏，用于创建 `strenum` 映射并注册到 ADL 查找，以配合 `to_string` 使用。
 
 ```cpp
-scl2_bitstrenum(MyFlags, {
-    {MyFlags::FlagA, "FlagA"},
-    {MyFlags::FlagB, "FlagB"},
-}, bitstrenum_fallback_partial)
+scl2_strenum(MyEnum, strenum_fallback_value,
+    scl2_pair(MyEnum::A, "ValueA"),
+    scl2_pair(MyEnum::B, "ValueB")
+)
+```
+
+### scl2_bitstrenum(NAME, FALLBACK, ...)
+
+便捷宏，用于创建 `bitstrenum` 映射并注册到 ADL 查找，以配合 `to_string` 使用。
+
+```cpp
+scl2_bitstrenum(MyFlags, bitstrenum_fallback_partial,
+    scl2_pair(MyFlags::FlagA, "FlagA"),
+    scl2_pair(MyFlags::FlagB, "FlagB")
+)
 ```
 
 ## 核心 API
@@ -275,3 +286,37 @@ inline std::optional<std::basic_string<CharT>> to_string(E value);
 ```cpp
 auto s = scl2::to_string(myValue).value_or("?");
 ```
+
+### 枚举转换器
+
+#### enum_cvrt
+
+```cpp
+template<typename E1, typename E2>
+class enum_cvrt;
+```
+
+用于在两个拥有相同逻辑值集合但底层表示不同的枚举类型之间进行双向转换。
+
+**构造函数：**
+```cpp
+enum_cvrt(std::initializer_list<std::pair<E1, E2>> list);
+```
+
+**方法：**
+
+- `E2 convert(E1 value)` — 从 `E1` 转换为 `E2`。未找到时抛出 `std::out_of_range`。
+- `E1 convert(E2 value)` — 从 `E2` 转换为 `E1`。未找到时抛出 `std::out_of_range`。
+
+**用法：**
+```cpp
+enum class ApiError { Ok, NotFound, Permission };
+enum class DbError  { Success, Missing, Forbidden };
+
+scl2::enum_cvrt<ApiError, DbError> cvrt({
+    {ApiError::Ok,         DbError::Success},
+    {ApiError::NotFound,   DbError::Missing},
+    {ApiError::Permission, DbError::Forbidden},
+});
+
+ApiError e = cvrt.convert(DbError::Missing);  // ApiError::NotFound
