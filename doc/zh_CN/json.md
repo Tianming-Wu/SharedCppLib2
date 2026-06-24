@@ -30,6 +30,17 @@ target_link_libraries(target SharedCppLib2::json)
 > [!WARNING]
 > 该模块处于早期开发阶段。虽然可用，但可能缺少一些像 jsoncpp 这样的成熟库中的高级功能。不过它更加轻量化，并且可以脱离 SharedCppLib2 单独使用——只需复制 `json.hpp` 和 `json.cpp` 即可。
 
+### 独立导入
+
+你可以将 `json.hpp` 和 `json.cpp` 作为独立文件使用，无需安装完整的 SharedCppLib2。将它们复制到项目中并在 CMake 中添加：
+
+```cmake
+add_library(scljson json.hpp json.cpp)
+target_link_libraries(yourtarget scljson)
+```
+
+任何有效的构建配置均可——以上示例仅是一种方式。
+
 ## 快速开始
 
 ### 解析与访问

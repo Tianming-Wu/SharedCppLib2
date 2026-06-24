@@ -30,6 +30,17 @@ target_link_libraries(target SharedCppLib2::yaml)
 >
 > **This module is read-only.** There is no exporter or serialization support yet. It can parse YAML into a `document` tree for reading, but cannot write YAML output.
 
+### Standalone Import
+
+You can use `yaml.hpp` and `yaml.cpp` as standalone files without the full SharedCppLib2 installation. Copy them into your project and add to CMake:
+
+```cmake
+add_library(sclyaml yaml.hpp yaml.cpp)
+target_link_libraries(yourtarget sclyaml)
+```
+
+Any valid build configuration works — the example above is just one way to do it.
+
 ## Quick Start
 
 ### Parse and access

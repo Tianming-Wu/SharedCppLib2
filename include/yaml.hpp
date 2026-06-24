@@ -3,6 +3,7 @@
 
     [SCL_MODULE_STANDARD_SUPPORT]
     YAML_STANDARD: YAML 1.2 (https://yaml.org/spec/1.2/spec.html)
+    FULL_FEATURED: NO
 
     [SCL_STANDALONE_MODULE]
     version: 0.1.0
@@ -14,9 +15,13 @@
 #include <vector>
 #include <map>
 #include <variant>
-#include <generator>
 #include <sstream>
 #include <stdexcept>
+#include <type_traits>
+
+#ifdef __cpp_lib_generator
+    #include <generator>
+#endif
 
 namespace scl2::yaml {
 
@@ -66,7 +71,19 @@ public:
     value(double d);
     value(const std::string& s);
     value(std::string&& s);
+    value(const char* s) : value(std::string(s)) {}
     value(const std::vector<value>& arr);
+
+    // Accept any integral or floating type - cast to int64_t or double
+    template<typename T,
+             typename = std::enable_if_t<(std::is_integral_v<T> || std::is_floating_point_v<T>)
+                                         && !std::is_same_v<T, bool>>>
+    value(T val) {
+        if constexpr (std::is_floating_point_v<T>)
+            _value = static_cast<double>(val);
+        else
+            _value = static_cast<int64_t>(val);
+    }
     value(std::vector<value>&& arr);
     value(const std::map<std::string, value>& obj);
     value(std::map<std::string, value>&& obj);
@@ -100,14 +117,20 @@ public:
     alias_ref& as_alias();
 
     // for array
+#ifdef __cpp_lib_generator
     std::generator<const value&> array_elements() const;
+#endif
     value& operator[](size_t index);
     const value& operator[](size_t index) const;
     const value& at(size_t index) const;
     size_t array_size() const;
+    void push_back(const value& v);
+    void push_back(value&& v);
 
     // for object
+#ifdef __cpp_lib_generator
     std::generator<std::pair<const std::string&, const value&>> object_members() const;
+#endif
     bool has_key(const std::string& key) const;
     const value& operator[](const std::string& key) const;
     value& operator[](const std::string& key);

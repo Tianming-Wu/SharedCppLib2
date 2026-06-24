@@ -40,16 +40,35 @@ const std::vector<value>& value::as_array() const { return std::get<std::vector<
 const std::map<std::string, value>& value::as_object() const { return std::get<std::map<std::string, value>>(_value); }
 
 nullptr_t& value::as_null() { return std::get<std::nullptr_t>(_value); }
-bool& value::as_bool() { return std::get<bool>(_value); }
-int64_t& value::as_int() { return std::get<int64_t>(_value); }
-double& value::as_double() { return std::get<double>(_value); }
-std::string& value::as_string() { return std::get<std::string>(_value); }
-std::vector<value>& value::as_array() { return std::get<std::vector<value>>(_value); }
-std::map<std::string, value>& value::as_object() { return std::get<std::map<std::string, value>>(_value); }
+bool& value::as_bool() {
+    if (is_null()) _value = false;
+    return std::get<bool>(_value);
+}
+int64_t& value::as_int() {
+    if (is_null()) _value = int64_t{0};
+    return std::get<int64_t>(_value);
+}
+double& value::as_double() {
+    if (is_null()) _value = double{0};
+    return std::get<double>(_value);
+}
+std::string& value::as_string() {
+    if (is_null()) _value = std::string{};
+    return std::get<std::string>(_value);
+}
+std::vector<value>& value::as_array() {
+    if (is_null()) _value = std::vector<value>();
+    return std::get<std::vector<value>>(_value);
+}
+std::map<std::string, value>& value::as_object() {
+    if (is_null()) _value = std::map<std::string, value>();
+    return std::get<std::map<std::string, value>>(_value);
+}
 
 const alias_ref& value::as_alias() const { return std::get<alias_ref>(_value); }
 alias_ref& value::as_alias() { return std::get<alias_ref>(_value); }
 
+#ifdef __cpp_lib_generator
 std::generator<const value &> value::array_elements() const
 {
     if (!is_array())
@@ -59,12 +78,16 @@ std::generator<const value &> value::array_elements() const
         co_yield elem;
     }
 }
+#endif
 
 value &value::operator[](size_t index)
 {
+    if (is_null()) _value = std::vector<value>();
     if (!is_array())
         throw yaml_exception("value::operator[]: not an array");
-    return std::get<std::vector<value>>(_value)[index];
+    auto& arr = std::get<std::vector<value>>(_value);
+    if (index >= arr.size()) arr.resize(index + 1);
+    return arr[index];
 }
 
 const value &value::operator[](size_t index) const
@@ -86,6 +109,16 @@ size_t value::array_size() const
     return std::get<std::vector<value>>(_value).size();
 }
 
+void value::push_back(const value& v)
+{
+    as_array().push_back(v);
+}
+void value::push_back(value&& v)
+{
+    as_array().push_back(std::move(v));
+}
+
+#ifdef __cpp_lib_generator
 std::generator<std::pair<const std::string &, const value &>> value::object_members() const
 {
     if (!is_object())
@@ -95,6 +128,7 @@ std::generator<std::pair<const std::string &, const value &>> value::object_memb
         co_yield pair;
     }
 }
+#endif
 
 bool value::has_key(const std::string &key) const
 {
@@ -112,6 +146,7 @@ const value &value::operator[](const std::string &key) const
 
 value &value::operator[](const std::string &key)
 {
+    if (is_null()) _value = std::map<std::string, value>();
     if (!is_object())
         throw yaml_exception("value::operator[]: not an object");
     return std::get<std::map<std::string, value>>(_value)[key];
@@ -260,7 +295,7 @@ void parser::parseLine()
     // Trim leading whitespace (indent was already counted)
     _line = _line.substr(_line_pos);
 
-    // ---- Detect : → mapping key (handles both "key: value" and "- key: value") ----
+    // ---- Detect : -> mapping key (handles both "key: value" and "- key: value") ----
     // Find first unquoted colon
     size_t colon = std::string::npos;
     {
@@ -290,7 +325,7 @@ void parser::parseLine()
             }
             // Push new map as sequence element
             parent.container.as_array().push_back(value(std::map<std::string, value>{}));
-            size_t parent_idx = _stack.size() - 1; // save before push — realloc invalidates parent ref
+            size_t parent_idx = _stack.size() - 1; // save before push - realloc invalidates parent ref
             // Push sub-frame for this map
             pushIndent(_indent_level + 1, true);
             _stack.back().container = _stack[parent_idx].container.as_array().back();
@@ -311,19 +346,19 @@ void parser::parseLine()
         return;
     }
 
-    // ---- Detect - → sequence entry ----
+    // ---- Detect - -> sequence entry ----
     if (_line.size() >= 2 && _line[0] == '-' && _line[1] == ' ') {
         dispatch_sequence_entry();
         return;
     }
 
-    // ---- Otherwise → scalar ----
+    // ---- Otherwise -> scalar ----
     dispatch_scalar(_line);
 }
 
 void parser::dispatch_scalar(const std::string &text)
 {
-    // Quoted text is always a string — skip type detection entirely
+    // Quoted text is always a string - skip type detection entirely
     if (text.size() >= 2) {
         char first = text.front(), last = text.back();
         if ((first == '"' && last == '"') || (first == '\'' && last == '\'')) {
@@ -338,7 +373,7 @@ void parser::dispatch_scalar(const std::string &text)
         }
     }
 
-    // Unquoted → type detection
+    // Unquoted -> type detection
     if (isNull(text)) {
         addValue(value(nullptr));
     } else if (isBool(text)) {
@@ -362,7 +397,7 @@ void parser::dispatch_mapping_key(const std::string &key)
         frame.container = value(std::map<std::string, value>{});
     }
     frame.pending_key = key;
-    // Placeholder — overwritten by addValue if inline value follows
+    // Placeholder - overwritten by addValue if inline value follows
     frame.container.as_object()[key] = value(nullptr);
 }
 
@@ -380,7 +415,7 @@ void parser::dispatch_sequence_entry()
     rest = rest.substr(start);
 
     if (rest.empty()) {
-        // "- " empty entry — placeholder null
+        // "- " empty entry - placeholder null
         frame.container.as_array().push_back(value(nullptr));
     } else {
         // "- value" inline scalar
@@ -560,7 +595,7 @@ void parser::pushIndent(int indent, bool is_mapping)
     indent_frame frame;
     frame.indent_level = indent;
     frame.is_mapping = is_mapping;
-    // container starts as null — dispatchers create the actual container
+    // container starts as null - dispatchers create the actual container
     _stack.push_back(std::move(frame));
 }
 
@@ -596,7 +631,7 @@ void parser::addValue(value &&v)
 {
     auto& frame = _stack.back();
     if (frame.container.is_null()) {
-        // First value at this level — store directly
+        // First value at this level - store directly
         frame.container = std::move(v);
     } else if (frame.is_mapping) {
         frame.container.as_object()[frame.pending_key] = std::move(v);

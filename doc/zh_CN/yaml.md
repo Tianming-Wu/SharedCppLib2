@@ -30,6 +30,17 @@ target_link_libraries(target SharedCppLib2::yaml)
 >
 > **该模块仅支持读取。** 目前没有导出器或序列化支持。可以将 YAML 解析为 `document` 树进行读取，但无法写入 YAML 输出。
 
+### 独立导入
+
+你可以将 `yaml.hpp` 和 `yaml.cpp` 作为独立文件使用，无需安装完整的 SharedCppLib2。将它们复制到项目中并在 CMake 中添加：
+
+```cmake
+add_library(sclyaml yaml.hpp yaml.cpp)
+target_link_libraries(yourtarget sclyaml)
+```
+
+任何有效的构建配置均可——以上示例仅是一种方式。
+
 ## 快速开始
 
 ### 解析与访问

@@ -1,6 +1,6 @@
 /*
     [SCL_STANDALONE_MODULE]
-    version: 1.3.0
+    version: 1.6.1
 */
 #include "json.hpp"
 
@@ -114,12 +114,30 @@ const std::vector<json_value>& json_value::as_array() const { return std::get<st
 const std::map<std::string, json_value>& json_value::as_object() const { return std::get<std::map<std::string, json_value>>(value); }
 
 nullptr_t& json_value::as_null() { return std::get<std::nullptr_t>(value); }
-bool& json_value::as_bool() { return std::get<bool>(value); }
-int64_t& json_value::as_int() { return std::get<int64_t>(value); }
-double& json_value::as_double() { return std::get<double>(value); }
-std::string& json_value::as_string() { return std::get<std::string>(value); }
-std::vector<json_value>& json_value::as_array() { return std::get<std::vector<json_value>>(value); }
-std::map<std::string, json_value>& json_value::as_object() { return std::get<std::map<std::string, json_value>>(value); }
+bool& json_value::as_bool() {
+    if (is_null()) value = false;
+    return std::get<bool>(value);
+}
+int64_t& json_value::as_int() {
+    if (is_null()) value = int64_t{0};
+    return std::get<int64_t>(value);
+}
+double& json_value::as_double() {
+    if (is_null()) value = double{0};
+    return std::get<double>(value);
+}
+std::string& json_value::as_string() {
+    if (is_null()) value = std::string{};
+    return std::get<std::string>(value);
+}
+std::vector<json_value>& json_value::as_array() {
+    if (is_null()) value = std::vector<json_value>();
+    return std::get<std::vector<json_value>>(value);
+}
+std::map<std::string, json_value>& json_value::as_object() {
+    if (is_null()) value = std::map<std::string, json_value>();
+    return std::get<std::map<std::string, json_value>>(value);
+}
 
 #ifdef SCL2_JSON_ENABLE_EXTENSIONS
     json_value::json_value(std::bytearray&& ba) : value(ba) {}
@@ -133,6 +151,7 @@ std::map<std::string, json_value>& json_value::as_object() { return std::get<std
     inline_data_uri& json_value::as_data_uri() { return std::get<inline_data_uri>(value); }
 #endif
 
+#ifdef __cpp_lib_generator
 std::generator<const json_value &> json_value::array_elements() const
 {
     if (!is_array())
@@ -142,12 +161,16 @@ std::generator<const json_value &> json_value::array_elements() const
         co_yield elem;
     }
 }
+#endif
 
 json_value &json_value::operator[](size_t index)
 {
+    if (is_null()) value = std::vector<json_value>();
     if (!is_array())
         throw std::runtime_error("json_value::operator[]: not an array");
-    return std::get<std::vector<json_value>>(value)[index];
+    auto& arr = std::get<std::vector<json_value>>(value);
+    if (index >= arr.size()) arr.resize(index + 1);
+    return arr[index];
 }
 
 const json_value &json_value::operator[](size_t index) const
@@ -169,6 +192,23 @@ size_t json_value::array_size() const
     return std::get<std::vector<json_value>>(value).size();
 }
 
+bool json_value::clear_as_array()
+{
+    if (!is_array()) return false;
+    value = std::vector<json_value>();
+    return true;
+}
+
+void json_value::push_back(const json_value& v)
+{
+    as_array().push_back(v);
+}
+void json_value::push_back(json_value&& v)
+{
+    as_array().push_back(std::move(v));
+}
+
+#ifdef __cpp_lib_generator
 std::generator<std::pair<const std::string &, const json_value &>> json_value::object_members() const
 {
     if (!is_object())
@@ -178,6 +218,7 @@ std::generator<std::pair<const std::string &, const json_value &>> json_value::o
         co_yield pair;
     }
 }
+#endif
 
 bool json_value::has_key(const std::string &key) const
 {
@@ -195,6 +236,7 @@ const json_value &json_value::operator[](const std::string &key) const
 
 json_value &json_value::operator[](const std::string &key)
 {
+    if (is_null()) value = std::map<std::string, json_value>();
     if (!is_object())
         throw std::runtime_error("json_value::operator[]: not an object");
     return std::get<std::map<std::string, json_value>>(value)[key];
@@ -276,6 +318,13 @@ bool json_value::remove_member(const std::string& key)
 {
     if (!is_object()) return false;
     return as_object().erase(key) > 0;
+}
+
+bool json_value::clear_as_object()
+{
+    if (!is_object()) return false;
+    as_object().clear();
+    return true;
 }
 
 bool json_value::operator==(const json_value& other) const
@@ -465,7 +514,7 @@ std::string json_parser::parseJsonString()
                 throw std::runtime_error(std::string("Invalid escape character in JSON string: \\") + escaped);
             }
         } else if (c == '"') {
-            // Unescaped quote — end of string
+            // Unescaped quote - end of string
             ++pos; // skip closing quote
             return result;
         } else {
@@ -824,7 +873,7 @@ std::string json_exporter::escapeJsonString(const std::string &str)
             case '\t': escaped += "\\t";  ++i; continue;
         }
 
-        // Control characters → \uXXXX
+        // Control characters -> \uXXXX
         if (c < 0x20) {
             char buf[7];
             std::snprintf(buf, sizeof(buf), "\\u%04x", c);
@@ -833,14 +882,14 @@ std::string json_exporter::escapeJsonString(const std::string &str)
             continue;
         }
 
-        // ASCII printable → pass through
+        // ASCII printable -> pass through
         if (c < 0x80) {
             escaped += static_cast<char>(c);
             ++i;
             continue;
         }
 
-        // Non-ASCII byte → either escape as \uXXXX or pass through as UTF-8
+        // Non-ASCII byte -> either escape as \uXXXX or pass through as UTF-8
         if (escapeNonAscii) {
             // Decode UTF-8 sequence and emit \uXXXX (or \uXXXX\uXXXX for surrogates)
             auto decode_utf8 = [&](size_t& pos) -> int {
@@ -849,7 +898,7 @@ std::string json_exporter::escapeJsonString(const std::string &str)
                 if      ((b & 0xE0) == 0xC0) { cp = b & 0x1F; extra = 1; }
                 else if ((b & 0xF0) == 0xE0) { cp = b & 0x0F; extra = 2; }
                 else if ((b & 0xF8) == 0xF0) { cp = b & 0x07; extra = 3; }
-                else { return -1; } // invalid byte — escape as-is
+                else { return -1; } // invalid byte - escape as-is
                 for (int j = 0; j < extra; ++j) {
                     ++pos;
                     if (pos >= str.size()) return -1;
@@ -875,7 +924,7 @@ std::string json_exporter::escapeJsonString(const std::string &str)
                 }
                 ++i; // decode_utf8 advanced i to the last byte
             } else {
-                // Invalid UTF-8 — escape the single byte
+                // Invalid UTF-8 - escape the single byte
                 char buf[7];
                 std::snprintf(buf, sizeof(buf), "\\u%04x", c);
                 escaped += buf;
@@ -925,7 +974,7 @@ void json_exporter::exportObject(const json_value& value, size_t indentLevel)
     for (auto it = value.as_object().begin(); it != value.as_object().end(); ++it) {
         exportKey(it->first, indentLevel + 1);
 
-        // Non-empty containers: exportKey already provides ": " — bracket follows inline.
+        // Non-empty containers: exportKey already provides ": " - bracket follows inline.
         // Empty arrays/objects stay compact: "key": []
 
         exportValue(it->second, indentLevel + 1);

@@ -30,6 +30,17 @@ With `SCL2_JSON_ENABLE_EXTENSIONS` defined, it additionally supports `bytearray`
 > [!WARNING]
 > This module is in early development. While functional, it may lack some advanced features found in mature libraries like jsoncpp. It is, however, lightweight and can be used independently of SharedCppLib2 — just copy `json.hpp` and `json.cpp`.
 
+### Standalone Import
+
+You can use `json.hpp` and `json.cpp` as standalone files without the full SharedCppLib2 installation. Copy them into your project and add to CMake:
+
+```cmake
+add_library(scljson json.hpp json.cpp)
+target_link_libraries(yourtarget scljson)
+```
+
+Any valid build configuration works — the example above is just one way to do it.
+
 ## Quick Start
 
 ### Parse and access

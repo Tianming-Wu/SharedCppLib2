@@ -13,7 +13,7 @@
     Also check jbt if you want some even more compact storage of json data.
 
     [SCL_STANDALONE_MODULE]
-    version: 1.3.0
+    version: 1.6.1
 */
 
 #pragma once
@@ -23,8 +23,12 @@
 #include <vector>
 #include <map>
 #include <optional>
-#include <generator>
 #include <stdexcept>
+#include <type_traits>
+
+#ifdef __cpp_lib_generator
+    #include <generator>
+#endif
 
 #ifdef SCL2_JSON_ENABLE_EXTENSIONS
     #include <cctype> // for std::isxdigit
@@ -34,12 +38,15 @@
 
 namespace scl2 {
 
-// Helper: convert a u8 string literal to std::string.
+// Helper: convert a u8 string literal to std::string (C++20 only).
 // On MSVC, use with /utf-8 flag or u8"..." prefix:
-//   j["name"] = json_value(json_u8(u8"你好"));
+//   j["name"] = json_value(json_u8(u8"..."));
+// * Do not include chinese characters in source, even in comments.
+#if defined(__cpp_char8_t) || __cplusplus >= 202002L
 inline std::string json_u8(const char8_t* s) {
     return std::string(reinterpret_cast<const char*>(s));
 }
+#endif
 
 class json_value;
 class json;
@@ -91,10 +98,22 @@ public:
     json_value(double d);
     json_value(const std::string& s);
     json_value(std::string&& s);
+    json_value(const char* s) : json_value(std::string(s)) {}
     json_value(const std::vector<json_value>& arr);
     json_value(std::vector<json_value>&& arr);
     json_value(const std::map<std::string, json_value>& obj);
     json_value(std::map<std::string, json_value>&& obj);
+
+    // Accept any integral or floating type - cast to int64_t or double
+    template<typename T,
+             typename = std::enable_if_t<(std::is_integral_v<T> || std::is_floating_point_v<T>)
+                                         && !std::is_same_v<T, bool>>>
+    json_value(T val) {
+        if constexpr (std::is_floating_point_v<T>)
+            value = static_cast<double>(val);
+        else
+            value = static_cast<int64_t>(val);
+    }
 
     bool is_null() const;
     bool is_bool() const;
@@ -133,20 +152,28 @@ public:
 #endif
 
     // for array
+#ifdef __cpp_lib_generator
     std::generator<const json_value&> array_elements() const;
+#endif
     json_value& operator[](size_t index);
     const json_value& operator[](size_t index) const;
     const json_value& at(size_t index) const;
     size_t array_size() const;
+    void push_back(const json_value& v);
+    void push_back(json_value&& v);
+    bool clear_as_array(); // clear the value, set it to an empty array
 
     // for object
+#ifdef __cpp_lib_generator
     std::generator<std::pair<const std::string&, const json_value&>> object_members() const;
+#endif
     bool has_key(const std::string& key) const;
     const json_value& operator[](const std::string& key) const;
     json_value& operator[](const std::string& key);
     const json_value& at(const std::string& key) const;
     size_t object_size() const;
     bool remove_member(const std::string& key);
+    bool clear_as_object(); // clear the value, set it to an empty object
 
     // for string
     size_t length() const;
