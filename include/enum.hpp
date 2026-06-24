@@ -193,6 +193,7 @@ std::generator<E> bitenum_ranged_iterator(E value, size_t minVal, size_t maxVal)
 // Well the old name is kind of misleading.
 #define scl2_bitenum_op(NAME) scl2_enum_bitop(NAME)
 
+// For nested enum declarations.
 #define scl2_enum_bitop_inclass(NAME) \
     friend inline constexpr NAME operator|(NAME a, NAME b) noexcept { \
         using T = std::underlying_type_t<NAME>; \
@@ -212,6 +213,30 @@ std::generator<E> bitenum_ranged_iterator(E value, size_t minVal, size_t maxVal)
     }
 
 #define scl2_bitenum_op_inclass(NAME) scl2_enum_bitop_inclass(NAME)
+
+// Ex bitenum version: compared to normal version, includes &=, |=, ^=.
+#define scl2_enum_bitopex(NAME) \
+    scl2_enum_bitop(NAME)\
+    inline constexpr NAME& operator|=(NAME &a, NAME b) noexcept { \
+        using T = std::underlying_type_t<NAME>; \
+        a = static_cast<NAME>(static_cast<T>(a) | static_cast<T>(b)); \
+        return a; \
+    } \
+    inline constexpr NAME& operator&=(NAME &a, NAME b) noexcept { \
+        using T = std::underlying_type_t<NAME>; \
+        a = static_cast<NAME>(static_cast<T>(a) & static_cast<T>(b)); \
+        return a; \
+    } \
+    inline constexpr NAME& operator^=(NAME &a, NAME b) noexcept { \
+        using T = std::underlying_type_t<NAME>; \
+        a = static_cast<NAME>(static_cast<T>(a) ^ static_cast<T>(b)); \
+        return a; \
+    } \
+    inline constexpr NAME& operator&=(NAME &a, NAME b) noexcept { \
+        using T = std::underlying_type_t<NAME>; \
+        a = static_cast<NAME>(static_cast<T>(a) & static_cast<T>(b)); \
+        return a; \
+    }
 
 /*
     Automatic enum lookup map generation.

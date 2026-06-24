@@ -1,7 +1,12 @@
 /*
     Uniform Resource Identifier (URI) handling
 
-    URI handling designed for SharedCppLib2.
+    URI handling module designed for SharedCppLib2.
+
+    Note:
+        If you are just willing to accept a uri string, do not use this class, just use the string directly.
+        This module is designed to handle more complicated cases, manipulation, validation, etc. But however,
+        at the cost of performance. This should be much slower than using plain strings.
 
 */
 

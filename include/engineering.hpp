@@ -2,7 +2,7 @@
     Engineering literal operators for intergral and floating-point types
 
     These are for simplifying the usage of engineering notation in code,
-    especially for sizes and data rates. For example, you can write 10Mi instead of 10485760 for 10 mebibytes.
+    especially for sizes and data rates. For example, you can write 10_Mi instead of 10485760 for 10 mebibytes.
 */
 
 #pragma once

@@ -18,8 +18,12 @@
 #include <cstdint>
 #include <initializer_list>
 #include <type_traits>
+// #include <experimental/scope>
 
 #include "basics.hpp"
+
+#include "basic_api.hpp"
+#include "bytearray_api_forward.hpp"
 
 namespace std {
 
@@ -103,9 +107,11 @@ public:
     }
 
     // construct _T from raw data pointer and size, for some STL containers
+    // This is for the fixed-size element.
+    // Warning: is NOT COMPATIBLE with addContainer(). That one should be used with _view::readContainer() instead.
     template<typename _T>
     requires ( std::is_class_v<_T> && std::is_trivially_copyable_v<typename _T::value_type> )
-    _T toContainer() {
+    _T toContainer() const {
         using _Tp = typename _T::value_type;
         return _T(
             reinterpret_cast<const _Tp*>(this->data()),
@@ -175,8 +181,7 @@ public:
     void addWString(const std::wstring& wstr);
 
     // special one for containers of trivially copyable types
-    template<typename _T>
-    requires (std::is_trivially_copyable_v<typename _T::value_type>)
+    template<::scl2::stl::trivially_copyable_container _T>
     void appendContainer(const _T& in) {
         using _Ty = typename _T::value_type;
         const std::byte* src = reinterpret_cast<const std::byte*>(in.data());
@@ -187,6 +192,23 @@ public:
         appendSize(count);
         appendSize(elemSize);
         vector_type::insert(end(), src, src + in.size() * sizeof(_Ty));
+    }
+
+    template<typename _T>
+    requires (!::scl2::stl::trivially_copyable_container<_T> && ::scl2::has_gdump_container<_T>)
+    void appendContainer(const _T& in) {
+        using _Ty = typename _T::value_type;
+        const std::byte* src = reinterpret_cast<const std::byte*>(in.data());
+
+        const size_t count = in.size();
+        // element size is not fixed.
+
+        appendSize(count);
+
+        for(const auto& elem : in) {
+            // gdump is responsible for distribution here.
+            append(::scl2::gdump(elem));
+        }
     }
 
     void reverse();
@@ -263,7 +285,7 @@ public:
 class bytearray_view
 {
 public:
-    bytearray_view(const bytearray& data);
+    explicit bytearray_view(const bytearray& data);
     bytearray_view(const bytearray&&) = delete; // prevent binding to temporaries
 
     enable_move_only(bytearray_view) // Disable copy and allow move
@@ -286,20 +308,42 @@ public:
     size_t tell() const;
 
     template<typename _T>
+    requires std::is_trivially_copyable_v<_T>
     _T peek() const {
-        static_assert(std::is_trivially_copyable_v<_T>);
-        if (!available(sizeof(_T))) 
-            throw std::out_of_range("bytearray_view: not enough data");
-        _T result = ba.subarr(cursor, sizeof(_T)).convert_to<_T>();
-        // cursor += sizeof(_T); // peek does not progress
-        return result;
+        size_t orig_cursor = cursor;
+        // auto guard = std::scope_exit([&] { this->cursor = orig_cursor; });
+        // return read<_T>();
+
+        _T value = read<_T>();
+        cursor = orig_cursor;
+        return value;
     }
 
     template<typename _T>
+    requires std::is_trivially_copyable_v<_T>
     _T read() const {
-        _T result = peek<_T>();
-        cursor += sizeof(_T);
-        return result;
+        if (!available(sizeof(_T))) 
+            throw std::out_of_range("bytearray_view: not enough data");
+        return ba.subarr(cursor, sizeof(_T)).convert_to<_T>();
+    }
+
+    template<typename _T>
+    requires ::scl2::has_generic_load<_T>
+    _T read() const {
+        // we can't check the size of _T here.
+        return ::scl2::generic_load<_T>(*this);
+    }
+
+    template<typename _T>
+    requires ::scl2::has_generic_load<_T>
+    _T peek() const {
+        size_t orig_cursor = cursor;
+        // auto guard = std::scope_exit([&] { this->cursor = orig_cursor; });
+        // return read<_T>();
+        
+        _T value = read<_T>();
+        cursor = orig_cursor;
+        return value;
     }
 
     std::string peekString() const;
@@ -312,8 +356,8 @@ public:
     std::bytearray peekBytes(size_t size) const;
 
     template<typename _T>
-    requires (std::is_trivially_copyable_v<typename _T::value_type>)
-    _T peekContainer() const {
+    requires ::scl2::stl::trivially_copyable_container<_T>
+    _T readContainer() const {
         using _Ty = typename _T::value_type;
         
         if (!available(sizeof(size_t) * 2)) 
@@ -321,12 +365,8 @@ public:
         
         // Create a single temporary view to read both metadata fields sequentially
         size_t count, elemSize;
-        {
-            bytearray temp = ba.subarr(cursor);
-            bytearray_view temp_view(temp);
-            count = temp_view.read<size_t>();
-            elemSize = temp_view.read<size_t>();
-        }
+        count = read<size_t>();
+        elemSize = read<size_t>();
 
         if (elemSize != sizeof(_Ty)) 
             throw std::runtime_error("bytearray_view::peekContainer: element size mismatch");
@@ -335,20 +375,53 @@ public:
             throw std::out_of_range("bytearray_view::peekContainer: not enough data for elements");
         
         // Calculate data start position: cursor + metadata size
-        const std::byte* data_start = ba.data() + cursor + sizeof(size_t) * 2;
         
         _T result;
         result.resize(count);
-        std::memcpy(result.data(), data_start, count * sizeof(_Ty));
+        std::memcpy(result.data(), ba.data() + cursor, count * sizeof(_Ty));
+        cursor += sizeof(size_t) * 2 + count * sizeof(_Ty);
+        return result;
+    }
+
+    // read for this type will be implemented instead of peek.
+    // since by the dynamic size of the element, calculating the size afterwards and maintaining the cursor will be painful.
+    // peek is relatively easy since we can just store the original cursor, and restore it after reading.
+    // peek is mostly useless anyway.
+    template<typename _T>
+    requires (!::scl2::stl::trivially_copyable_container<_T> && ::scl2::has_gdump_container<_T>)
+    _T readContainer() const {
+        if (!available(sizeof(size_t))) 
+            throw std::out_of_range("bytearray_view::peekContainer: not enough data for size metadata");
+        
+        size_t count = read<size_t>();
+        // total_size check is not possible here because the element size is not fixed.
+
+        _T result;
+
+        // optimization
+        if constexpr (requires(_T& c) { c.reserve(size_t{}); }) {
+            result.reserve(count);
+        }
+        
+
+        for (size_t i = 0; i < count; ++i) {
+            // gload is responsible for distribution here.
+            ::scl2::stl::universal_insert(result, ::scl2::gload<typename _T::value_type>(*this));
+        }
+
         return result;
     }
 
     template<typename _T>
-    requires (std::is_trivially_copyable_v<typename _T::value_type>)
-    _T readContainer() const {
-        _T result = peekContainer<_T>();
-        cursor += sizeof(size_t) * 2 + result.size() * sizeof(typename _T::value_type);
-        return result;
+    requires ::scl2::stl::trivially_copyable_container<_T>
+    _T peekContainer() const {
+        size_t orig_cursor = cursor;
+        // auto guard = std::scope_exit([&] { this->cursor = orig_cursor; });
+        // return readContainer<_T>();
+
+        _T value = readContainer<_T>();
+        cursor = orig_cursor;
+        return value;
     }
 
 protected:

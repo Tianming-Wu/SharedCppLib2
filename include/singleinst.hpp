@@ -4,14 +4,36 @@
     This is built inside a class as member.
 
     Usage Example:
+        // in .h / .hpp file:
+        class myClass {
+            SINGLE_INSTANCE(myClass)
+        };
 
-    // in .h / .hpp file:
-    class myClass {
-        SINGLE_INSTANCE(myClass)
-    };
+        // in .cpp file:
+        SINGLE_INSTANCE_IMPL(myClass)
 
-    // in .cpp file:
-    SINGLE_INSTANCE_IMPL(myClass)
+        // in constructor:
+        myClass::myClass() {
+            SINGLE_INSTANCE_ONCREATE
+        }
+
+        // in destructor:
+        myClass::~myClass() {
+            SINGLE_INSTANCE_ONDESTROY
+        }
+
+
+    Single Instance is not singleton. You need to actually hold an instance somewhere.
+    This is just that you can access the instance from anywhere.
+
+    For example, you need to have a handler object, constructed and held by main().
+    And in any other part of the program, you can access this instance without passing it around.
+    It is also easy to write function calls without writing instance() calls like the traditional
+    pattern. Instead you can use si_static_access.
+
+    It is useful for something like global registry, configuration.
+
+    It might not be thread-safe. There might be a thread-safe version in the future.
 
 
 */
@@ -46,6 +68,12 @@ public: \
 #define SINGLE_INSTANCE_IMPL(CLASS) \
     SingleInstance<CLASS> CLASS::s_single_instance;
 
+
+#define SINGLE_INSTANCE_ONCREATE \
+    s_single_instance.onCreate(this);
+
+#define SINGLE_INSTANCE_ONDESTROY \
+    s_single_instance.onDestroy();
 
 /*
     Use inside a class:

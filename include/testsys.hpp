@@ -67,6 +67,9 @@ public:
         return false;
     }
 
+#ifdef MSVC_VERSION
+    // This is a helper function to check if a memory block is uninitialized (0xCC in MSVC debug mode).
+    // This can help detect memory management issues in the tested code.
     inline bool check_invalid_memory(void* memptr, size_t size, const std::string& itemName) {
         // on MSVC, check whether memory is 0xCC (-51). This is the pattern used by MSVC debug allocator for uninitialized memory.
         // This might report false positives if the tested code actually used 0xCC.
@@ -84,6 +87,7 @@ public:
 
         return true;
     }
+#endif
 
 };
 

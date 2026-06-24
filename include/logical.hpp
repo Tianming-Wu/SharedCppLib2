@@ -90,7 +90,7 @@ inline constexpr bool __lo_eval_notimply(logical_operator op, bool left, bool ri
     }
 }
 
-inline constexpr bool lo_eval(logical_operator op, bool left, bool right = false) {
+inline constexpr bool lo_eval(logical_operator op, bool left, bool right = false) noexcept {
     if(__lo_is_not_only(op)) {
         return !left; // for Not operator, we only care about the left operand, and return its negation.
     } else {

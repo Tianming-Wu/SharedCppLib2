@@ -35,7 +35,7 @@
 #include <stdexcept>
 
 #include "basics.hpp"
-#include "bits.hpp"
+#include "enum.hpp"
 
 // forward declaration
 namespace std {
@@ -56,7 +56,7 @@ enum class ParsingStrategy : uint32_t {
     AutoUpdateOnEdit    = 1 << 1, // automatically update internal structure on node edits
     PreserveWhitespace  = 1 << 2, // preserve insignificant whitespace
 };
-Define_Enum_BitOperators(ParsingStrategy)
+scl2_enum_bitop(ParsingStrategy)
 
 // We also need a strategy for tabbing/aligning during serialization
 // now use a constant value

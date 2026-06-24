@@ -56,21 +56,17 @@
 */
 
 #pragma once
-#include <concepts>
-#include <stdexcept>
-#include <string>
-#include "version.hpp"
+#include "apibase.hpp"
 
 // you need this macro to activate API support in other libraries
 #ifndef SHAREDCPPLIB2_API_SUPPORT
     #define SHAREDCPPLIB2_API_SUPPORT
 #endif
 
-// Forward declaration
-// For api to work, actual bytearray.hpp must be included.
-namespace std {
-    class bytearray;
-};
+#include "basic_api.hpp"
+#include "bytearray_api.hpp"
+#include "encryption_api.hpp"
+#include "hash_api.hpp"
 
 namespace scl2 {
 
@@ -212,217 +208,6 @@ T generic_deserialize_noexcept(const string_type& s) noexcept {
     }
 }
 
-
-
-// ========================================================
-// |             bytearray compatible layer               |
-// ========================================================
-
-// For `std::bytearray dump() const`.
-template<typename T>
-concept __has_generic_dump_memberfx = requires(const T& v) {
-    { v.dump() } -> std::same_as<std::bytearray>;
-};
-
-// For `static std::bytearray dump(const T&)`.
-template<typename T>
-concept __has_generic_static_dump_memberfx = requires {
-    { T::dump(std::declval<const T&>()) } -> std::same_as<std::bytearray>;
-};
-
-// For `void load(const std::bytearray&)`
-template<typename T>
-concept __has_generic_load_memberfx = requires(T& v) {
-    { v.load(std::declval<const std::bytearray&>()) } -> std::same_as<void>;
-};
-
-// For `static T load(const std::bytearray&)`
-template<typename T>
-concept __has_generic_static_load_memberfx = requires {
-    { T::load(std::declval<const std::bytearray&>()) } -> std::same_as<T>;
-};
-
-
-template<typename T>
-concept has_generic_dump = __has_generic_dump_memberfx<T> || __has_generic_static_dump_memberfx<T>;
-
-template<typename T>
-concept has_generic_load = __has_generic_load_memberfx<T> || __has_generic_static_load_memberfx<T>;
-
-
-#define scl2_check_generic_dump(T) static_assert(::scl2::has_generic_dump<T>, "Type " #T " does not support generic dumping");
-#define scl2_check_generic_load(T) static_assert(::scl2::has_generic_load<T>, "Type " #T " does not support generic loading");
-#define scl2_check_generic_dump_load(T) \
-    static_assert(::scl2::has_generic_dump<T>, "Type " #T " does not support generic dumping"); \
-    static_assert(::scl2::has_generic_load<T>, "Type " #T " does not support generic loading");
-
-
-template<typename T>
-std::bytearray generic_dump(const T& value) {
-    if constexpr (__has_generic_dump_memberfx<T>) {
-        return value.dump();
-    } else if constexpr (__has_generic_static_dump_memberfx<T>) {
-        return T::dump(value);
-    }
-}
-
-template<typename T>
-T generic_load(const std::bytearray& data) {
-    if constexpr (__has_generic_load_memberfx<T>) {
-        T value;
-        value.load(data);
-        return value;
-    } else if constexpr (__has_generic_static_load_memberfx<T>) {
-        return T::load(data);
-    }
-}
-
-
-
-// ========================================================
-// |             Encryption and hashing API               |
-// ========================================================
-
-// Note: this is an internal support layer for encryption and hashing
-// API, for a unified interface for encryption and hashing functions.
-
-// Note it is not for classes to support encryption or hashing, but the
-// encryption / hashing provider provide these apis so user can easily
-// switch between different providers, also maybe implement their own
-// provider by implementing these concepts.
-
-template<typename T>
-requires requires() { typename T::key_type; }
-using __get_key_type = typename T::key_type;
-
-// For classes that has static member function `static std::bytearray encrypt(const std::bytearray& data, const key_type& key);`
-template<typename T, typename key_type = __get_key_type<T>>
-concept __has_encryption_support = requires {
-    requires std::is_class_v<T>
-    && requires {
-        { T::encrypt(std::declval<const std::bytearray&>(), std::declval<const key_type&>()) } -> std::same_as<std::bytearray>;
-    };
-};
-
-// For classes that has static member function `static std::bytearray decrypt(const std::bytearray& data, const key_type& key);`
-template<typename T, typename key_type = __get_key_type<T>>
-concept __has_decryption_support = requires {
-    requires std::is_class_v<T>
-    && requires {
-        { T::decrypt(std::declval<const std::bytearray&>(), std::declval<const key_type&>()) } -> std::same_as<std::bytearray>;
-    };
-};
-
-template<typename T, typename key_type = __get_key_type<T>>
-concept has_encryption_support = __has_encryption_support<T>;
-
-template<typename T, typename key_type = __get_key_type<T>>
-concept has_decryption_support = __has_decryption_support<T>;
-
-
-#define scl2_check_encryption_support(T) static_assert(::scl2::has_encryption_support<T>, "Type " #T " does not support encryption");
-#define scl2_check_decryption_support(T) static_assert(::scl2::has_decryption_support<T>, "Type " #T " does not support decryption");
-
-
-
-// The below streamed encryption and decryption API definition is incomplete and is not usable.
-// It might change in any future version. Do not use them.
-
-// Streamed encryption api definition, which allows breaking large amount of data into chunks.:
-// Is a class, and has these functions:
-// - `static bool begin(std::bytearray& state, const key_type& key);`
-// - `static bool update(std::bytearray& state, const std::bytearray& chunk);`
-// - `static std::bytearray end(std::bytearray& state);`
-
-template<typename T>
-concept __has_streamed_encrpytion_begin = requires {
-    requires std::is_class_v<T>
-    && requires {
-        { T::begin(std::declval<std::bytearray&>(), std::declval<const __get_key_type<T>&>()) } -> std::same_as<bool>;
-    };
-};
-
-template<typename T>
-concept __has_streamed_encryption_update = requires {
-    requires std::is_class_v<T>
-    && requires {
-        { T::update(std::declval<std::bytearray&>(), std::declval<const std::bytearray&>()) } -> std::same_as<bool>;
-    };
-};
-
-template<typename T>
-concept __has_streamed_encryption_end = requires {
-    requires std::is_class_v<T>
-    && requires {
-        { T::end(std::declval<std::bytearray&>()) } -> std::same_as<std::bytearray>;
-    };
-};
-
-template<typename T>
-concept has_streamed_encryption_support = requires {
-    __has_streamed_encrpytion_begin<T> && __has_streamed_encryption_update<T> && __has_streamed_encryption_end<T>;
-};
-
-#define scl2_check_streamed_encryption_support(T) static_assert(::scl2::has_streamed_encryption_support<T>, "Type " #T " does not support streamed encryption");
-
-
-// Streamed decryption api definition:
-// Is a class, and has these functions:
-// - `static bool begin(std::bytearray& state, const key_type& key);`
-// - `static bool update(std::bytearray& state, const std::bytearray& chunk);`
-// - `static std::bytearray end(std::bytearray& state);`
-
-
-/// Hashing API
-
-// Optional fixed digest-size metadata.
-// If a hash provider exposes `static constexpr size_t result_size`,
-// API can use it for stricter validation.
-// If absent, digest size is treated as dynamic/unknown.
-
-template<typename T>
-concept __has_hash_result_size = requires {
-    requires std::is_class_v<T>
-    && requires {
-        { T::result_size } -> std::convertible_to<size_t>;
-    };
-};
-
-// For classes that has static member function `static std::bytearray hash(const std::bytearray& data);`
-template<typename T>
-concept __has_hashing_support = requires {
-    requires std::is_class_v<T>
-    && requires {
-        { T::hash(std::declval<const std::bytearray&>()) } -> std::same_as<std::bytearray>;
-    };
-};
-
-template<typename T>
-concept has_hashing_support = __has_hashing_support<T>;
-
-template<typename T>
-concept has_fixed_hash_result_size = has_hashing_support<T> && __has_hash_result_size<T>;
-
-template<typename T>
-requires has_hashing_support<T>
-std::bytearray generic_hash(const std::bytearray& data) {
-    return T::hash(data);
-}
-
-template<typename T>
-requires has_hashing_support<T>
-constexpr size_t generic_hash_result_size() {
-    if constexpr (has_fixed_hash_result_size<T>) {
-        return static_cast<size_t>(T::result_size);
-    } else {
-        return static_cast<size_t>(0); // 0 == dynamic / unknown
-    }
-}
-
-
-#define scl2_check_hashing_support(T) static_assert(::scl2::has_hashing_support<T>, "Type " #T " does not support hashing");
-
-
 // ========================================================
 // |           enum utilities compatible layer            |
 // ========================================================
@@ -434,10 +219,6 @@ template<typename E>
 concept is_enum_ready = is_enum_compatible<E> && requires {
     false;
 };
-
-
-
-
 
 
 // API versioning

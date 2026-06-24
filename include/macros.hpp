@@ -4,16 +4,24 @@
     This is a header-only module that provides various utility macros
     that can help you to arrange your code better.
 
+    You can use this module to more explicitly define usage for each
+    section of your class, if the original public/private/protected
+    looks a little bit too simple.
 */
 
 #pragma once
 
 #include <functional>
+#include <type_traits>
+#include <utility>
 
 // This macro disables all macros in this header.
 #ifndef SHAREDCPPLIB2_NO_MACROS
 
 
+
+// Note: I personally do not suggest using these class marker macros, since
+// most of the time the IDE's code engine won't be happy about them.
 
 #ifndef SHAEREDCPPLIB2_NO_CLASSMARKER
     // This part allows to to more explicitly mark the region of class
@@ -31,7 +39,13 @@
     #define private_constructor private
 
     #ifndef SHAREDCPPLIB2_NO_INTERFACE
-        #define interface public
+        // not working in some cases, removed
+        // #define interface public
+    #endif
+
+    #ifndef SHAREDCPPLIB2_NO_FACTORY
+        #define factories public
+        #define factory static
     #endif
 
 #endif // SHAEREDCPPLIB2_NO_CLASSMARKER
@@ -42,10 +56,18 @@
 #endif // SHAREDCPPLIB2_NO_COPYMOVE
 
 #ifndef SHAREDCPPLIB2_NO_STATIC_HELPER
+
+    // Add a static entry point to a class. You only need to provide an accessor
+    // (can be reference, pointer or even a lambda) to the instance.
     #define static_access(ACCESSOR, NAME, IMPL) \
         template <typename... Args> \
         inline static decltype(auto) NAME(Args&&... args) { \
-            return std::invoke(IMPL, ACCESSOR(), std::forward<Args>(args)...); \
+            auto&& accessor = (ACCESSOR); \
+            if constexpr (std::is_invocable_v<decltype(accessor)>) { \
+                return std::invoke((IMPL), accessor(), std::forward<Args>(args)...); \
+            } else { \
+                return std::invoke((IMPL), accessor, std::forward<Args>(args)...); \
+            } \
         }
 
 #endif // SHAREDCPPLIB2_NO_STATIC_HELPER
