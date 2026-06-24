@@ -9,6 +9,12 @@ Other languages: [English](README.md)
 > [!NOTE]
 > 这个库是我许多项目的依赖项。您需要先安装此库才能使用那些项目，或者利用[自动依赖获取](doc/zh_CN/cmake/_autofetch.md)功能。
 
+> [!WARNING]
+> 如果您遇到一些奇怪的行为，请确保您正在使用正确的构建配置（Debug/Release）来构建库和您的项目。这是一个常见错误，即使在更新库之后，旧的错误仍然会出现，因为这个库被配置为同时保留 Debug 和 Release 的二进制文件（以便于开发）。
+
+> [!NOTE]
+> 由于早期开发中采用了一些不良的版本管理策略，某些提交（甚至标签）可能无法编译（或在某些平台上）。如果您在未修改源代码的情况下遇到一些编译错误，请在 GitHub 上提出问题，我会尝试修复它。
+
 **免费软件，不提供任何担保。** 部分模块可能不完整。
 
 您可以将此库用于个人或商业用途。欢迎注明出处，但这不是必须的。
@@ -125,5 +131,9 @@ std::bytearray tag = scl2::hmac<scl2::sha256>::compute(payload, key);
 - [constant_time_compare](doc/zh_CN/constant_time_compare.md)
 
 详细的文档可在头文件的注释中找到，或者查看 `doc/zh_CN` 目录下的文档。
+
+
+## 已知问题：
+- 可能无法在 gcc / clang 上编译，因为 gcc 采用了与 MSVC 不同的模板实例化策略，导致某些模板无法通过编译期检查。在可用的时候，尽量使用 MSVC 编译器。作者会定期进行相关测试，并尝试修复相关编译问题。
 
 **完整更新日志**: [WhatsNew](WhatsNew) （也可能缺少维护）

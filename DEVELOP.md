@@ -7,6 +7,8 @@ Some effective code example:
 
 int main(int argc, char** argv) {
     // 1. Initialize basic environment for logging only
+    logt_guard guard; // Suggested, ensures logt::shutdown() is called on scope exit
+
     logt::claim("main");
     logt::addfile(...);
     logt::setFilterLevel(LogLevel::Debug);
@@ -35,14 +37,15 @@ int main(int argc, char** argv) {
         result = -2;
     }
 
-    // 3. Clear and exit, make sure all logs are flushed and resources are released.
-    logt::shutdown(); 
+    // if do not use logt_guard, you should call logt::shutdown() here.
+
     return result;
 }
 ```
 
 > Also, you should always try to spread your workload logic into multiple functions, and keep your main function as clean as possible. It should just acts like the top-level layer that glues everything together.
 
+> Yes, Qt has its own logging system, if you are using Qt use that one instead. This is just an example.
 
 #### Windows SEH (Structured Exception Handling)
 

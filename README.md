@@ -12,6 +12,9 @@ Other languages: [中文](README-zh_CN.md)
 > [!WARNING]
 > If you encounter some strange behavior, just MAKE SURE you are using the right build configuration (Debug/Release) for both the library and your project. This is a common mistake that can cause the old bugs to appear even after you updated the library, since this library was configured to keep the binaries at the same time for both Debug and Release (for easier development).
 
+> [!NOTE]
+> Because of some poor version management strategy taken in the early development, some commits (or even tags) may not compile (or on certain platforms). If you encounter some compilation errors without modifying the source code, please fire an issue on GitHub and I will try to fix it.
+
 **Free software with NO WARRANTY.** Some modules may be incomplete.
 
 You may use this library for personal or commercial purposes. Attribution is appreciated but not required.
@@ -124,6 +127,10 @@ For tag verification, use constant-time comparison:
 - [constant_time_compare](doc/constant_time_compare.md)
 
 Detailed documentation is available in header files as Doxygen comments.
+
+## Known Issues
+- May not compile on gcc / clang due to different template instantiation strategies, leading to compilation errors. Use MSVC when possible. The author will regularly test and attempt to fix these compilation issues.
+
 
 **Full Changelog**: [WhatsNew](WhatsNew)
 
