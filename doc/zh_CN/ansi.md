@@ -56,7 +56,7 @@ std::cout << scl2::to_ansi_code(scl2::colors::red, scl2::colors::white)
 
 ```cpp
 // 解析样式字符串
-auto styles = scl2::make_style("t:r,bold;  t:g,italic;  <,b:bl");
+auto styles = scl2::make_style("t:r,b;  t:g,i;  <,b:bl");
 scl2::compile_style(styles);
 
 // 应用样式到文本
@@ -211,9 +211,9 @@ std::vector<text_style> make_style(const std::string& input);
 ```
 t:r                     → 红色文字
 t:r,b:g                 → 红色文字，绿色背景
-t:#ff0000,bold          → RGB 红色文字，粗体
-b:R,italic              → 亮红色背景，斜体
-t:r,b:g,bold,underline  → 所有属性
+t:#ff0000,b            → RGB 红色文字，粗体
+b:R,i                  → 亮红色背景，斜体
+t:r,b:g,b,u            → 所有属性
 <,t:g                   → 继承前一块，然后文字设为绿色
 ```
 

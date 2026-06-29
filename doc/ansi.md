@@ -56,7 +56,7 @@ std::cout << scl2::to_ansi_code(scl2::colors::red, scl2::colors::white)
 
 ```cpp
 // Parse a style string
-auto styles = scl2::make_style("t:r,bold;  t:g,italic;  <,b:bl");
+auto styles = scl2::make_style("t:r,b;  t:g,i;  <,b:bl");
 scl2::compile_style(styles);
 
 // Apply styles to text
@@ -211,9 +211,9 @@ Parse a style string into a vector of `text_style` blocks. Blocks are separated 
 ```
 t:r                    → red text
 t:r,b:g                → red text, green background
-t:#ff0000,bold         → RGB red text, bold
-b:R,italic             → light red background, italic
-t:r,b:g,bold,underline → all attributes
+t:#ff0000,b           → RGB red text, bold
+b:R,i                 → light red background, italic
+t:r,b:g,b,u           → all attributes
 <,t:g                  → inherit previous, then set text to green
 ```
 
