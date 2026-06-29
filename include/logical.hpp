@@ -79,14 +79,14 @@ inline constexpr bool __lo_eval_base(logical_operator op, bool left, bool right)
     }
 }
 
-inline constexpr bool __lo_eval_notimply(logical_operator op, bool left, bool right) {
+inline constexpr bool __lo_eval_imply(logical_operator op, bool left, bool right) {
     switch(op) {
         case LogicalOperator::Imply_Left:
-            return left && !right; // A -> B is false only when A is true and B is false.
+            return !left || right; // A -> B is equivalent to !A || B
         case LogicalOperator::Imply_Right:
-            return right && !left; // A <- B is false only when B is true and A is false.
+            return !right || left; // A <- B is equivalent to !B || A
         default:
-            throw std::runtime_error("Invalid logical operator for __lo_eval_notimply");
+            throw std::runtime_error("Invalid logical operator for __lo_eval_imply");
     }
 }
 
@@ -98,7 +98,7 @@ inline constexpr bool lo_eval(logical_operator op, bool left, bool right = false
         bool result;
 
         if(__lo_is_imply(rop)) {
-            result = __lo_eval_notimply(rop, left, right);
+            result = __lo_eval_imply(rop, left, right);
         } else {
             result = __lo_eval_base(rop, left, right);
         }
