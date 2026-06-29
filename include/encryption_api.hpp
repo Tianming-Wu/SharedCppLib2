@@ -1,5 +1,7 @@
 #pragma once
 #include "apibase.hpp"
+#include <istream>
+#include <ostream>
 
 namespace scl2 {
 
@@ -73,56 +75,94 @@ constexpr size_t generic_key_size() {
 }
 
 
+template<typename T, typename key_type = __get_key_type<T>>
+requires has_encryption_support<T>
+std::bytearray generic_encrypt(const std::bytearray& data, const key_type& key) {
+    if constexpr (has_static_encryption<T>) {
+        return T::encrypt(data, key);
+    } else {
+        return T(key).encrypt(data);
+    }
+}
+
+template<typename T, typename key_type = __get_key_type<T>>
+requires has_decryption_support<T>
+std::bytearray generic_decrypt(const std::bytearray& data, const key_type& key) {
+    if constexpr (has_static_decryption<T>) {
+        return T::decrypt(data, key);
+    } else {
+        return T(key).decrypt(data);
+    }
+}
+
 #define scl2_check_encryption_support(T) static_assert(::scl2::has_encryption_support<T>, "Type " #T " does not support encryption");
 #define scl2_check_decryption_support(T) static_assert(::scl2::has_decryption_support<T>, "Type " #T " does not support decryption");
 
 
 
-// The below streamed encryption and decryption API definition is incomplete and is not usable.
-// It might change in any future version. Do not use them.
+/// @brief Direction for streamed cipher operations.
+enum class cipher_dir : bool { Encrypt = true, Decrypt = false };
 
-// Streamed encryption api definition, which allows breaking large amount of data into chunks.:
-// Is a class, and has these functions:
-// - `static bool begin(std::bytearray& state, const key_type& key);`
-// - `static bool update(std::bytearray& state, const std::bytearray& chunk);`
-// - `static std::bytearray end(std::bytearray& state);`
+// ─── Streaming encryption concepts (instance-based) ───────────────────
 
 template<typename T>
-concept __has_streamed_encrpytion_begin = requires {
+concept has_streamed_encryption = requires {
     requires std::is_class_v<T>
     && requires {
-        { T::begin(std::declval<std::bytearray&>(), std::declval<const __get_key_type<T>&>()) } -> std::same_as<bool>;
+        typename T::stream_type;
+        requires std::is_class_v<typename T::stream_type>
+        && requires(typename T::stream_type h) {
+            { typename T::stream_type(std::declval<const typename T::key_type&>(), cipher_dir::Encrypt) };
+            h.update(std::declval<const std::bytearray&>());
+            { h.end() } -> std::same_as<std::bytearray>;
+        };
     };
 };
 
-template<typename T>
-concept __has_streamed_encryption_update = requires {
-    requires std::is_class_v<T>
-    && requires {
-        { T::update(std::declval<std::bytearray&>(), std::declval<const std::bytearray&>()) } -> std::same_as<bool>;
-    };
-};
+#define scl2_check_streamed_encryption(T) static_assert(::scl2::has_streamed_encryption<T>, "Type " #T " does not support streamed encryption");
+
+// ─── Streaming helper functions ───────────────────────────────────────
 
 template<typename T>
-concept __has_streamed_encryption_end = requires {
-    requires std::is_class_v<T>
-    && requires {
-        { T::end(std::declval<std::bytearray&>()) } -> std::same_as<std::bytearray>;
-    };
-};
+requires has_streamed_encryption<T>
+void encrypt_stream(std::istream& input, std::ostream& output,
+                    const typename T::key_type& key) {
+    constexpr size_t bufsz = generic_buffer_size<T>();
+    typename T::stream_type cipher(key, cipher_dir::Encrypt);
+    std::bytearray buffer(bufsz);
+
+    while (input) {
+        buffer.resize(bufsz);
+        input.read(reinterpret_cast<char*>(buffer.data()), bufsz);
+        buffer.resize(static_cast<size_t>(input.gcount()));
+        auto out = cipher.update(buffer);
+        if (!out.empty())
+            output.write(reinterpret_cast<const char*>(out.data()), out.size());
+    }
+    auto last = cipher.end();
+    if (!last.empty())
+        output.write(reinterpret_cast<const char*>(last.data()), last.size());
+}
 
 template<typename T>
-concept has_streamed_encryption_support = requires {
-    __has_streamed_encrpytion_begin<T> && __has_streamed_encryption_update<T> && __has_streamed_encryption_end<T>;
-};
+requires has_streamed_encryption<T>
+void decrypt_stream(std::istream& input, std::ostream& output,
+                    const typename T::key_type& key) {
+    constexpr size_t bufsz = generic_buffer_size<T>();
+    typename T::stream_type cipher(key, cipher_dir::Decrypt);
+    std::bytearray buffer(bufsz);
 
-#define scl2_check_streamed_encryption_support(T) static_assert(::scl2::has_streamed_encryption_support<T>, "Type " #T " does not support streamed encryption");
-
-
-// Streamed decryption api definition:
-// Is a class, and has these functions:
-// - `static bool begin(std::bytearray& state, const key_type& key);`
-// - `static bool update(std::bytearray& state, const std::bytearray& chunk);`
-// - `static std::bytearray end(std::bytearray& state);`
+    while (input) {
+        buffer.resize(bufsz);
+        input.read(reinterpret_cast<char*>(buffer.data()), bufsz);
+        buffer.resize(static_cast<size_t>(input.gcount()));
+        auto out = cipher.update(buffer);
+        if (!out.empty())
+            output.write(reinterpret_cast<const char*>(out.data()), out.size());
+    }
+    auto last = cipher.end();
+    if (!last.empty())
+        output.write(reinterpret_cast<const char*>(last.data()), last.size());
+}
 
 } // namespace scl2

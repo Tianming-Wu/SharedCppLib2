@@ -1,6 +1,6 @@
 # SharedCppLib2 API Reference
 
-Document version: 0.1.0
+Document version: 0.2.0
 
 SharedCppLib2 is now building its own api (compatible layer). It provides a series of standard for you to use with your own implementation, which allows your code to directly interact with SharedCppLib2 with extremely low learning cost.
 
@@ -160,18 +160,65 @@ For furthur details into error handling, refer to [Bytearray](bytearray.md).
 
 ### Encryption API layer
 
-To be said first: this part is for encryption algorithms developers (**providers**), not for general users. If you just want to encrypt your data, go check encryption layer definitions in [Encryption API Usage](#encryption-api-usage).
+This part is for encryption algorithm developers (**providers**), not for general users. If you just want to encrypt your data, go check [Encryption API Usage](#encryption-api-usage).
 
-This is an example for me creaing an AES encryption class that is compatible with the encryption API layer:
+A provider class must satisfy the `has_encryption_support` (or `has_decryption_support`) concept:
 
 ```cpp
-// This part of API is not complete yet.
+// Static API (one-shot):
+class MyCipher {
+public:
+    using key_type = std::bytearray;
+    static std::bytearray encrypt(const std::bytearray& data, const std::bytearray& key);
+    static std::bytearray decrypt(const std::bytearray& data, const std::bytearray& key);
+};
+
+// Instance API (pre-configured key):
+class MyCipher {
+public:
+    using key_type = std::bytearray;
+    explicit MyCipher(const std::bytearray& key);
+    std::bytearray encrypt(const std::bytearray& data) const;
+    std::bytearray decrypt(const std::bytearray& data) const;
+};
 ```
 
+Providers may also expose:
+- `static constexpr size_t key_size` — fixed key size (checked by `has_fixed_key_size`)
+- `class stream_type` — streaming support (checked by `has_streamed_encryption`)
+
+A streaming cipher follows the `begin/update/end` pattern:
+
+```cpp
+MyCipher::stream_type cipher(key, cipher_dir::Encrypt);
+cipher.update(chunk1);  // returns encrypted blocks
+cipher.update(chunk2);
+auto last = cipher.end();  // returns final blocks with padding
+```
 
 ### Hashing API layer
 
-This is also for developers (**providers**). If you just want to hash your data, check hashing layer definitions in [Hashing API Usage](#hashing-api-usage).
+This is also for developers (**providers**). If you just want to hash your data, check [Hashing API Usage](#hashing-api-usage).
+
+A hash provider must satisfy the `has_hashing_support` concept:
+
+```cpp
+class MyHash {
+public:
+    static constexpr size_t result_size = 32;  // optional, enables has_fixed_hash_result_size
+    static constexpr size_t block_size = 64;    // optional, enables generic_buffer_size
+
+    static std::bytearray hash(const std::bytearray& data);
+
+    // Streaming support (optional, checked by has_streamed_hash):
+    class stream_type {
+    public:
+        stream_type();
+        void update(const std::bytearray& chunk);
+        std::bytearray end();
+    };
+};
+```
 
 
 
@@ -180,43 +227,58 @@ This is also for developers (**providers**). If you just want to hash your data,
 
 ### Encryption API Usage
 
-For any method providers that satisfy the encryption API layer, you can use them to easily encrypt your data.
+Any class that satisfies `has_encryption_support` can be used with the generic wrappers or directly.
 
 ```cpp
+#include <SharedCppLib2/aes.hpp>
 
-std::bytearray data = ...; // your data to encrypt
-std::bytearray key = ...; // your encryption key
+std::bytearray data = /* your data */;
+std::bytearray key(static_cast<size_t>(16), std::byte{0});
 
-std::bytearray encrypted = scl2::encrypt<AES128>(data, key);
+// Direct call:
+auto ct = scl2::aes_ecb_128::encrypt(data, key);
+auto pt = scl2::aes_ecb_128::decrypt(ct, key);
 
-// Or call the class directly without the wrapper as well:
-std::bytearray encrypted = AES128::encrypt(data, key);
+// Generic wrapper (works with any provider):
+auto ct = scl2::generic_encrypt<scl2::aes_ecb_128>(data, key);
+auto pt = scl2::generic_decrypt<scl2::aes_ecb_128>(ct, key);
 
+// Instance API (pre-configured key):
+scl2::aes_ecb_128 cipher(key);
+auto ct = cipher.encrypt(data);
+auto pt = cipher.decrypt(ct);
+
+// Streaming (large data):
+scl2::aes_ecb_128::stream_type enc(key, scl2::cipher_dir::Encrypt);
+// enc.update(chunk) → encrypted blocks
+// enc.end()         → final block with padding
 ```
-
-Decryption works the same as well:
-
-```cpp
-
-std::bytearray decrypted = scl2::decrypt<AES128>(encrypted, key);
-
-```
-
 
 ### Hashing API Usage
 
-For any method providers that satisfy the hashing API layer, you can use them to easily hash your data.
-
-Builtin sha256 method is used as an example.
+Any class that satisfies `has_hashing_support` can be used:
 
 ```cpp
+#include <SharedCppLib2/sha256.hpp>
 
-std::bytearray data = ...; // your data to hash
+std::bytearray data = /* your data */;
 
-std::bytearray hash = scl2::hash<scl2::sha256>(data);
+// Direct call:
+std::bytearray hash = scl2::sha256::hash(data);
 
-// You may want it to be more human-readable, then you can convert it to a hex string:
+// Generic wrapper:
+std::bytearray hash = scl2::generic_hash<scl2::sha256>(data);
 
-std::string hash_hex = hash.toHex();
+// Hex string:
+std::string hex = hash.toHex();
 
+// Streaming (large data):
+scl2::sha256::stream_type hasher;
+hasher.update(chunk1);
+hasher.update(chunk2);
+std::bytearray digest = hasher.end();
+
+// Stream from istream:
+std::ifstream file("data.bin", std::ios::binary);
+auto digest = scl2::hash_stream<scl2::sha256>(file);
 ```

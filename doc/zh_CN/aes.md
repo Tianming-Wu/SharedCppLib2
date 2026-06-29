@@ -2,7 +2,7 @@
 
 + 名称: aes
 + 命名空间: `scl2::crypto` (inline)
-+ 文档版本: `1.0.0`
++ 文档版本: `1.1.0`
 
 ## CMake 配置信息
 
@@ -156,6 +156,34 @@ auto tag = scl2::hmac<scl2::sha256>::compute(ct, auth_key);
 
 // 解密时：
 // 重新计算 tag 并比较，确认后再解密
+```
+
+## 流式处理（大文件）
+
+对于无法一次性读入内存的大文件，使用 `stream_type`：
+
+```cpp
+// 加密
+scl2::aes_ecb_128::stream_type enc(key, scl2::cipher_dir::Encrypt);
+auto block1 = enc.update(chunk1);
+auto block2 = enc.update(chunk2);
+auto last   = enc.end();  // PKCS7 填充的最终块
+
+// 解密
+scl2::aes_ecb_128::stream_type dec(key, scl2::cipher_dir::Decrypt);
+auto pt1 = dec.update(ct1);
+auto pt2 = dec.update(ct2);
+auto pt3 = dec.end();     // 去除填充后的最终块
+```
+
+### 从 istream 流式处理
+
+```cpp
+#include <SharedCppLib2/encryption_api.hpp>  // 提供 encrypt_stream
+
+std::ifstream in("plain.bin", std::ios::binary);
+std::ofstream out("cipher.bin", std::ios::binary);
+scl2::encrypt_stream<scl2::aes_ecb_128>(in, out, key);
 ```
 
 ## 模式

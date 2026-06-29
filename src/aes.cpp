@@ -286,6 +286,177 @@ std::bytearray aes_cbc<K>::decrypt(const std::bytearray& data, const std::bytear
     return unpad16(dec);
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+//  aes_ecb::stream_type
+// ═══════════════════════════════════════════════════════════════════════
+
+template<size_t K>
+aes_ecb<K>::stream_type::stream_type(const std::bytearray& key, cipher_dir dir)
+    : key_(key), dir_(dir) {
+    if (key.size() != key_size)
+        throw std::invalid_argument("aes_ecb::stream_type: key must be " + std::to_string(key_size) + " bytes");
+    buf_.reserve(block_size);
+}
+
+template<size_t K>
+std::bytearray aes_ecb<K>::stream_type::update(const std::bytearray& chunk) {
+    // Flush buffer first
+    if (!buf_.empty()) {
+        size_t need = block_size - buf_.size();
+        size_t take = std::min(need, chunk.size());
+        buf_.append(chunk.subarr(0, take));
+        if (buf_.size() < block_size) return {}; // still not full
+        // Buffer is full, process it below as the first block
+    }
+
+    std::bytearray result;
+    std::byte rk[rk_count];
+    aes_key_expand(key_.data(), rk, key_size, round_count);
+
+    size_t offset = buf_.empty() ? 0 : block_size - buf_.size();
+
+    // Process the buffered block first if we just filled it
+    if (!buf_.empty()) {
+        result.append(std::bytearray(block_size, std::byte{0}));
+        if (dir_ == cipher_dir::Encrypt)
+            aes_encrypt_blk(buf_.data(), result.data(), rk, round_count);
+        else
+            aes_decrypt_blk(buf_.data(), result.data(), rk, round_count);
+        buf_.clear();
+    }
+
+    // Process full blocks from chunk
+    size_t remaining = chunk.size() - offset;
+    size_t full_blocks = remaining / block_size;
+
+    for (size_t i = 0; i < full_blocks; ++i) {
+        size_t start = offset + i * block_size;
+        result.resize(result.size() + block_size);
+        if (dir_ == cipher_dir::Encrypt)
+            aes_encrypt_blk(chunk.data() + start, result.data() + result.size() - block_size, rk, round_count);
+        else
+            aes_decrypt_blk(chunk.data() + start, result.data() + result.size() - block_size, rk, round_count);
+    }
+
+    // Buffer leftover
+    size_t leftover_start = offset + full_blocks * block_size;
+    if (leftover_start < chunk.size())
+        buf_ = chunk.subarr(leftover_start);
+
+    return result;
+}
+
+template<size_t K>
+std::bytearray aes_ecb<K>::stream_type::end() {
+    // PKCS7 padding on remaining buffer
+    uint8_t pad_len = static_cast<uint8_t>(block_size - buf_.size());
+    for (uint8_t i = 0; i < pad_len; ++i)
+        buf_.push_back(std::byte{pad_len});
+
+    std::bytearray result(block_size, std::byte{0});
+    std::byte rk[rk_count];
+    aes_key_expand(key_.data(), rk, key_size, round_count);
+    aes_encrypt_blk(buf_.data(), result.data(), rk, round_count);
+    buf_.clear();
+    return result;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  aes_cbc::stream_type
+// ═══════════════════════════════════════════════════════════════════════
+
+template<size_t K>
+aes_cbc<K>::stream_type::stream_type(const std::bytearray& key, cipher_dir dir)
+    : key_(key), dir_(dir) {
+    if (key.size() != key_size + 16)
+        throw std::invalid_argument("aes_cbc::stream_type: key must be " + std::to_string(key_size + 16) + " bytes");
+    buf_.reserve(block_size);
+}
+
+template<size_t K>
+std::bytearray aes_cbc<K>::stream_type::update(const std::bytearray& chunk) {
+    std::bytearray result;
+    std::byte rk[rk_count];
+    aes_key_expand(key_.data(), rk, key_size, round_count);
+
+    // Chain state (prev ciphertext block, init with IV)
+    std::byte chain[16];
+    std::memcpy(chain, key_.data() + key_size, 16);
+
+    // The accumulated buffer becomes part of the first block
+    if (!buf_.empty()) {
+        size_t need = block_size - buf_.size();
+        size_t take = std::min(need, chunk.size());
+        buf_.append(chunk.subarr(0, take));
+    }
+
+    // Process full blocks from buffer + chunk
+    // We need to work with the combined data
+    std::bytearray combined;
+    if (!buf_.empty()) {
+        if (buf_.size() < block_size) return {}; // still not full
+        combined = buf_;  // copy the full buffer
+        buf_.clear();
+    }
+
+    size_t offset = combined.empty() ? 0 : 0;
+    if (combined.empty() && chunk.size() < block_size) {
+        buf_ = chunk;
+        return {};
+    }
+
+    // Build processing buffer: combined (if any) + rest of chunk
+    std::bytearray proc;
+    if (!combined.empty()) proc = combined;
+    proc.append(chunk.subarr(proc.empty() ? 0 : block_size - (combined.size() - buf_.size())));
+
+    // Process full blocks
+    size_t full = proc.size() / block_size;
+    for (size_t i = 0; i < full; ++i) {
+        const std::byte* blk = proc.data() + i * block_size;
+        result.resize(result.size() + block_size);
+        if (dir_ == cipher_dir::Encrypt) {
+            std::byte xored[16];
+            for (int j = 0; j < 16; ++j) xored[j] = blk[j] ^ chain[j];
+            aes_encrypt_blk(xored, result.data() + result.size() - block_size, rk, round_count);
+            std::memcpy(chain, result.data() + result.size() - block_size, 16);
+        } else {
+            aes_decrypt_blk(blk, result.data() + result.size() - block_size, rk, round_count);
+            for (int j = 0; j < 16; ++j)
+                result.data()[result.size() - block_size + j] ^= chain[j];
+            std::memcpy(chain, blk, 16);
+        }
+    }
+
+    // Buffer leftover
+    size_t leftover = proc.size() % block_size;
+    if (leftover > 0)
+        buf_ = proc.subarr(full * block_size);
+
+    return result;
+}
+
+template<size_t K>
+std::bytearray aes_cbc<K>::stream_type::end() {
+    uint8_t pad_len = static_cast<uint8_t>(block_size - buf_.size());
+    for (uint8_t i = 0; i < pad_len; ++i)
+        buf_.push_back(std::byte{pad_len});
+
+    std::byte rk[rk_count];
+    aes_key_expand(key_.data(), rk, key_size, round_count);
+
+    // Get IV for chaining
+    std::byte chain[16];
+    std::memcpy(chain, key_.data() + key_size, 16);
+
+    std::bytearray result(block_size, std::byte{0});
+    std::byte xored[16];
+    for (int j = 0; j < 16; ++j) xored[j] = buf_.data()[j] ^ chain[j];
+    aes_encrypt_blk(xored, result.data(), rk, round_count);
+    buf_.clear();
+    return result;
+}
+
 // ─── Explicit instantiations ────────────────────────────────────────────
 template class aes_ecb<128>;
 template class aes_ecb<192>;

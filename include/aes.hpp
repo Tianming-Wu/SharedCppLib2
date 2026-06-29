@@ -41,6 +41,18 @@ public:
     std::bytearray encrypt(const std::bytearray& data) const { return encrypt(data, stored_key_); }
     std::bytearray decrypt(const std::bytearray& data) const { return decrypt(data, stored_key_); }
 
+    // ─── Streaming ──────────────────────────────────────────────────
+    class stream_type {
+    public:
+        stream_type(const std::bytearray& key, cipher_dir dir = cipher_dir::Encrypt);
+        std::bytearray update(const std::bytearray& chunk);
+        std::bytearray end();
+    private:
+        std::bytearray key_;
+        std::bytearray buf_;
+        cipher_dir dir_;
+    };
+
 private:
     std::bytearray stored_key_;
 };
@@ -70,6 +82,18 @@ public:
     std::bytearray encrypt(const std::bytearray& data) const { return encrypt(data, stored_key_); }
     std::bytearray decrypt(const std::bytearray& data) const { return decrypt(data, stored_key_); }
 
+    // ─── Streaming ──────────────────────────────────────────────────
+    class stream_type {
+    public:
+        stream_type(const std::bytearray& key, cipher_dir dir = cipher_dir::Encrypt);
+        std::bytearray update(const std::bytearray& chunk);
+        std::bytearray end();
+    private:
+        std::bytearray key_;
+        std::bytearray buf_;
+        cipher_dir dir_;
+    };
+
 private:
     std::bytearray stored_key_;
 };
@@ -90,6 +114,7 @@ scl2_check_encryption_support(aes_ecb_192);
 scl2_check_decryption_support(aes_ecb_192);
 scl2_check_encryption_support(aes_ecb_256);
 scl2_check_decryption_support(aes_ecb_256);
+
 scl2_check_encryption_support(aes_cbc_128);
 scl2_check_decryption_support(aes_cbc_128);
 scl2_check_encryption_support(aes_cbc_192);

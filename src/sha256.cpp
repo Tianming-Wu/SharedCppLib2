@@ -1,5 +1,6 @@
 #include "sha256.hpp"
 
+#include <cstring>
 #include <iomanip>
 #include <sstream>
 #include <stdexcept>
@@ -273,6 +274,109 @@ std::bytearray produceFinalHashValue(const std::vector<uint32_t>& input)
     }
 
     return output;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  sha256::stream_type
+// ═══════════════════════════════════════════════════════════════════════
+
+sha256::stream_type::stream_type()
+    : buf_len_(0), total_bits_(0) {
+    std::memcpy(state_, initial_message_digest_.data(), 32);
+}
+
+void sha256::stream_type::process_block(const uint8_t block[64]) {
+    // Build W array
+    uint32_t w[64];
+    for (int i = 0; i < 16; ++i) {
+        w[i] = (static_cast<uint32_t>(block[i * 4]) << 24)
+             | (static_cast<uint32_t>(block[i * 4 + 1]) << 16)
+             | (static_cast<uint32_t>(block[i * 4 + 2]) << 8)
+             |  static_cast<uint32_t>(block[i * 4 + 3]);
+    }
+    for (int i = 16; i < 64; ++i) {
+        uint32_t s0 = small_sigma0(w[i - 15]);
+        uint32_t s1 = small_sigma1(w[i - 2]);
+        w[i] = w[i - 16] + s0 + w[i - 7] + s1;
+    }
+
+    // Transform
+    uint32_t d[8];
+    std::memcpy(d, state_, 32);
+
+    for (int i = 0; i < 64; ++i) {
+        uint32_t temp1 = d[7] + big_sigma1(d[4]) + ch(d[4], d[5], d[6]) + add_constant_[i] + w[i];
+        uint32_t temp2 = big_sigma0(d[0]) + maj(d[0], d[1], d[2]);
+        d[7] = d[6]; d[6] = d[5]; d[5] = d[4];
+        d[4] = d[3] + temp1;
+        d[3] = d[2]; d[2] = d[1]; d[1] = d[0];
+        d[0] = temp1 + temp2;
+    }
+
+    for (int i = 0; i < 8; ++i) state_[i] += d[i];
+}
+
+void sha256::stream_type::update(const std::bytearray& chunk) {
+    size_t offset = 0;
+    size_t remaining = chunk.size();
+
+    // Fill partial buffer first
+    if (buf_len_ > 0 && buf_len_ + remaining >= 64) {
+        size_t copy = 64 - buf_len_;
+        std::memcpy(buffer_ + buf_len_, chunk.data() + offset, copy);
+        offset += copy;
+        remaining -= copy;
+        process_block(buffer_);
+        buf_len_ = 0;
+    }
+
+    // Process full blocks directly from input
+    while (remaining >= 64) {
+        process_block(reinterpret_cast<const uint8_t*>(chunk.data() + offset));
+        offset += 64;
+        remaining -= 64;
+    }
+
+    // Buffer remaining bytes
+    if (remaining > 0) {
+        std::memcpy(buffer_ + buf_len_, chunk.data() + offset, remaining);
+        buf_len_ += remaining;
+    }
+
+    total_bits_ += chunk.size() * 8;
+}
+
+std::bytearray sha256::stream_type::end() {
+    // Padding: append 0x80
+    buffer_[buf_len_++] = 0x80;
+
+    // If remaining space is < 8 bytes (for 64-bit length), fill this block
+    if (buf_len_ > 56) {
+        std::memset(buffer_ + buf_len_, 0, 64 - buf_len_);
+        process_block(buffer_);
+        buf_len_ = 0;
+    }
+
+    // Pad zeros until position 56
+    std::memset(buffer_ + buf_len_, 0, 56 - buf_len_);
+
+    // Append length in big-endian
+    uint64_t bits = total_bits_;
+    for (int i = 0; i < 8; ++i)
+        buffer_[56 + i] = static_cast<uint8_t>(bits >> (56 - i * 8));
+
+    process_block(buffer_);
+
+    // Produce final digest
+    std::bytearray result;
+    result.reserve(32);
+    for (int i = 0; i < 8; ++i) {
+        result.append(static_cast<std::byte>(state_[i] >> 24));
+        result.append(static_cast<std::byte>(state_[i] >> 16));
+        result.append(static_cast<std::byte>(state_[i] >> 8));
+        result.append(static_cast<std::byte>(state_[i]));
+    }
+    return result;
 }
 
 } // namespace scl2

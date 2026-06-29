@@ -24,20 +24,28 @@ public:
     static constexpr size_t result_size = 32;
     static constexpr size_t block_size = 64;
 
-    /** @brief: 使用SHA256算法，获取输入信息的摘要（数字指纹）
-    @param[in] message: 输入信息
-    @return: 摘要（数字指纹）
-    @throw: std::runtime_error if failed
-    */
+    /// @brief One-shot SHA-256 hash.
     static std::bytearray hash(const std::bytearray& message);
 
-    /** @brief: 获取十六进制表示的信息摘要（数字指纹）
-    @param[in] message: 输入信息
-    @return: 十六进制表示的信息摘要（数字指纹）
-    @throw: std::runtime_error if failed
-    */
     static std::string getHexMessageDigest(const std::string& message);
     static std::bytearray getMessageDigest(const std::bytearray& message);
+
+    /// @brief Streaming SHA-256 hasher.
+    class stream_type {
+    public:
+        stream_type();
+        /// @brief Feed a data chunk.
+        void update(const std::bytearray& chunk);
+        /// @brief Finalize and return the 32-byte digest.
+        std::bytearray end();
+    private:
+        void process_block(const uint8_t block[64]);
+
+        uint32_t state_[8];
+        uint8_t  buffer_[64];
+        size_t   buf_len_ = 0;
+        uint64_t total_bits_ = 0;
+    };
 
 }; // sha256
 

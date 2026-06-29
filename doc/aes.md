@@ -2,7 +2,7 @@
 
 + Name: aes
 + Namespace: `scl2::crypto` (inline)
-+ Document Version: `1.0.0`
++ Document Version: `1.1.0`
 
 ## CMake Info
 
@@ -157,6 +157,34 @@ auto tag = scl2::hmac<scl2::sha256>::compute(ct, auth_key);
 
 // On decryption:
 // recompute tag and compare before decrypting
+```
+
+## Streaming (Large Data)
+
+For files or large data that cannot fit in memory, use `stream_type`:
+
+```cpp
+// Encrypt
+scl2::aes_ecb_128::stream_type enc(key, scl2::cipher_dir::Encrypt);
+auto block1 = enc.update(chunk1);
+auto block2 = enc.update(chunk2);
+auto last   = enc.end();  // PKCS7 padded final block
+
+// Decrypt
+scl2::aes_ecb_128::stream_type dec(key, scl2::cipher_dir::Decrypt);
+auto pt1 = dec.update(ct1);
+auto pt2 = dec.update(ct2);
+auto pt3 = dec.end();     // unpadded final block
+```
+
+### Stream from istream
+
+```cpp
+#include <SharedCppLib2/encryption_api.hpp>  // for encrypt_stream
+
+std::ifstream in("plain.bin", std::ios::binary);
+std::ofstream out("cipher.bin", std::ios::binary);
+scl2::encrypt_stream<scl2::aes_ecb_128>(in, out, key);
 ```
 
 ## Modes

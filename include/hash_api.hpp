@@ -1,5 +1,7 @@
 #pragma once
 #include "apibase.hpp"
+#include <istream>
+#include <ostream>
 
 /// Hashing API
 
@@ -50,5 +52,39 @@ constexpr size_t generic_hash_result_size() {
 }
 
 #define scl2_check_hashing_support(T) static_assert(::scl2::has_hashing_support<T>, "Type " #T " does not support hashing");
+
+// ─── Streaming hash ───────────────────────────────────────────────────
+
+template<typename T>
+concept has_streamed_hash = requires {
+    requires std::is_class_v<T>
+    && requires {
+        typename T::stream_type;
+        requires std::is_class_v<typename T::stream_type>
+        && requires(typename T::stream_type h) {
+            h.update(std::declval<const std::bytearray&>());
+            { h.end() } -> std::same_as<std::bytearray>;
+        };
+    };
+};
+
+template<typename T>
+requires has_streamed_hash<T>
+std::bytearray hash_stream(std::istream& input) {
+    constexpr size_t bufsz = generic_buffer_size<T>();
+    typename T::stream_type hasher;
+    std::bytearray buffer(bufsz);
+
+    while (input) {
+        buffer.resize(bufsz);
+        input.read(reinterpret_cast<char*>(buffer.data()), bufsz);
+        buffer.resize(static_cast<size_t>(input.gcount()));
+        if (!buffer.empty()) hasher.update(buffer);
+    }
+
+    return hasher.end();
+}
+
+#define scl2_check_streamed_hash(T) static_assert(::scl2::has_streamed_hash<T>, "Type " #T " does not support streamed hashing");
 
 } // namespace scl2
