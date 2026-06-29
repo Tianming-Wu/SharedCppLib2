@@ -25,7 +25,7 @@ color_standard clrstd = clrstd_buildin;
 
 bool logPreprocessor(logt_message& message) {
     std::string colortag = clrstd.get(message.level).to_ansi_code();
-    message.content = colortag + message.content + std::clearcolor;
+    message.content = colortag + message.content + std::string(scl2::reset_color);
 
     return true;
 }

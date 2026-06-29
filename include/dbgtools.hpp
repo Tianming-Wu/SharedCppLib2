@@ -14,7 +14,7 @@ namespace dbgtools {
 inline std::string strlist_dbgjoin_colored(const std::stringlist &sl) {
     std::string result; bool st = false;
     for(const std::string& str : sl) {
-        result += std::textcolor(st?std::tWhite:std::tGreen) + str + std::clearcolor;
+        result += scl2::textColor(st?scl2::colors::white:scl2::colors::green) + str + std::string(scl2::reset_color);
         st = !st;
     }
     return result;

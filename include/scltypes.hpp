@@ -190,7 +190,19 @@ struct RectF
 
 using GeometryF = RectF;
 
+/// @brief Three-state boolean: yes, no, or not set.
+struct tri_state {
+    enum Value : uint8_t { no, yes, not_set };
+    Value value;
 
+    constexpr tri_state() : value(not_set) {}
+    constexpr tri_state(Value v) : value(v) {}
+    constexpr tri_state(bool b) : value(b ? yes : no) {}
+
+    constexpr explicit operator bool() const { return value == yes; }
+    constexpr bool operator==(const tri_state& o) const { return value == o.value; }
+    constexpr bool operator!=(const tri_state& o) const { return value != o.value; }
+};
 
 } // namespace scl2
 

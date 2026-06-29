@@ -69,7 +69,7 @@ add_library(typemask INTERFACE include/typemask.hpp)
 
 # 定义所有库
 add_library(variant STATIC src/variant.cpp)
-add_library(basic STATIC src/bytearray.cpp src/bytearray_base64.cpp src/ansiio.cpp src/stringlist.cpp src/basics.cpp)
+add_library(basic STATIC src/bytearray.cpp src/bytearray_base64.cpp src/ansiio.cpp src/color.cpp src/stringlist.cpp src/basics.cpp)
 add_library(logd STATIC src/logd.cpp)
 add_library(logf STATIC src/logf.cpp)
 add_library(sha256 STATIC src/sha256.cpp)
