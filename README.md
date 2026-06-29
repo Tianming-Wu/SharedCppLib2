@@ -35,6 +35,7 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **[`color`](doc/color.md)** - Color types, constants and conversions
 - **[`stringlist`](doc/stringlist.md)** - Enhanced string manipulation with Qt-inspired API
 - **[`arguments`](doc/arguments.md)** - Type-safe command-line argument parsing (argparse-inspired)
+- **[`aes`](doc/aes.md)** - AES encryption (128/192/256-bit, ECB/CBC)
 - **`Base64`** - Base64 encoding and decoding utilities
 - **[`bytearray`](doc/bytearray.md)** - Binary data management and serialization
 - **[`sha256`](doc/sha256.md)** - SHA-256 cryptographic hash implementation

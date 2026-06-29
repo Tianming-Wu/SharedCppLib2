@@ -16,29 +16,61 @@ template<typename T>
 requires requires() { typename T::key_type; }
 using __get_key_type = typename T::key_type;
 
-// For classes that has static member function `static std::bytearray encrypt(const std::bytearray& data, const key_type& key);`
+// ─── Static encryption: T::encrypt(data, key) ────────────────────────
 template<typename T, typename key_type = __get_key_type<T>>
-concept __has_encryption_support = requires {
-    requires std::is_class_v<T>
-    && requires {
+concept has_static_encryption = requires {
+    requires std::is_class_v<T> && requires {
         { T::encrypt(std::declval<const std::bytearray&>(), std::declval<const key_type&>()) } -> std::same_as<std::bytearray>;
     };
 };
 
-// For classes that has static member function `static std::bytearray decrypt(const std::bytearray& data, const key_type& key);`
 template<typename T, typename key_type = __get_key_type<T>>
-concept __has_decryption_support = requires {
-    requires std::is_class_v<T>
-    && requires {
+concept has_static_decryption = requires {
+    requires std::is_class_v<T> && requires {
         { T::decrypt(std::declval<const std::bytearray&>(), std::declval<const key_type&>()) } -> std::same_as<std::bytearray>;
     };
 };
 
+// ─── Instance encryption: obj.encrypt(data) ─────────────────────────
 template<typename T, typename key_type = __get_key_type<T>>
-concept has_encryption_support = __has_encryption_support<T>;
+concept has_instance_encryption = requires {
+    requires std::is_class_v<T> && requires {
+        { std::declval<const T>().encrypt(std::declval<const std::bytearray&>()) } -> std::same_as<std::bytearray>;
+    };
+};
 
 template<typename T, typename key_type = __get_key_type<T>>
-concept has_decryption_support = __has_decryption_support<T>;
+concept has_instance_decryption = requires {
+    requires std::is_class_v<T> && requires {
+        { std::declval<const T>().decrypt(std::declval<const std::bytearray&>()) } -> std::same_as<std::bytearray>;
+    };
+};
+
+template<typename T, typename key_type = __get_key_type<T>>
+concept has_encryption_support = has_static_encryption<T> || has_instance_encryption<T>;
+
+template<typename T, typename key_type = __get_key_type<T>>
+concept has_decryption_support = has_static_decryption<T> || has_instance_decryption<T>;
+
+// ─── Optional fixed key size ────────────────────────────────────────
+// If a cipher exposes `static constexpr size_t key_size`, it can be queried.
+// If absent, key size is treated as dynamic/unknown (e.g., xor_op accepts any key).
+template<typename T>
+concept has_fixed_key_size = requires {
+    requires std::is_class_v<T> && requires {
+        { T::key_size } -> std::convertible_to<size_t>;
+    };
+};
+
+template<typename T>
+requires has_encryption_support<T> || has_decryption_support<T>
+constexpr size_t generic_key_size() {
+    if constexpr (has_fixed_key_size<T>) {
+        return static_cast<size_t>(T::key_size);
+    } else {
+        return 0; // 0 == dynamic / unknown
+    }
+}
 
 
 #define scl2_check_encryption_support(T) static_assert(::scl2::has_encryption_support<T>, "Type " #T " does not support encryption");

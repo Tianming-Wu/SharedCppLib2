@@ -1,0 +1,154 @@
+# aes - AES 加密模块
+
++ 名称: aes
++ 命名空间: `scl2::crypto` (inline)
++ 文档版本: `1.0.0`
+
+## CMake 配置信息
+
+| 项目 | 值 |
+|---------|---------|
+| 命名空间 | `SharedCppLib2` |
+| 库名称 | `aes` |
+
+包含方式：
+```cmake
+find_package(SharedCppLib2 REQUIRED)
+target_link_libraries(target SharedCppLib2::aes)
+```
+
+```cpp
+#include <SharedCppLib2/aes.hpp>
+```
+
+## 描述
+
+`aes` 提供 AES-128、AES-192 和 AES-256 的加密和解密，支持 ECB 和 CBC 模式、PKCS7 填充，完全符合 FIPS 197 标准。同时支持静态一次性调用和基于实例的 API。
+
+AES 类实现了 `encryption_api` 概念，使其可与任何基于该 API 编写的代码互操作。
+
+## 快速开始
+
+### ECB 模式（一次性调用）
+
+```cpp
+#include <SharedCppLib2/aes.hpp>
+
+// AES-128 需要 16 字节密钥
+std::bytearray key(static_cast<size_t>(16), std::byte{0});
+std::bytearray pt = std::bytearray(std::string("Hello, AES!"));
+
+// 加密
+auto ct = scl2::aes_ecb_128::encrypt(pt, key);
+
+// 解密
+auto dec = scl2::aes_ecb_128::decrypt(ct, key);
+// dec.toStdString() == "Hello, AES!"
+```
+
+### CBC 模式
+
+```cpp
+// AES-128-CBC: key(16) + iv(16) = 32 字节
+std::bytearray keyiv(static_cast<size_t>(32), std::byte{0});
+
+auto ct = scl2::aes_cbc_128::encrypt(pt, keyiv);
+auto dec = scl2::aes_cbc_128::decrypt(ct, keyiv);
+```
+
+### 实例 API（预配置密钥）
+
+```cpp
+scl2::aes_ecb_256 cipher(key32);
+auto ct = cipher.encrypt(pt);
+auto dec = cipher.decrypt(ct);
+```
+
+## 类参考
+
+### 模板类
+
+```cpp
+template<size_t KeyBits> class aes_ecb;
+template<size_t KeyBits> class aes_cbc;
+```
+
+`KeyBits` 必须为 128、192 或 256。
+
+### 便捷别名
+
+```cpp
+using aes_ecb_128 = aes_ecb<128>;   // 16 字节密钥，10 轮
+using aes_ecb_192 = aes_ecb<192>;   // 24 字节密钥，12 轮
+using aes_ecb_256 = aes_ecb<256>;   // 32 字节密钥，14 轮
+
+using aes_cbc_128 = aes_cbc<128>;
+using aes_cbc_192 = aes_cbc<192>;
+using aes_cbc_256 = aes_cbc<256>;
+```
+
+### 编译期常量
+
+```cpp
+static constexpr size_t key_size;    // 16、24 或 32
+static constexpr size_t block_size;  // 始终为 16
+static constexpr size_t round_count; // 10、12 或 14
+```
+
+### 静态 API
+
+```cpp
+static std::bytearray encrypt(const std::bytearray& data, const std::bytearray& key);
+static std::bytearray decrypt(const std::bytearray& data, const std::bytearray& key);
+```
+
+ECB：`key` 必须恰好为 `key_size` 字节。
+CBC：`key` 必须为 `key_size + 16` 字节（密钥 + IV 拼接）。
+
+### 实例 API
+
+```cpp
+explicit aes_ecb_128(const std::bytearray& key);
+std::bytearray encrypt(const std::bytearray& data) const;
+std::bytearray decrypt(const std::bytearray& data) const;
+```
+
+用密钥构造加密器，然后调用 `encrypt`/`decrypt` 时无需再次传入密钥。
+
+## 加密 API 概念
+
+AES 类满足 `encryption_api` 概念：
+
+```cpp
+static_assert(scl2::has_encryption_support<scl2::aes_ecb_128>);
+static_assert(scl2::has_decryption_support<scl2::aes_ecb_128>);
+static_assert(scl2::has_fixed_key_size<scl2::aes_ecb_128>);
+// scl2::generic_key_size<aes_ecb_128>() == 16
+```
+
+## 模式
+
+### ECB（电子密码本）
+
+每个 16 字节块独立加密。确定性——相同的明文块产生相同的密文。适合随机访问解密，但不推荐用于超过一个块的消息（除非配合消息认证码）。
+
+### CBC（密码块链接）
+
+每个明文块在加密前与上一个密文块进行 XOR。第一个块使用 IV。非确定性（不同的 IV → 不同的密文）。需要随机/不可预测的 IV 以确保安全性。
+
+## 填充
+
+自动应用 PKCS7 填充。如果明文长度是 16 的倍数，则添加一个完整的填充块（16 字节的 `0x10`）。解密时验证并移除填充。
+
+## 密钥长度
+
+| 变体 | 密钥长度 | 轮数 | 轮密钥大小 |
+|---------|----------|--------|---------------|
+| AES-128 | 16 字节 | 10 | 176 字节 |
+| AES-192 | 24 字节 | 12 | 208 字节 |
+| AES-256 | 32 字节 | 14 | 240 字节 |
+
+## 相关模块
+
+- `crypto::xor_op` — 用于混淆的简单 XOR 加密
+- `encryption_api.hpp` — 加密提供者的概念定义

@@ -34,6 +34,7 @@ Other languages: [English](README.md)
 - **[`ansiio`](doc/zh_CN/ansi.md)** - ANSI 终端输出和格式化
 - **[`color`](doc/zh_CN/color.md)** - 颜色类型、常量和转换
 - **[`stringlist`](doc/zh_CN/stringlist.md)** - 增强型字符串操作，提供类似 Qt 的 API
+- **[`aes`](doc/zh_CN/aes.md)** - AES 加密（128/192/256-bit，ECB/CBC）
 - **`Base64`** - Base64 编码和解码工具
 - **[`bytearray`](doc/zh_CN/bytearray.md)** - 二进制数据管理和序列化
 - **[`sha256`](doc/zh_CN/sha256.md)** - SHA-256 加密哈希实现
