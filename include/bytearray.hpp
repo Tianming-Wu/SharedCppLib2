@@ -324,7 +324,9 @@ public:
     _T read() const {
         if (!available(sizeof(_T))) 
             throw std::out_of_range("bytearray_view: not enough data");
-        return ba.subarr(cursor, sizeof(_T)).convert_to<_T>();
+        _T value = ba.subarr(cursor, sizeof(_T)).convert_to<_T>();
+        cursor += sizeof(_T);
+        return value;
     }
 
     template<typename _T>
