@@ -25,8 +25,6 @@ target_link_libraries(target SharedCppLib2::aes)
 
 `aes` 提供 AES-128、AES-192 和 AES-256 的加密和解密，支持 ECB 和 CBC 模式、PKCS7 填充，完全符合 FIPS 197 标准。同时支持静态一次性调用和基于实例的 API。
 
-AES 类实现了 `encryption_api` 概念，使其可与任何基于该 API 编写的代码互操作。
-
 ## 快速开始
 
 ### ECB 模式（一次性调用）
@@ -48,13 +46,41 @@ auto dec = scl2::aes_ecb_128::decrypt(ct, key);
 
 ### CBC 模式
 
+CBC 模式下，16 字节的 IV 附加在密钥后面，作为一个 `key_type` 传入：
+
 ```cpp
 // AES-128-CBC: key(16) + iv(16) = 32 字节
-std::bytearray keyiv(static_cast<size_t>(32), std::byte{0});
+std::bytearray key(static_cast<size_t>(16), std::byte{0x2b});       // 密钥
+std::bytearray iv(static_cast<size_t>(16), std::byte{0x00});        // 初始向量
+
+// 拼接为一个 key_type
+std::bytearray keyiv = key;
+keyiv.append(iv);
 
 auto ct = scl2::aes_cbc_128::encrypt(pt, keyiv);
 auto dec = scl2::aes_cbc_128::decrypt(ct, keyiv);
 ```
+
+> [!IMPORTANT]
+> **IV 必须是随机的，且同一密钥每次加密使用不同的 IV。**
+> 重复使用 IV 会破坏 CBC 的安全性。
+> 简单做法：生成 16 字节随机数，拼在密文前面发送，解密时再提取：
+>
+> ```cpp
+> // 加密
+> std::bytearray iv = /* 16 字节随机数 */;
+> std::bytearray keyiv = key;
+> keyiv.append(iv);
+> auto ct = aes_cbc_128::encrypt(data, keyiv);
+> // 存储或传输: iv + ct
+>
+> // 解密
+> std::bytearray iv2 = received.subarr(0, 16);   // 提取 IV
+> std::bytearray ct2 = received.subarr(16);       // 提取密文
+> std::bytearray keyiv2 = key;
+> keyiv2.append(iv2);
+> auto pt = aes_cbc_128::decrypt(ct2, keyiv2);
+> ```
 
 ### 实例 API（预配置密钥）
 
@@ -115,15 +141,21 @@ std::bytearray decrypt(const std::bytearray& data) const;
 
 用密钥构造加密器，然后调用 `encrypt`/`decrypt` 时无需再次传入密钥。
 
-## 加密 API 概念
+## 密钥验证
 
-AES 类满足 `encryption_api` 概念：
+AES 本身无法验证解密密钥是否与加密密钥一致——使用错误密钥解密只会产生垃圾数据。
+
+不过，本实现使用了 **PKCS7 填充**，这提供了一种弱形式的验证：如果解密密钥错误，填充字节几乎肯定无效，`decrypt()` 将抛出 `std::invalid_argument`。正确的密钥总是会产生有效的填充。
+
+如需更强的验证，请对密文使用 [HMAC](../zh_CN/hmac.md)：
 
 ```cpp
-static_assert(scl2::has_encryption_support<scl2::aes_ecb_128>);
-static_assert(scl2::has_decryption_support<scl2::aes_ecb_128>);
-static_assert(scl2::has_fixed_key_size<scl2::aes_ecb_128>);
-// scl2::generic_key_size<aes_ecb_128>() == 16
+auto ct = scl2::aes_ecb_128::encrypt(data, key);
+auto tag = scl2::hmac<scl2::sha256>::compute(ct, auth_key);
+// 同时存储 ct 和 tag
+
+// 解密时：
+// 重新计算 tag 并比较，确认后再解密
 ```
 
 ## 模式

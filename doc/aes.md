@@ -25,8 +25,6 @@ target_link_libraries(target SharedCppLib2::aes)
 
 `aes` provides AES-128, AES-192, and AES-256 encryption and decryption with ECB and CBC modes, PKCS7 padding, and full FIPS 197 compliance. Both static one-shot and instance-based APIs are supported.
 
-The AES classes implement the `encryption_api` concepts, making them interoperable with any code written against that API.
-
 ## Quick Start
 
 ### ECB mode (one-shot)
@@ -48,13 +46,42 @@ auto dec = scl2::aes_ecb_128::decrypt(ct, key);
 
 ### CBC mode
 
+In CBC mode, the 16-byte IV is appended to the key as a single `key_type`:
+
 ```cpp
-// key(16) + iv(16) = 32 bytes for AES-128-CBC
-std::bytearray keyiv(static_cast<size_t>(32), std::byte{0});
+// AES-128-CBC: key(16) + iv(16) = 32 bytes
+std::bytearray key(static_cast<size_t>(16), std::byte{0x2b});       // secret key
+std::bytearray iv(static_cast<size_t>(16), std::byte{0x00});        // initial vector
+
+// Concatenate into one key_type
+std::bytearray keyiv = key;
+keyiv.append(iv);
 
 auto ct = scl2::aes_cbc_128::encrypt(pt, keyiv);
 auto dec = scl2::aes_cbc_128::decrypt(ct, keyiv);
 ```
+
+> [!IMPORTANT]
+> The **IV must be random and unique** for each encryption with the same key.
+> Never reuse an IV — it breaks CBC security.
+> A simple way: generate 16 random bytes and prepend them to the ciphertext,
+> then extract the IV on decryption:
+>
+> ```cpp
+> // Encryption
+> std::bytearray iv = /* 16 random bytes */;
+> std::bytearray keyiv = key;
+> keyiv.append(iv);
+> auto ct = aes_cbc_128::encrypt(data, keyiv);
+> // Transmit or store: iv + ct
+>
+> // Decryption
+> std::bytearray iv2 = received.subarr(0, 16);        // extract IV
+> std::bytearray ct2 = received.subarr(16);            // extract ciphertext
+> std::bytearray keyiv2 = key;
+> keyiv2.append(iv2);
+> auto pt = aes_cbc_128::decrypt(ct2, keyiv2);
+> ```
 
 ### Instance API (pre-configured key)
 
@@ -115,15 +142,21 @@ std::bytearray decrypt(const std::bytearray& data) const;
 
 Construct the cipher with a key, then call `encrypt`/`decrypt` without passing the key again.
 
-## Encryption API Concepts
+## Key Verification
 
-The AES classes satisfy the `encryption_api` concepts:
+AES itself cannot verify whether the decryption key matches the encryption key — decrypting with the wrong key simply produces garbage data.
+
+However, this implementation uses **PKCS7 padding**, which provides a weak form of verification: if the decryption key is incorrect, the padding bytes will almost certainly be invalid, and `decrypt()` will throw `std::invalid_argument`. A correct key will always produce valid padding.
+
+For stronger verification, use [HMAC](../doc/hmac.md) on the ciphertext:
 
 ```cpp
-static_assert(scl2::has_encryption_support<scl2::aes_ecb_128>);
-static_assert(scl2::has_decryption_support<scl2::aes_ecb_128>);
-static_assert(scl2::has_fixed_key_size<scl2::aes_ecb_128>);
-// scl2::generic_key_size<aes_ecb_128>() == 16
+auto ct = scl2::aes_ecb_128::encrypt(data, key);
+auto tag = scl2::hmac<scl2::sha256>::compute(ct, auth_key);
+// store both ct and tag
+
+// On decryption:
+// recompute tag and compare before decrypting
 ```
 
 ## Modes
