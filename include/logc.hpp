@@ -2,14 +2,15 @@
 
 #include "logt.hpp"
 #include "ansiio.hpp"
-
-using std::colorctl;
+#include "color.hpp"
 
 namespace logc {
 
+using scl2::color;
+
 struct color_standard {
-    colorctl debug, info, warn, error, fatal;
-    inline colorctl get(LogLevel level) {
+    color debug, info, warn, error, fatal;
+    inline color get(LogLevel level) {
         switch(level) {
             case LogLevel::Debug: return debug;
             case LogLevel::Info: return info;
@@ -18,7 +19,7 @@ struct color_standard {
             case LogLevel::Fatal: return fatal;
 
             case LogLevel::Quiet: // invalid
-            default: return colorctl();
+            default: return color();
         }
     }
 };

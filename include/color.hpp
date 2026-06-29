@@ -115,20 +115,22 @@ private:
 };
 
 
-#ifndef SCL2_NO_CONSTEXPR_BUILTIN_COLORS
+#ifndef SCL2_NO_BUILTIN_COLORS
 
 // Pre-compiled builtin colors in RGB format.
+// Uses inline const (not constexpr) because to_rgb() is defined in color.cpp
+// and is not visible as constexpr from other translation units.
 namespace colors {
 
-    constexpr color white = color(builtin_color::White).to_rgb();
-    constexpr color red = color(builtin_color::Red).to_rgb();
-    constexpr color orange = color(builtin_color::Orange).to_rgb();
-    constexpr color yellow = color(builtin_color::Yellow).to_rgb();
-    constexpr color green = color(builtin_color::Green).to_rgb();
-    constexpr color cyan = color(builtin_color::Cyan).to_rgb();
-    constexpr color blue = color(builtin_color::Blue).to_rgb();
-    constexpr color purple = color(builtin_color::Purple).to_rgb();
-    constexpr color black = color(builtin_color::Black).to_rgb();
+    inline const color white = color(builtin_color::White).to_rgb();
+    inline const color red = color(builtin_color::Red).to_rgb();
+    inline const color orange = color(builtin_color::Orange).to_rgb();
+    inline const color yellow = color(builtin_color::Yellow).to_rgb();
+    inline const color green = color(builtin_color::Green).to_rgb();
+    inline const color cyan = color(builtin_color::Cyan).to_rgb();
+    inline const color blue = color(builtin_color::Blue).to_rgb();
+    inline const color purple = color(builtin_color::Purple).to_rgb();
+    inline const color black = color(builtin_color::Black).to_rgb();
 
     constexpr color null = color();
 

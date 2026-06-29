@@ -58,7 +58,7 @@
     #define LOGT_MAX_CHANNEL 16
 #endif
 
-enum class LogLevel : uint8_t {
+enum class LogLevel : int8_t {
     Quiet = -1, // For not logging anything (filter only)
     Debug =  0,
     Info  =  1,
