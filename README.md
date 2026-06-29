@@ -31,7 +31,8 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 
 ## Core Modules
 
-- **`ansiio`** - ANSI terminal output and formatting
+- **[`ansiio`](doc/ansi.md)** - ANSI terminal output and formatting
+- **[`color`](doc/color.md)** - Color types, constants and conversions
 - **[`stringlist`](doc/stringlist.md)** - Enhanced string manipulation with Qt-inspired API
 - **[`arguments`](doc/arguments.md)** - Type-safe command-line argument parsing (argparse-inspired)
 - **`Base64`** - Base64 encoding and decoding utilities

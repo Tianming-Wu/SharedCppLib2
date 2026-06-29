@@ -31,7 +31,8 @@ Other languages: [English](README.md)
 
 ## 核心模块
 
-- **`ansiio`** - ANSI 终端输出和格式化
+- **[`ansiio`](doc/zh_CN/ansi.md)** - ANSI 终端输出和格式化
+- **[`color`](doc/zh_CN/color.md)** - 颜色类型、常量和转换
 - **[`stringlist`](doc/zh_CN/stringlist.md)** - 增强型字符串操作，提供类似 Qt 的 API
 - **`Base64`** - Base64 编码和解码工具
 - **[`bytearray`](doc/zh_CN/bytearray.md)** - 二进制数据管理和序列化
