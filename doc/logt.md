@@ -2,7 +2,7 @@
 
 + Name: logt  
 + Namespace: none  
-+ Document Version: `1.2.0`
++ Document Version: `1.3.0`
 
 ## CMake Info
 
@@ -188,7 +188,13 @@ Sets a readable name for current thread. If a thread is not claimed, logt falls 
 ```cpp
 static void setFilterLevel(LogLevel level);
 ```
-Sets minimum queued level. Levels: `LogLevel::Debug`, `LogLevel::Info`, `LogLevel::Warn`, `LogLevel::Error`, `LogLevel::Fatal`, special `LogLevel::Quiet`.
+Sets the global minimum log level. Levels: `LogLevel::Debug`, `LogLevel::Info`, `LogLevel::Warn`, `LogLevel::Error`, `LogLevel::Fatal`, special `LogLevel::Quiet`.
+
+#### setChannelFilter - per-channel log filtering
+```cpp
+static void setChannelFilter(int channel_id, LogLevel level);
+```
+Sets a per-channel filter level, overriding the global `setFilterLevel()` for that specific channel. Use `LogLevel::Inherit` to fall back to the global filter. This is useful when you want different channels to capture different log severities — for example, a console channel showing only warnings while a file channel records everything.
 
 #### enableSuperTimestamp - high precision timestamp
 ```cpp
@@ -305,6 +311,7 @@ Convenience macro for embedding source location in log messages.
 - `LogLevel::Warn` = 2 — potentially abnormal conditions.
 - `LogLevel::Error` = 3 — error conditions.
 - `LogLevel::Fatal` = 4 — unrecoverable failures.
+- `LogLevel::Inherit` = 16 — reserved sentinel value for channel filter; use global setting.
 
 ## Complete Example
 

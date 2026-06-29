@@ -2,7 +2,7 @@
     Log Threaded (logt) - A simple asynchronous logging library for C++23
 
     Note: to output to console with colors, include logc.hpp and use `logt::install_preprocessor(logc::logPreprocessor);`
-    Doesn't work well in file mode, disable by yourself.
+    Doesn't work well in file mode, disable it in that case by yourself.
 
     This library is way too complex to tell you everything here. Just go and check the document.
 
@@ -33,6 +33,7 @@
 #include <map>
 #include <initializer_list>
 #include <new>
+// what a long list of includes
 
 #include "basics.hpp" // for disable_copy, disable_move
 
@@ -57,13 +58,16 @@
     #define LOGT_MAX_CHANNEL 16
 #endif
 
-enum class LogLevel {
+enum class LogLevel : uint8_t {
     Quiet = -1, // For not logging anything (filter only)
     Debug =  0,
     Info  =  1,
     Warn  =  2,
     Error =  3,
-    Fatal =  4
+    Fatal =  4,
+
+    // Reserved keys
+    Inherit = 16, // Inherit from global settings, for channel
 };
 
 struct logt_channel {
@@ -71,12 +75,14 @@ struct logt_channel {
         invalid = -1, stdcout = 0, file = 1, custom_ostream = 2
     };
 
-    logt_channel() :type(ChannelType::invalid), enabled(false) {}
+    logt_channel() : type(ChannelType::invalid), enabled(false) {}
     inline ~logt_channel() { close(); }
 
     ChannelType type;
     bool valid;
     bool enabled;
+
+    LogLevel filter = LogLevel::Inherit;
 
     union {
         std::ofstream fileobj;
@@ -258,6 +264,14 @@ public:
     /// @brief Set the global log filter level, by default is `LogLevel::Info`.
     /// @param level The minimum log level to output
     inline static void setFilterLevel(LogLevel level) { filter_level_ = level; }
+
+    /// @brief Set per-channel log filter level.
+    /// @param channel_id The channel ID (returned by addfile/addostream)
+    /// @param level The minimum log level, or LogLevel::Inherit to use global
+    inline static void setChannelFilter(int channel_id, LogLevel level) {
+        if (channel_id > 0 && channel_id < LOGT_MAX_CHANNEL)
+            channels_[channel_id].filter = level;
+    }
 
     // 静态关闭方法
     /// @brief Shutdown the logging system, ensuring all messages are processed.

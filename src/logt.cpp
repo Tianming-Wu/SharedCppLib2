@@ -122,9 +122,7 @@ logt_sso::logt_sso(LogLevel level, const logt_format& formatter, const logt_chan
 
 logt_sso::~logt_sso() {
     // 析构时自动推送完整日志
-    if (level_ >= logt::filter_level_) {
-        logt_eventbus::push(ss_.str(), level_, channels);
-    }
+    logt_eventbus::push(ss_.str(), level_, channels);
 }
 
 std::string logt_sso::default_formatter(const logt_format::formatSettings& settings, const logt_format::formatInfo &info)
@@ -316,15 +314,21 @@ void logt::write_message(const logt_message& message) {
     for(int i = 1; i < LOGT_MAX_CHANNEL; i++) {
         if(processed.channels[i]) {
             auto lock = channels_[i].lock();
-            if (channels_[i].valid) {
-                switch(channels_[i].type) {
+            
+            auto& channel = channels_[i];
+            LogLevel filter = filter_level_;
+            if (channel.filter != LogLevel::Inherit) filter = channel.filter;
+            if (message.level < filter) continue; // skip this channel
+
+            if (channel.valid) {
+                switch(channel.type) {
                 case logt_channel::ChannelType::file:
-                    channels_[i].fileobj << timestamp_str << message.content << std::endl; // files get unprocessed (no color)
-                    channels_[i].fileobj.flush(); ///TODO: change this to something like flush every second
+                    channel.fileobj << timestamp_str << message.content << std::endl; // files get unprocessed (no color)
+                    channel.fileobj.flush(); ///TODO: change this to something like flush every second, not every message
                     break;
                 case logt_channel::ChannelType::stdcout:
                 case logt_channel::ChannelType::custom_ostream:
-                    *channels_[i].ostream << timestamp_str << processed.content << std::endl;
+                    *channel.ostream << timestamp_str << processed.content << std::endl;
                     // endl already contains flush
                     break;
                 case logt_channel::ChannelType::invalid:

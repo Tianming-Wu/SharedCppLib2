@@ -2,7 +2,7 @@
 
 + 名称: logt  
 + 命名空间: 无  
-+ 文档版本: `1.2.0`
++ 文档版本: `1.3.0`
 
 ## CMake 配置信息
 
@@ -190,7 +190,13 @@ static void claim(const std::string& name);
 ```cpp
 static void setFilterLevel(LogLevel level);
 ```
-设置入队的最低日志级别。级别：`LogLevel::Debug`, `LogLevel::Info`, `LogLevel::Warn`, `LogLevel::Error`, `LogLevel::Fatal`，特殊 `LogLevel::Quiet`。
+设置全局最低日志级别。级别：`LogLevel::Debug`, `LogLevel::Info`, `LogLevel::Warn`, `LogLevel::Error`, `LogLevel::Fatal`，特殊 `LogLevel::Quiet`。
+
+#### setChannelFilter - 按通道日志过滤
+```cpp
+static void setChannelFilter(int channel_id, LogLevel level);
+```
+为特定通道设置独立的过滤级别，覆盖全局 `setFilterLevel()` 设置。使用 `LogLevel::Inherit` 恢复为全局过滤级别。当需要不同通道记录不同严重程度的日志时非常有用——例如控制台通道只显示警告，而文件通道记录全部信息。
 
 #### enableSuperTimestamp - 高精度时间戳
 ```cpp
@@ -288,12 +294,13 @@ logt_sso debug() const;
 
 ## 日志级别详解
 
-- `LogLevel::Quiet` = -1 - 完全静默模式，不记录任何日志
-- `LogLevel::Debug` =  0 - 调试级别，记录最详细的运行信息
-- `LogLevel::Info`  =  1 - 信息级别，记录常规运行状态
-- `LogLevel::Warn`  =  2 - 警告级别，记录可能的异常情况
-- `LogLevel::Error` =  3 - 错误级别，记录错误条件
-- `LogLevel::Fatal` =  4 - 严重级别，记录致命错误
+- `LogLevel::Quiet` = -1 — 完全静默模式，不记录任何日志
+- `LogLevel::Debug` = 0 — 调试级别，记录最详细的运行信息
+- `LogLevel::Info` = 1 — 信息级别，记录常规运行状态
+- `LogLevel::Warn` = 2 — 警告级别，记录可能的异常情况
+- `LogLevel::Error` = 3 — 错误级别，记录错误条件
+- `LogLevel::Fatal` = 4 — 严重级别，记录致命错误
+- `LogLevel::Inherit` = 16 — 通道过滤的保留标记值，表示使用全局设置
 
 ## 完整应用示例
 
