@@ -1,30 +1,36 @@
 /*
-    XML parser library module for SharedCppLib2.
+    XML parser library module for SharedCppLib2, standalone (no module dependency).
     Tianming Wu <https://github.com/Tianming-Wu> 2026.1.24
 
+    Follows the W3C XML 1.0 (Fifth Edition) specification:
+    - https://www.w3.org/TR/xml/
+
     The description of xml format and the documentation of this module
-    can be found at the end of this file.
+    can be found in doc/xml.md.
 
     The module is not designed to work using virtual function table,
     you should directly use your derived classes if you want to extend
     its functionality.
 
-    I haven't found a good way to preserve the original document structure,
-    nor the comments and formatting features (spaces, newlines, tabs, etc.)
-    They will not be included in the dev plan for another period of time.
+    Supported features:
+    - Element, Text, Comment and ProcessingInstruction node types
+    - Attributes with proper escaping
+    - Self-closing tags
+    - Entity references (&lt;, &gt;, &amp;, &quot;, &apos;)
+    - Numeric character references (&#123;, &#xABC;)
+    - CDATA sections
+    - Processing Instructions
+    - XML Namespaces (prefix:local notation, xmlns declarations)
+    - XML Declaration and DOCTYPE preservation
+    - Whitespace preservation control (xml:space)
 
-    So so far this is only a basic XML parser and serializer, and is only
-    useful when you only care about the data itself. Or if you only want to
-    deal with some read only files, then it is totally fine.
+    Not yet supported:
+    - DTD parsing/validation
 
-    classes:
-        xml::node, xml::document
-    enums:
-        xml::ParsingStrategy
-    link target:
-        SharedCppLib2::xml
+    [SCL_STANDALONE_MODULE]
+    version: 0.2.1
+    cpp_generation: cxx23
 */
-
 #pragma once
 
 #include <string>
@@ -32,17 +38,10 @@
 #include <map>
 #include <optional>
 #include <vector>
+#include <generator>
 #include <stdexcept>
 
-#include "basics.hpp"
-#include "enum.hpp"
-
-// forward declaration
-namespace std {
-    template<typename CharT> class basic_stringlist;
-    using stringlist = basic_stringlist<char>; using wstringlist = basic_stringlist<wchar_t>;
-    class bytearray;
-}
+#include <type_traits>
 
 // XML parsing and serialization utilities
 namespace xml
@@ -56,7 +55,22 @@ enum class ParsingStrategy : uint32_t {
     AutoUpdateOnEdit    = 1 << 1, // automatically update internal structure on node edits
     PreserveWhitespace  = 1 << 2, // preserve insignificant whitespace
 };
-scl2_enum_bitop(ParsingStrategy)
+inline constexpr ParsingStrategy operator|(ParsingStrategy a, ParsingStrategy b) noexcept {
+    using T = std::underlying_type_t<ParsingStrategy>;
+    return static_cast<ParsingStrategy>(static_cast<T>(a) | static_cast<T>(b));
+}
+inline constexpr ParsingStrategy operator^(ParsingStrategy a, ParsingStrategy b) noexcept {
+    using T = std::underlying_type_t<ParsingStrategy>;
+    return static_cast<ParsingStrategy>(static_cast<T>(a) ^ static_cast<T>(b));
+}
+inline constexpr ParsingStrategy operator&(ParsingStrategy a, ParsingStrategy b) noexcept {
+    using T = std::underlying_type_t<ParsingStrategy>;
+    return static_cast<ParsingStrategy>(static_cast<T>(a) & static_cast<T>(b));
+}
+inline constexpr ParsingStrategy operator~(ParsingStrategy a) noexcept {
+    using T = std::underlying_type_t<ParsingStrategy>;
+    return static_cast<ParsingStrategy>(~static_cast<T>(a));
+}
 
 // We also need a strategy for tabbing/aligning during serialization
 // now use a constant value
@@ -102,10 +116,34 @@ class node
 {
     friend class document;
 public:
+    /// @brief Node type discriminator.
+    enum class Type : uint8_t { Element, Text, Comment, ProcessingInstruction };
+
     node() = default;
     ~node() = default;
 
-    enable_copy_move(node) // use default copy/move for now
+    node(const node&) = default;
+    node& operator=(const node&) = default;
+    node(node&&) = default;
+    node& operator=(node&&) = default;
+
+    /// @brief Create a comment node.
+    static node create_comment(const std::string& text);
+    /// @brief Create a text node.
+    static node create_text(const std::string& text);
+    /// @brief Create a processing instruction node.
+    static node create_processing_instruction(const std::string& target, const std::string& data);
+
+    Type type() const { return type_; }
+    bool is_element() const { return type_ == Type::Element; }
+    bool is_text() const { return type_ == Type::Text; }
+    bool is_comment() const { return type_ == Type::Comment; }
+    bool is_processing_instruction() const { return type_ == Type::ProcessingInstruction; }
+
+    /// @brief Get PI target (only valid for ProcessingInstruction nodes).
+    std::string pi_target() const { return pi_target_; }
+    /// @brief Get PI data (only valid for ProcessingInstruction nodes).
+    std::string pi_data() const { return pi_data_; }
 
     qualified_name getName() const;
     void setName(const qualified_name& name);
@@ -134,12 +172,40 @@ public:
     void undeclareNamespace(const std::string& prefix);
     void removeNamespace(); // remove all namespace
 
-    std::string deserialize(const std::string& node_text); // returns remaining text after this node
+    /// @brief Parse XML from string. Returns remaining text after this node.
+    /// @param preserve_whitespace If true, do not trim leading/trailing whitespace in text content.
+    std::string deserialize(const std::string& node_text, bool preserve_whitespace = false);
     std::string serialize(int alignDepth = 0) const;
 
     bool hasChildren() const;
     std::vector<node>& getChildNodes();
     const std::vector<node>& getChildNodes() const;
+
+    /// @brief Yield only Element-typed children (skip Text and Comment).
+    std::generator<const node&> elements() const {
+        if (children.has_value()) {
+            for (const auto& child : children.value()) {
+                if (child.is_element()) co_yield child;
+            }
+        }
+    }
+
+    std::generator<const node&> comments() const {
+        if (children.has_value()) {
+            for (const auto& child : children.value()) {
+                if (child.is_comment()) co_yield child;
+            }
+        }
+    }
+
+    /// @brief Yield only ProcessingInstruction-typed children.
+    std::generator<const node&> processing_instructions() const {
+        if (children.has_value()) {
+            for (const auto& child : children.value()) {
+                if (child.is_processing_instruction()) co_yield child;
+            }
+        }
+    }
 
     void addChildNode(node&& child);
     void removeChildNode(size_t index);
@@ -156,11 +222,16 @@ public:
     void reset();
 
 protected:
+    Type type_ = Type::Element;
+
     std::string name;
     std::optional<std::string> text_content;
     std::optional<std::vector<node>> children;
     std::map<qualified_name, std::string> attributes;
     std::optional<bool> self_closing; // if not set, auto-detect based on content
+
+    std::string pi_target_; // processing instruction target
+    std::string pi_data_;   // processing instruction data
 
     std::optional<xnamespace> xmlns; // namespace that the node belongs to
     std::optional<std::vector<xnamespace>> decl_xmlns; // declared namespaces in this node
@@ -185,7 +256,10 @@ public:
     document() = default;
     ~document() = default;
 
-    enable_copy_move(document) // use default copy/move for now
+    document(const document&) = default;
+    document& operator=(const document&) = default;
+    document(document&&) = default;
+    document& operator=(document&&) = default;
 
     node& getRootNode();
     void setRootNode(const node& root); // Warn: replaces the entire document if root node is changed
@@ -213,8 +287,6 @@ public:
     void clear(); // clear entire document to default state
     void reset(); // reset entire document to invalid state
 
-    std::bytearray payload() const; // get raw byte payload of the serialized document
-
 protected:
     node root_node;
 
@@ -235,185 +307,3 @@ std::string escapeTextContent(const std::string& text);
 std::string unescapeTextContent(const std::string& text);
 
 } // namespace xml
-
-
-/*
-    Library Theory Notice:
-
-    XML OVERVIEW:
-    XML (eXtensible Markup Language) is a markup language designed to store and transport data.
-    It is widely used as the foundation for many file formats like XHTML, SVG, RSS, SOAP, etc.
-    This module provides a general-purpose XML parser and serializer that can be extended
-    to support XML-based file formats.
-
-    DOCUMENT STRUCTURE:
-    An XML document consists of three main parts:
-
-    1. PROLOG (optional):
-       Located at the beginning of the file, contains:
-       - XML Declaration: <?xml version="1.0" encoding="UTF-8"?>
-       - Document Type Declaration (DTD): <!DOCTYPE root SYSTEM "file.dtd">
-       - Processing Instructions: <?target data?>
-       - Comments: <!-- This is a comment -->
-       - Whitespace and blank lines
-
-    2. ROOT ELEMENT:
-       Every well-formed XML document must have exactly one root element that contains
-       all other content. For example:
-           <root>
-               <!-- All other elements go here -->
-           </root>
-
-    3. EPILOG (optional):
-       Processing instructions and comments that appear after the root element.
-
-    NODES AND ELEMENTS:
-    Each node in the XML tree represents an element with:
-    - Name (tag name): The identifier of the element
-    - Attributes: Key-value pairs providing metadata. Syntax: <element key="value" foo="bar">
-    - Text content: Plain text between opening and closing tags: <element>Text content</element>
-    - Child nodes: Nested elements inside the element
-    - Empty elements: Self-closing tags with no content: <element key="value"/>
-
-    In this library, when serializing:
-    - If a node has NO text content AND NO child nodes → automatically use self-closing tag
-        You can still mannually set it to use opening and closing tags if desired.
-        In the future html implementation, specific tags like <div></div> will always use opening/closing tags.
-    - If a node has text content OR child nodes → use opening and closing tags
-
-    CONTENT MODELS:
-    XML elements can follow these patterns:
-    - Empty content: <element/>
-    - Element-only content: <element><child/></element>
-    - Text-only content (PCDATA): <element>text only</element>
-    - Mixed content: <element>text <child/>more text</element>
-
-    ATTRIBUTES vs ELEMENTS:
-    Attributes are suitable for:
-    - Simple, single-value metadata
-    - Properties that are not hierarchical
-    - IDs, references, type information
-
-    Elements are suitable for:
-    - Complex, structured data
-    - Hierarchical relationships
-    - Content that might need attributes or children itself
-
-    CHARACTER HANDLING:
-    1. Predefined Entity References (must be escaped in element content):
-       &lt;     <  (less-than)
-       &gt;     >  (greater-than)
-       &amp;    &  (ampersand)
-       &quot;   "  (double quote, mainly in attributes)
-       &apos;   '  (apostrophe, mainly in attributes)
-
-    2. CDATA Sections:
-       Literal text blocks where entity references are NOT interpreted:
-           <![CDATA[This is <literal> & uninterpreted content]]>
-       Useful for embedding code, scripts, or content with many special characters.
-       Restrictions: Cannot contain "]]>" sequence
-
-    3. Character References:
-       Numeric references to any Unicode character:
-       - Decimal: &#65; (represents 'A')
-       - Hexadecimal: &#x41; (represents 'A')
-
-    4. Whitespace Handling:
-       - Whitespace between tags can be significant or insignificant
-       - xml:space="preserve" attribute explicitly preserves whitespace
-       - Most XML processors normalize whitespace in certain contexts
-
-    NAMESPACES:
-    Namespaces provide a mechanism to avoid element name conflicts:
-    - Syntax: <prefix:element xmlns:prefix="http://example.com/ns">
-    - Default namespace: <element xmlns="http://example.com/ns">
-    - Scope: Namespace declarations apply to the element and its descendants
-    - Qualified names: prefix:localname where prefix is defined by xmlns declaration
-
-    COMMENTS:
-    <!-- Comment text -->
-    - Cannot appear before the XML declaration
-    - Cannot appear inside tags
-    - Cannot contain "--" or end with "-"
-    - Cannot contain the string "--->"
-    - Content is not processed by XML parser
-
-    PROCESSING INSTRUCTIONS:
-    <?target data?>
-    - Used to pass information to the application
-    - Format: <?name data?>
-    - Example: <?xml-stylesheet type="text/xsl" href="style.xsl"?>
-
-    PARSING STRATEGY FOR THIS LIBRARY:
-    1. Lexical Analysis: Tokenize input stream
-    2. Syntax Validation: Check well-formedness (not validity against schema)
-    3. Tree Construction: Build in-memory DOM (Document Object Model) structure
-    4. Error Handling: Report parsing errors with line/column information
-
-    SERIALIZATION STRATEGY:
-    1. Traverse the in-memory tree
-    2. Generate properly formatted XML output
-    3. Escape special characters appropriately
-    4. Optionally pretty-print with indentation
-
-    FEATURES TO SUPPORT:
-    [Core Features]
-    ✓ Basic parsing and serialization
-    ✓ Attributes and text content
-    ✓ Child nodes (hierarchical structure)
-    ✓ Self-closing tags
-    ✓ Comments
-    ✓ Entity references (&lt;, &gt;, &amp;, &quot;, &apos;)
-
-    [Extended Features - Consider for Implementation]
-    - CDATA sections
-    - Numeric character references (&#123;, &#xABC;)
-    - Processing instructions
-    - DTD/Schema validation (if needed)
-    - Namespace support
-    - XML declaration and encoding handling
-    - Whitespace preservation control
-    - XPath-like query capabilities
-    - Pretty printing with indentation control
-
-    [NOT Supporting (Out of Scope)]
-    - Full DTD validation
-    - Schema (XSD) validation
-    - Full XSLT processing
-    - Custom entity definitions
-
-    DESIGN CONSIDERATIONS:
-    - Performance: Choose appropriate data structures (std::map for attributes)
-    - Memory: Consider node pooling for large documents
-    - Encoding: Decide on UTF-8 as primary encoding vs multi-encoding support
-    - API: Balance ease-of-use with flexibility
-    - Error Recovery: Decide between strict parsing or lenient parsing
-
-*/
-
-
-/*
-    How to use:
-
-    #include <SharedCppLib2/xml.hpp>
-
-    xml::document doc;
-
-    // Read:
-    std::ifstream ifs("file.xml");
-    // parse xml from file
-    ifs >> doc;
-    ifs.close();
-
-    xml::node& root = doc.getRootNode();
-    std::string attr_value = root.getAttribute("key", "default");
-    root.setAttribute("new_key", "new_value");
-
-
-    // Write:
-    std::ofstream ofs("output.xml");
-    // serialize xml to file
-    ofs << doc;
-    ofs.close();
-
-*/

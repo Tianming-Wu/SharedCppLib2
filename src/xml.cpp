@@ -7,11 +7,30 @@
 #include <functional>
 #include <sstream>
 
-#include "bytearray.hpp"
-
 namespace xml
 {
 
+node node::create_comment(const std::string& text) {
+    node n;
+    n.type_ = Type::Comment;
+    n.text_content = text;
+    return n;
+}
+
+node node::create_text(const std::string& text) {
+    node n;
+    n.type_ = Type::Text;
+    n.text_content = text;
+    return n;
+}
+
+node node::create_processing_instruction(const std::string& target, const std::string& data) {
+    node n;
+    n.type_ = Type::ProcessingInstruction;
+    n.pi_target_ = target;
+    n.pi_data_ = data;
+    return n;
+}
 
 qualified_name::qualified_name(const char* name)
     : qualified_name(std::string(name))
@@ -201,7 +220,7 @@ void node::removeNamespace()
     xmlns.reset();
 }
 
-std::string node::deserialize(const std::string &node_text)
+std::string node::deserialize(const std::string &node_text, bool preserve_whitespace)
 {
     // uh,
     reset(); // clears everything on this planet
@@ -254,6 +273,35 @@ std::string node::deserialize(const std::string &node_text)
     size_t tag_start = working_text.find('<');
     if(tag_start == std::string::npos) {
         throw parsing_error("Node text does not start with '<'");
+    }
+
+    // handle comment <!-- ... -->
+    if (working_text.substr(tag_start, 4) == "<!--") {
+        size_t comment_end = working_text.find("-->", tag_start + 4);
+        if (comment_end == std::string::npos) {
+            throw parsing_error("Unclosed comment");
+        }
+        *this = create_comment(working_text.substr(tag_start + 4, comment_end - tag_start - 4));
+        return working_text.substr(comment_end + 3);
+    }
+
+    // handle processing instruction <?target data?>
+    if (working_text.substr(tag_start, 2) == "<?") {
+        size_t pi_end = working_text.find("?>", tag_start + 2);
+        if (pi_end == std::string::npos) {
+            throw parsing_error("Unclosed processing instruction");
+        }
+        std::string pi_content = working_text.substr(tag_start + 2, pi_end - tag_start - 2);
+        size_t space_pos = pi_content.find_first_of(" \t");
+        std::string pi_target, pi_data;
+        if (space_pos == std::string::npos) {
+            pi_target = pi_content;
+        } else {
+            pi_target = pi_content.substr(0, space_pos);
+            pi_data = trimString(pi_content.substr(space_pos + 1));
+        }
+        *this = create_processing_instruction(pi_target, pi_data);
+        return working_text.substr(pi_end + 2);
     }
 
     size_t end_pos = working_text.find('>', tag_start);
@@ -393,13 +441,59 @@ std::string node::deserialize(const std::string &node_text)
     // std::
     std::string remaining_text = working_text.substr(end_pos + 1);
 
-    remaining_text = trimString(remaining_text);
+    // check for xml:space="preserve" on this element
+    bool child_preserve = preserve_whitespace;
+    {
+        auto it = attributes.find(qualified_name("xml:space"));
+        if (it != attributes.end()) {
+            child_preserve = (it->second == "preserve");
+        }
+    }
+
+    if (!child_preserve) {
+        remaining_text = trimString(remaining_text);
+    }
     if(!remaining_text.empty()) {
         while(true) { // we may need to look for multiple children or text content, before we find the end tag
             // check the type of the next content
             if(remaining_text.starts_with("</")) {
                 // end tag. will be parsed after this if-else.
                 break;
+            } else if(remaining_text.starts_with("<![CDATA[")) {
+                // CDATA section
+                size_t cdata_end = remaining_text.find("]]>", 9);
+                if (cdata_end == std::string::npos) {
+                    throw parsing_error("Unclosed CDATA section");
+                }
+                node cdata_node;
+                cdata_node.type_ = Type::Text;
+                cdata_node.text_content = remaining_text.substr(9, cdata_end - 9);
+                if (!children.has_value()) {
+                    children = std::vector<node>();
+                }
+                children->push_back(std::move(cdata_node));
+                remaining_text = remaining_text.substr(cdata_end + 3);
+            } else if(remaining_text.starts_with("<?")) {
+                // processing instruction as child
+                size_t pi_end = remaining_text.find("?>", 2);
+                if (pi_end == std::string::npos) {
+                    throw parsing_error("Unclosed processing instruction");
+                }
+                std::string pi_content = remaining_text.substr(2, pi_end - 2);
+                size_t space_pos = pi_content.find_first_of(" \t");
+                std::string pi_target, pi_data;
+                if (space_pos == std::string::npos) {
+                    pi_target = pi_content;
+                } else {
+                    pi_target = pi_content.substr(0, space_pos);
+                    pi_data = pi_content.substr(space_pos + 1);
+                }
+                node pi_node = create_processing_instruction(pi_target, pi_data);
+                if (!children.has_value()) {
+                    children = std::vector<node>();
+                }
+                children->push_back(std::move(pi_node));
+                remaining_text = remaining_text.substr(pi_end + 2);
             } else if(remaining_text.starts_with('<')) {
                 // then it's children.
                 node child_node;
@@ -413,7 +507,7 @@ std::string node::deserialize(const std::string &node_text)
                         child_node.inherited_xmlns->insert(child_node.inherited_xmlns->end(), decl_xmlns->begin(), decl_xmlns->end());
                     }
                 }
-                std::string rt = child_node.deserialize(remaining_text);
+                std::string rt = child_node.deserialize(remaining_text, child_preserve);
                 
                 // add to children
                 if(!children.has_value()) {
@@ -429,7 +523,11 @@ std::string node::deserialize(const std::string &node_text)
                 }
 
                 std::string text = remaining_text.substr(0, next_tag_pos);
-                text_content = unescapeTextContent(trimString(text));
+                if (child_preserve) {
+                    text_content = unescapeTextContent(text);
+                } else {
+                    text_content = unescapeTextContent(trimString(text));
+                }
                 remaining_text = remaining_text.substr(next_tag_pos);
             }
         }
@@ -453,7 +551,20 @@ std::string node::deserialize(const std::string &node_text)
 std::string node::serialize(int alignDepth) const
 {
     std::string result;
-    
+    // Comment node
+    if (is_comment()) {
+        return makeTab(alignDepth) + "<!--" + text_content.value_or("") + "-->";
+    }
+
+    // Text node
+    if (is_text()) {
+        return escapeTextContent(text_content.value_or(""));
+    }
+
+    // Processing Instruction node
+    if (is_processing_instruction()) {
+        return makeTab(alignDepth) + "<?" + pi_target_ + " " + pi_data_ + "?>";
+    }    
     // if any attributes, text content or children exist, ignore self_closing setting
     bool full_tag = !attributes.empty() || hasTextContent() || hasChildren() ? true : isSelfClosing();
 
@@ -584,6 +695,8 @@ void node::clear()
     attributes.clear();
     self_closing.reset();
     decl_xmlns.reset();
+    pi_target_.clear();
+    pi_data_.clear();
 }
 
 void node::reset()
@@ -820,12 +933,6 @@ void document::reset()
     root_node.reset();
     xml_declaration.reset();
     doctype_declaration.reset();
-}
-
-std::bytearray document::payload() const
-{
-    std::string serialized = serialize();
-    return std::bytearray::fromRaw(serialized.data(), serialized.size());
 }
 
 bool xnamespace::isDefault() const
