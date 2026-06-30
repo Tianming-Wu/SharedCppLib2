@@ -1,14 +1,77 @@
 # Changelog
 
-### v2.0.0
-- New: Introduced generic hash-provider compatibility layer enhancements in `api.hpp`, including fixed/dynamic hash result-size metadata support.
-- New: Added header-only `hmac` module with provider-agnostic design (`scl2::hmac<HashProvider>`), plus digest-size validation behavior for fixed and dynamic providers.
-- Changed: SHA256 API is now integrated as `scl2::sha256` provider style with hash metadata (`result_size`, `block_size`) for compatibility-layer usage.
-- Changed: SHA256/bytearray related docs and READMEs were synchronized to the new provider-style API and HMAC usage patterns.
-- New: Added dedicated constant-time comparison guides (English/Chinese) for HMAC tag verification recommendations.
-- Build: Updated CMake export/install target listing to include compatibility and header-only targets used by current integration.
-- Test: SHA256 and HMAC tests were refreshed with deterministic vectors and aligned with public API usage.
-- Release Scope Note: Network and condition related changes are intentionally excluded from this release.
+### v2.2.3
+- New: XML module now supports CDATA sections (`<![CDATA[...]]>`) — parse and serialize as text nodes.
+- New: XML module now supports Processing Instructions (`<?target data?>`) — new `Type::ProcessingInstruction` node type with `create_processing_instruction()`, `pi_target()`, `pi_data()` accessors, and `processing_instructions()` generator.
+- New: XML module now supports `xml:space="preserve"` attribute with inheritance — controls whitespace trimming on text content; `xml:space="default"` overrides back to trimming.
+- New: XML module is now standalone (`[SCL_STANDALONE_MODULE]`) — expanded `enable_copy_move` and `scl2_enum_bitop` macros to remove `basics.hpp` and `enum.hpp` dependencies; removed `bytearray`/`stringlist` forward declarations and `payload()` method. Only depends on standard library.
+- New: Added `doc/xml.md` — dedicated documentation file replacing the inline theory block in the header.
+- New: Added `Type` enum (`Element`, `Text`, `Comment`, `ProcessingInstruction`) with `is_element()`, `is_text()`, `is_comment()`, `is_processing_instruction()` helpers.
+- New: Added `elements()`, `comments()`, `processing_instructions()` generator functions for filtered child iteration.
+- New: Added `create_comment()`, `create_text()`, `create_processing_instruction()` static factory methods.
+- Changed: `deserialize()` now accepts `preserve_whitespace` parameter.
+- Changed: Header comment now references W3C XML 1.0 (Fifth Edition) specification.
+- Fix: XML self-closing tag serialization used `&&` instead of `||` — nodes with children but no attributes/text were incorrectly serialized as self-closing.
+- Fix: XML attribute parsing didn't handle `/` in self-closing tags — `/` was treated as an attribute name.
+- Fix: XML name extraction included `<` character due to using `tag_start` instead of `tag_start + 1`.
+- Build: `cpp_generation` set to `cxx23` (requires `<generator>`).
+
+### v2.2.2
+- New: `condition_parser` module extracted from `condition.cpp` into separate `condition_parser.hpp`/`.cpp` with template-based `ConditionParser<Tokenizer_Type>` supporting `DefaultTokenizer` (prefix `!` NOT, `&|^` operators, `->`/`<-` implication) and `NormalTokenizer` (postfix `'` NOT, word-style bool literals).
+- New: `condition_node::parseNormal()` for parsing expressions in "normal" format.
+- New: Added `condition_parser_inst.cpp` with explicit template instantiations.
+- Fix: `bytearray_view::read<T>()` for trivially copyable types was missing `cursor += sizeof(_T)` — acted as `peek()` instead of `read()`.
+- Fix: Implication evaluation in `logical.hpp` — corrected `Imply_Left`/`Imply_Right` return values; fixed operator mapping (`->` now maps to `Imply_Left` as expected).
+- Fix: Postfix NOT (`A'`) support added in `NormalTokenizer` parse logic.
+- Fix: `condition_parser` postfix NOT handling — moved from `parsePrimary()` to proper tokenizer-level support.
+- Build: `condition_parser.cpp` explicit instantiations moved from `.cpp` to `condition_parser_inst.cpp`.
+
+### v2.2.1
+- New: Streaming API for SHA256 — added `stream_type` inner class for incremental hashing with `update()`/`digest()` pattern.
+- New: Streaming API for AES — added `stream_type` inner classes for `aes_ecb<KeyBits>` and `aes_cbc<KeyBits>` with `update()`/`finalize()`.
+- New: Encryption API concepts (`encryption_api.hpp`) — `has_streamed_encryption`, `encrypt_stream<T>()`, `decrypt_stream<T>()`.
+- New: Hashing API concepts (`hash_api.hpp`) — `has_streamed_hash`, `hash_stream<T>()`.
+- New: `generic_buffer_size<T>()` helper in `apibase.hpp`.
+- New: Added `scl2::tri_state` struct (replaced `enum class`).
+- New: API reference documentation (`doc/api_reference.md`) in English and Chinese.
+- Changed: `scl2::sha256` stream interface refined with `result_size`/`block_size` constants.
+- Build: Bumped version to 2.2.1.
+
+### v2.1.5
+- New: AES-128/192/256 encryption module (`aes.hpp`/`aes.cpp`) — template-based `aes_ecb<KeyBits>` and `aes_cbc<KeyBits>` with ECB/CBC modes, PKCS7 padding, static and instance API, FIPS-197 test vectors.
+- New: AES module documentation (`doc/aes.md`) with IV handling examples.
+- Build: Added `aes` library target to CMake.
+
+### v2.1.4
+- Fix: `logc` updated to use new color type system; `LogLevel` signedness corrected.
+- Fix: Style string documentation examples corrected to use single-char attributes.
+
+### v2.1.3
+- New: `logt` per-channel filter support with `LogLevel::Inherit` — each channel can now have its own filter level, inheriting from parent by default.
+
+### v2.1.2
+- New: ANSI IO module (`ansiio.hpp`/`ansiio.cpp`) complete redesign — color type system with `text_style`, `style_to_sgr()`, `make_style()`, `compile_style()`, `apply_style()`, `hyperlink()`, `file_link()`, `web_link()`.
+- New: Color type enhancements — `operator bool()`, constexpr fixes, builtin colors changed to `inline const` with `SCL2_NO_BUILTIN_COLORS` guard.
+- New: Named colors module (`named_colors.hpp`, renamed from `color_library.hpp`) in `scl2::named_colors` namespace with 200+ CSS named colors.
+- New: ANSI and color module documentation (`doc/ansi.md`, `doc/color.md`).
+- Fix: `enum.hpp` logic issues resolved.
+- Fix: JSON and YAML module improvements.
+- Docs: Updated README with module links.
+
+### v2.1.1
+- New: YAML 1.2 parser with streaming support (`yaml.hpp`/`yaml.cpp`) — standalone module.
+- New: JSON module improvements — parser fix, exporter fix, JSON Pointer (RFC 6901) support, format documentation.
+- New: JSON standalone module header (`[SCL_STANDALONE_MODULE]`).
+- New: filesystem module improvements, datauri module with compare support.
+- New: `logt_guard` for graceful exit.
+- New: Logical module rewrite and condition module enhancement — new `condition_simplifier` class using QM's method.
+- New: Enum module improvements with class helper macros.
+- New: Engineering suffixes (`_` prefix) to avoid compilation warnings.
+- New: `secondaryCommand` support in arguments module.
+- Fix: bytearray `append(bool)` handled as 4 bytes; string read/write cursor management.
+- Fix: Base64 chunking issue.
+- Build: Network module separated into individual targets; network core/dns/tcp/udp/http as separate import interfaces.
+- Docs: Updated README, JSON docs, logt EN API guide synced with ZH docs.
 
 ### v1.22.7
 - New: console module for better console output control, including several helper classes
