@@ -262,7 +262,7 @@ std::string node::deserialize(const std::string &node_text)
     }
 
     // first, check if there IS a name
-    size_t name_start = working_text.find_first_not_of(" \t\r\n", 1);
+    size_t name_start = working_text.find_first_not_of(" \t\r\n", tag_start + 1);
     if(name_start == std::string::npos || name_start >= end_pos) {
         throw parsing_error("Node name is missing");
     }
@@ -286,7 +286,7 @@ std::string node::deserialize(const std::string &node_text)
             char ch;
             do {
                 attr_stream.get(ch);
-                if(attr_stream.eof() || ch == '>') {
+                if(attr_stream.eof() || ch == '>' || ch == '/') {
                     return; // exit the lambda
                 }
             } while(ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n');
@@ -301,11 +301,7 @@ std::string node::deserialize(const std::string &node_text)
                 throw parsing_error("Attribute name is missing");
             }
 
-            // read '='
-            attr_stream.get(ch);
-            if(ch != '=') {
-                throw parsing_error("Expected '=' after attribute name");
-            }
+            // '=' was consumed by getline(..., '=') above, no need to read it again
 
             // read attribute value
             char quote_char;
@@ -458,8 +454,8 @@ std::string node::serialize(int alignDepth) const
 {
     std::string result;
     
-    // if any attributes or text content exists, ignore self_closing setting
-    bool full_tag = (!attributes.empty() && hasTextContent() && (children.has_value() || !children->empty())) ? true : isSelfClosing();
+    // if any attributes, text content or children exist, ignore self_closing setting
+    bool full_tag = !attributes.empty() || hasTextContent() || hasChildren() ? true : isSelfClosing();
 
     result = makeTab(alignDepth) + "<" + fullQualifiedName(); // by default explicitly use qualified name
 
@@ -552,7 +548,12 @@ const std::vector<node> &node::getChildNodes() const
 {
     // note: this is not safe, returning reference to a temporary object.
     ///TODO: fix this by changing the function signature.
-    return children.value_or(std::vector<node>());
+    if (children.has_value()) {
+        return children.value();
+    } else {
+        static const std::vector<node> empty_children;
+        return empty_children;
+    }
 }
 
 void node::addChildNode(node &&child)
