@@ -39,6 +39,7 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **`Base64`** - Base64 encoding and decoding utilities
 - **[`bytearray`](doc/bytearray.md)** - Binary data management and serialization
 - **[`sha256`](doc/sha256.md)** - SHA-256 cryptographic hash implementation
+- **[`crc32`](doc/crc32.md)** - CRC-32 checksum implementation
 - **[`hmac`](doc/hmac.md)** - Header-only HMAC implementation based on hash providers
 - **[`logt`](doc/logt.md)** - High-performance asynchronous logging
 - **[`logc`](doc/logc.md)** - Colored console output for logt
@@ -98,7 +99,7 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(your_target SharedCppLib2::basic)
 ```
 
-**Available targets:** `variant`, `logd`, `logf`, `sha256`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
+**Available targets:** `variant`, `logd`, `logf`, `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
 
 ### 4. Code Example
 ```cpp

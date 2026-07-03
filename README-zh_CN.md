@@ -38,6 +38,7 @@ Other languages: [English](README.md)
 - **`Base64`** - Base64 编码和解码工具
 - **[`bytearray`](doc/zh_CN/bytearray.md)** - 二进制数据管理和序列化
 - **[`sha256`](doc/zh_CN/sha256.md)** - SHA-256 加密哈希实现
+- **[`crc32`](doc/zh_CN/crc32.md)** - CRC-32 校验和实现
 - **[`hmac`](doc/zh_CN/hmac.md)** - 基于哈希提供者的 Header-only HMAC 实现
 - **[`logt`](doc/zh_CN/logt.md)** - 高性能异步日志记录
 - **[`logc`](doc/zh_CN/logc.md)** - 为 logt 提供彩色控制台输出
@@ -100,7 +101,7 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(您的目标 SharedCppLib2::basic)
 ```
 
-**可用目标：** `variant`, `logd`, `logf`, `sha256`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
+**可用目标：** `variant`, `logd`, `logf`, `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
 
 上述列表可能不完整，以顶部列表为准。
 
