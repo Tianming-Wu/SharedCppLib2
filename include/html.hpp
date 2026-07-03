@@ -5,7 +5,11 @@
     Warning:
         When deserializing from text, the class actually ignores any node
         that is not <head> or <body> under the root <html> node.
-        So if you have comments or other nodes there, they will be lost. 
+        So if you have comments or other nodes there, they will be lost.
+
+        This library is only designed to maintain its functional stucture,
+        not keeping the format of the original text. Comments are not saved
+        and might be lost. In brief, this is only for generating or parsing.
 
     This module is derived from xml module.
     You don't need to link xml module separately when using html module.

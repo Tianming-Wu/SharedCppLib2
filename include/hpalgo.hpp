@@ -50,6 +50,7 @@ hpint sqrt(const hpint& _ref) {
 }
 
 /// @brief 保留特定位数，小数点坐标为0 
+///TODO: 修改让它支持保留大于 10^0 的级别。
 hpfloat floor(const hpfloat& _ref, const int32_t lev) {
     if (lev > 0) throw std::runtime_error("hpfloat::floor: level must be non-positive");
     hpint integer = _ref.integer;

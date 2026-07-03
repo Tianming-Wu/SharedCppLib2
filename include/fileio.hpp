@@ -79,6 +79,7 @@ private:
 // This is the truly powerful part of SharedCppLib2's new generic api.
 // A single line i/o! How cool is that!
 
+// Genaric Single-line Call for Types that support generic_serialize protocol.
 template<typename T>
 requires ::scl2::has_generic_serialize<T>
 size_t writeFile(const fs::path& path, const T& data) {
@@ -91,6 +92,7 @@ size_t writeFile(const fs::path& path, const T& data) {
     return sei.size();
 }
 
+// Generic Single-line Call for Types that support generic_dump protocol.
 template<typename T>
 requires ::scl2::has_generic_dump<T>
 size_t writeFile(const fs::path& path, const T& data) {
@@ -103,6 +105,7 @@ size_t writeFile(const fs::path& path, const T& data) {
     return ba.size();
 }
 
+// Single-line Call for writing a bytearray to file.
 size_t writeFile(const fs::path& path, const std::bytearray& data);
 
 template<typename T>
@@ -117,6 +120,11 @@ T readAndLoad(const fs::path& path) {
 }
 
 std::bytearray readFile(const fs::path& path);
+
+// Syncing system:
+// automatically syncs the data in memory and the file on disk based on timestamps.
+// Warning: This is not thread-safe, nor process-safe. You need to implement your own locking
+// machanism if you want to use this in a multi-threaded or multi-process environment.
 
 enum class sync_action : uint8_t { WriteFile, LoadFile, NoAction, Error };
 using file_timestamp = std::filesystem::file_time_type;

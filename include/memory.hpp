@@ -29,11 +29,11 @@
 #include "bytearray.hpp"
 #include "typemask.hpp"
 
-namespace scl {
+namespace scl2 {
 
-typedef int offset_t; // offsets should be signed integers, but which size?
-using ptr_t = ::ptr_t;
-using protect_t = ::dword_t;
+typedef size_t offset_t; // offsets should be signed integers, but which size?
+using ptr_t = scl2::ptr_t;
+using protect_t = scl2::dword_t;
 
 
 template <typename T>
@@ -81,8 +81,8 @@ public:
     enable_copy_move(MemoryPattern)
 
     constexpr size_t size() const;
-    std::optional<byte_t> at(size_t index) const;
-    std::optional<byte_t>& operator[](size_t index);
+    std::optional<std::byte> at(size_t index) const;
+    std::optional<std::byte>& operator[](size_t index);
 
 private:
     friend class PatternScanner;
