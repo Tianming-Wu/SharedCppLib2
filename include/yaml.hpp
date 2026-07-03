@@ -57,12 +57,13 @@ struct alias_ref {
 struct features {
     bool comments      = true;   // # line comments
     bool multi_line    = true;   // | and > scalar blocks
-    bool anchors       = false;  // &anchor and *alias (deferred — needs second pass)
+    bool anchors       = true;   // &anchor and *alias
     bool tags          = false;  // !!type tags
     bool multi_doc     = false;  // --- / ... document separators
 };
 
 class value {
+    friend class parser;
 public:
     value() = default;
 
@@ -97,6 +98,15 @@ public:
     bool is_array() const;
     bool is_object() const;
     bool is_alias() const;
+    const std::string& alias_name() const;
+
+    // Resolve-aware checks: true if is_*(), is_alias()→target, or is_null() (auto-convert)
+    bool can_be_array() const;
+    bool can_be_object() const;
+    bool can_be_string() const;
+    bool can_be_bool() const;
+    bool can_be_int() const;
+    bool can_be_double() const;
 
     nullptr_t as_null() const;
     bool as_bool() const;
@@ -153,6 +163,11 @@ public:
 
     bool operator==(const value& other) const;
     bool operator!=(const value& other) const { return !(*this == other); }
+
+    // alias
+
+    const value& resolve() const;
+    value& resolve();
 
 private:
     std::variant<
@@ -237,18 +252,20 @@ private:
         bool        is_mapping;   // true=mapping, false=sequence
         std::string pending_key;  // current key for addValue (inline values)
         std::string parent_key;   // key in parent frame that this frame fills (pop writes back)
+        std::string anchor;       // &anchor for the next value added to this frame
     };
     std::vector<indent_frame> _stack;
 
-    // ---- Anchor table (deferred) ----
-    // std::map<std::string, value*> _anchors;
+    // ---- Anchor table ----
+    std::map<std::string, value*> _anchors;
+    std::vector<alias_ref*> _pending_aliases;
 
     // ---- Core loop ----
     bool readLine(std::istream& input);
     void parseLine();
 
     // ---- Dispatching (extend here for new features) ----
-    void dispatch_scalar(const std::string& text);
+    void dispatch_scalar(std::string text);
     void dispatch_mapping_key(const std::string& key);
     void dispatch_sequence_entry();
 

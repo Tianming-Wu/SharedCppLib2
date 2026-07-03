@@ -10,7 +10,6 @@
 
 namespace scl2::yaml {
 
-
 value::value(std::nullptr_t) : _value(nullptr) {}
 value::value(bool b) : _value(b) {}
 value::value(int64_t i) : _value(i) {}
@@ -30,37 +29,54 @@ bool value::is_string() const { return std::holds_alternative<std::string>(_valu
 bool value::is_array() const { return std::holds_alternative<std::vector<value>>(_value); }
 bool value::is_object() const { return std::holds_alternative<std::map<std::string, value>>(_value); }
 bool value::is_alias() const { return std::holds_alternative<alias_ref>(_value); }
+const std::string& value::alias_name() const { return std::get<alias_ref>(_value).name; }
+
+bool value::can_be_array() const { if (is_alias()) return resolve().can_be_array(); return is_null() || is_array(); }
+bool value::can_be_object() const { if (is_alias()) return resolve().can_be_object(); return is_null() || is_object(); }
+bool value::can_be_string() const { if (is_alias()) return resolve().can_be_string(); return is_null() || is_string(); }
+bool value::can_be_bool() const { if (is_alias()) return resolve().can_be_bool(); return is_null() || is_bool(); }
+bool value::can_be_int() const { if (is_alias()) return resolve().can_be_int(); return is_null() || is_int(); }
+bool value::can_be_double() const { if (is_alias()) return resolve().can_be_double(); return is_null() || is_double(); }
 
 nullptr_t value::as_null() const { return nullptr; }
-bool value::as_bool() const { return std::get<bool>(_value); }
-int64_t value::as_int() const { return std::get<int64_t>(_value); }
-double value::as_double() const { return std::get<double>(_value); }
-const std::string& value::as_string() const { return std::get<std::string>(_value); }
-const std::vector<value>& value::as_array() const { return std::get<std::vector<value>>(_value); }
-const std::map<std::string, value>& value::as_object() const { return std::get<std::map<std::string, value>>(_value); }
+bool value::as_bool() const { if (is_alias()) return resolve().as_bool(); return std::get<bool>(_value); }
+int64_t value::as_int() const { if (is_alias()) return resolve().as_int(); return std::get<int64_t>(_value); }
+double value::as_double() const { if (is_alias()) return resolve().as_double(); return std::get<double>(_value); }
+const std::string& value::as_string() const { if (is_alias()) return resolve().as_string(); return std::get<std::string>(_value); }
+const std::vector<value>& value::as_array() const { if (is_alias()) return resolve().as_array(); return std::get<std::vector<value>>(_value); }
+const std::map<std::string, value>& value::as_object() const { if (is_alias()) return resolve().as_object(); return std::get<std::map<std::string, value>>(_value); }
 
-nullptr_t& value::as_null() { return std::get<std::nullptr_t>(_value); }
+nullptr_t& value::as_null() {
+    if (is_alias()) return resolve().as_null();
+    return std::get<std::nullptr_t>(_value);
+}
 bool& value::as_bool() {
+    if (is_alias()) return resolve().as_bool();
     if (is_null()) _value = false;
     return std::get<bool>(_value);
 }
 int64_t& value::as_int() {
+    if (is_alias()) return resolve().as_int();
     if (is_null()) _value = int64_t{0};
     return std::get<int64_t>(_value);
 }
 double& value::as_double() {
+    if (is_alias()) return resolve().as_double();
     if (is_null()) _value = double{0};
     return std::get<double>(_value);
 }
 std::string& value::as_string() {
+    if (is_alias()) return resolve().as_string();
     if (is_null()) _value = std::string{};
     return std::get<std::string>(_value);
 }
 std::vector<value>& value::as_array() {
+    if (is_alias()) return resolve().as_array();
     if (is_null()) _value = std::vector<value>();
     return std::get<std::vector<value>>(_value);
 }
 std::map<std::string, value>& value::as_object() {
+    if (is_alias()) return resolve().as_object();
     if (is_null()) _value = std::map<std::string, value>();
     return std::get<std::map<std::string, value>>(_value);
 }
@@ -82,6 +98,7 @@ std::generator<const value &> value::array_elements() const
 
 value &value::operator[](size_t index)
 {
+    if (is_alias()) return resolve().operator[](index);
     if (is_null()) _value = std::vector<value>();
     if (!is_array())
         throw yaml_exception("value::operator[]: not an array");
@@ -92,6 +109,7 @@ value &value::operator[](size_t index)
 
 const value &value::operator[](size_t index) const
 {
+    if (is_alias()) return resolve().operator[](index);
     if (!is_array())
         throw yaml_exception("value::operator[]: not an array");
     return std::get<std::vector<value>>(_value)[index];
@@ -104,17 +122,38 @@ const value &value::at(size_t index) const
 
 size_t value::array_size() const
 {
+    if (is_alias()) return resolve().array_size();
     if (!is_array())
         throw yaml_exception("value::array_size: not an array");
     return std::get<std::vector<value>>(_value).size();
 }
 
+const value& value::resolve() const {
+    if (!is_alias())
+        throw yaml_exception("internal: resolve() called on non-alias value");
+    const auto& ref = std::get<alias_ref>(_value);
+    if (!ref.target)
+        throw yaml_exception("unresolved alias: *" + ref.name);
+    return *ref.target;
+}
+
+value& value::resolve() {
+    if (!is_alias())
+        throw yaml_exception("internal: resolve() called on non-alias value");
+    auto& ref = std::get<alias_ref>(_value);
+    if (!ref.target)
+        throw yaml_exception("unresolved alias: *" + ref.name);
+    return *ref.target;
+}
+
 void value::push_back(const value& v)
 {
+    if (is_alias()) { resolve().push_back(v); return; }
     as_array().push_back(v);
 }
 void value::push_back(value&& v)
 {
+    if (is_alias()) { resolve().push_back(std::move(v)); return; }
     as_array().push_back(std::move(v));
 }
 
@@ -132,6 +171,7 @@ std::generator<std::pair<const std::string &, const value &>> value::object_memb
 
 bool value::has_key(const std::string &key) const
 {
+    if (is_alias()) return resolve().has_key(key);
     if (!is_object())
         throw yaml_exception("value::has_key: not an object");
     return std::get<std::map<std::string, value>>(_value).find(key) != std::get<std::map<std::string, value>>(_value).end();
@@ -139,6 +179,7 @@ bool value::has_key(const std::string &key) const
 
 const value &value::operator[](const std::string &key) const
 {
+    if (is_alias()) return resolve().operator[](key);
     if (!is_object())
         throw yaml_exception("value::operator[]: not an object");
     return std::get<std::map<std::string, value>>(_value).at(key);
@@ -146,6 +187,7 @@ const value &value::operator[](const std::string &key) const
 
 value &value::operator[](const std::string &key)
 {
+    if (is_alias()) return resolve().operator[](key);
     if (is_null()) _value = std::map<std::string, value>();
     if (!is_object())
         throw yaml_exception("value::operator[]: not an object");
@@ -159,6 +201,7 @@ const value &value::at(const std::string &key) const
 
 size_t value::object_size() const
 {
+    if (is_alias()) return resolve().object_size();
     if (!is_object())
         throw yaml_exception("value::object_size: not an object");
     return std::get<std::map<std::string, value>>(_value).size();
@@ -234,6 +277,8 @@ bool parser::parseNext(std::istream &input, document &out)
 
     // Push root frame
     _stack.clear();
+    _anchors.clear();
+    _pending_aliases.clear();
     _stack.push_back({0, value(), false});
 
     while (readLine(input)) {
@@ -243,6 +288,18 @@ bool parser::parseNext(std::istream &input, document &out)
     // Pop all remaining frames so parent containers receive their children
     while (_stack.size() > 1) {
         popIndent();
+    }
+
+    // Resolve anchor aliases
+    if (feat.anchors) {
+        for (auto* alias : _pending_aliases) {
+            auto it = _anchors.find(alias->name);
+            if (it != _anchors.end()) {
+                alias->target = it->second;
+            } else if (!_anchors.empty()) {
+                throw yaml_exception("unresolved alias: *" + alias->name);
+            }
+        }
     }
 
     if (!_stack.empty()) {
@@ -361,8 +418,36 @@ void parser::parseLine()
     dispatch_scalar(_line);
 }
 
-void parser::dispatch_scalar(const std::string &text)
+void parser::dispatch_scalar(std::string text)
 {
+    // Handle *alias
+    if (feat.anchors && text.size() >= 2 && text[0] == '*' && text[1] != ' ') {
+        value v;
+        v._value = alias_ref{text.substr(1), nullptr};
+        addValue(std::move(v));
+        return;
+    }
+
+    // Handle &anchor prefix on scalars
+    if (text.size() >= 2 && text[0] == '&') {
+        if (!feat.anchors) {
+            // anchors disabled — treat as plain string, fall through to type detection
+        } else {
+            size_t space = text.find(' ');
+            if (space != std::string::npos) {
+                _stack.back().anchor = text.substr(1, space - 1);
+                text = text.substr(space + 1);
+                size_t s = 0;
+                while (s < text.size() && std::isspace(text[s])) ++s;
+                text = text.substr(s);
+            } else {
+                _stack.back().anchor = text.substr(1);
+                addValue(value(nullptr));
+                return;
+            }
+        }
+    }
+
     // Quoted text is always a string - skip type detection entirely
     if (text.size() >= 2) {
         char first = text.front(), last = text.back();
@@ -634,14 +719,38 @@ value &parser::currentContainer()
 
 void parser::addValue(value &&v)
 {
+    bool is_alias_val = v.is_alias(); // capture before move
+
     auto& frame = _stack.back();
     if (frame.container.is_null()) {
-        // First value at this level - store directly
         frame.container = std::move(v);
     } else if (frame.is_mapping) {
         frame.container.as_object()[frame.pending_key] = std::move(v);
     } else {
         frame.container.as_array().push_back(std::move(v));
+    }
+
+    // Track alias for deferred resolution
+    if (feat.anchors && is_alias_val) {
+        value* alias_val = nullptr;
+        if (frame.is_mapping)
+            alias_val = &frame.container.as_object()[frame.pending_key];
+        else
+            alias_val = &frame.container.as_array().back();
+        _pending_aliases.push_back(&alias_val->as_alias());
+    }
+
+    // Register anchor if present
+    if (feat.anchors && !frame.anchor.empty()) {
+        value* target = nullptr;
+        if (frame.is_mapping)
+            target = &frame.container.as_object()[frame.pending_key];
+        else if (!frame.container.as_array().empty())
+            target = &frame.container.as_array().back();
+        if (target) {
+            _anchors[frame.anchor] = target;
+            frame.anchor.clear();
+        }
     }
 }
 
@@ -696,6 +805,12 @@ std::string yaml_exporter::toString(const value& v, config cfg)
 
 void yaml_exporter::writeValue(const value& v, int level)
 {
+    // Aliases: write *anchor_name
+    if (v.is_alias()) {
+        _result += "*";
+        _result += v.alias_name();
+        return;
+    }
     if (v.is_null() || v.is_bool() || v.is_int() || v.is_double() || v.is_string())
         writeScalar(v);
     else if (v.is_array())

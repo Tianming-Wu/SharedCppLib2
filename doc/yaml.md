@@ -26,7 +26,7 @@ target_link_libraries(target SharedCppLib2::yaml)
 `yaml` provides YAML 1.2 parsing for SharedCppLib2. It supports a streaming, line-oriented parser with feature flags for incremental adoption of the full YAML specification.
 
 > [!WARNING]
-> This module is in early development (v0.1.0). Currently implements block-style mappings and sequences, scalars, comments, and double-quoted escapes. Flow style (`{}`, `[]`), anchors (`&`, `*`), tags (`!!`), and multi-document streams are not yet supported but are designed into the feature flag system.
+> This module is in early development (v0.1.0). Currently implements block-style mappings and sequences, scalars, comments, anchors (`&`, `*`), and double-quoted escapes. Flow style (`{}`, `[]`), tags (`!!`), and multi-document streams are not yet supported but are designed into the feature flag system.
 >
 
 
@@ -98,7 +98,7 @@ Control which YAML features the parser accepts:
 ```cpp
 scl2::yaml::features feat;
 feat.comments   = false;  // disable # comments
-feat.anchors    = true;   // enable &/* (when implemented)
+feat.anchors    = false;  // disable &/*
 
 auto doc = scl2::yaml::document::fromString(input, feat);
 ```
@@ -185,7 +185,7 @@ Controls which YAML features the parser accepts. Set directly on a `parser` inst
 struct features {
     bool comments   = true;   // # line comments
     bool multi_line = true;   // | and > scalar blocks (not yet implemented)
-    bool anchors    = false;  // &anchor and *alias (not yet implemented)
+    bool anchors    = true;   // &anchor and *alias
     bool tags       = false;  // !!type tags (not yet implemented)
     bool multi_doc  = false;  // --- / ... document separators (not yet implemented)
 };

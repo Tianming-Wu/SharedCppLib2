@@ -26,7 +26,7 @@ target_link_libraries(target SharedCppLib2::yaml)
 `yaml` 为 SharedCppLib2 提供了 YAML 1.2 解析功能。它支持基于行的流式解析器，并通过特性标志逐步引入完整的 YAML 规范。
 
 > [!WARNING]
-> 该模块处于早期开发阶段（v0.1.0）。目前实现了块式映射和序列、标量、注释以及双引号转义。流式风格（`{}`、`[]`）、锚点（`&`、`*`）、标签（`!!`）和多文档流尚未支持，但已在特性标志系统中预留了设计。
+> 该模块处于早期开发阶段（v0.1.0）。目前实现了块式映射和序列、标量、注释、锚点（`&`、`*`）以及双引号转义。流式风格（`{}`、`[]`）、标签（`!!`）和多文档流尚未支持，但已在特性标志系统中预留了设计。
 >
 
 
@@ -98,7 +98,7 @@ std::string yaml = doc.toString(cfg);
 ```cpp
 scl2::yaml::features feat;
 feat.comments   = false;  // 禁用 # 注释
-feat.anchors    = true;   // 启用 &/*（待实现）
+feat.anchors    = false;  // 禁用 &/*
 
 auto doc = scl2::yaml::document::fromString(input, feat);
 ```
@@ -185,7 +185,7 @@ static document fromString(const std::string& input, features feat = {});
 struct features {
     bool comments   = true;   // # 行注释
     bool multi_line = true;   // | 和 > 标量块（尚未实现）
-    bool anchors    = false;  // &anchor 和 *alias（尚未实现）
+    bool anchors    = true;   // &anchor 和 *alias
     bool tags       = false;  // !!type 标签（尚未实现）
     bool multi_doc  = false;  // --- / ... 文档分隔符（尚未实现）
 };

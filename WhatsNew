@@ -1,5 +1,9 @@
 # Changelog
 
+### v2.2.4
+- New: YAML module now supports anchors (`&`) and aliases (`*`) — `is_alias()`, `alias_name()`, `resolve()` for alias following, `_anchors` table for anchor registration, and alias-aware exporter output.
+- Changed: YAML `features::anchors` now defaults to `true`.
+
 ### v2.2.3
 - New: XML module now supports CDATA sections (`<![CDATA[...]]>`) — parse and serialize as text nodes.
 - New: XML module now supports Processing Instructions (`<?target data?>`) — new `Type::ProcessingInstruction` node type with `create_processing_instruction()`, `pi_target()`, `pi_data()` accessors, and `processing_instructions()` generator.
