@@ -73,6 +73,7 @@ add_library(basic STATIC src/bytearray.cpp src/bytearray_base64.cpp src/ansiio.c
 add_library(logd STATIC src/logd.cpp)
 add_library(logf STATIC src/logf.cpp)
 add_library(sha256 STATIC src/sha256.cpp)
+add_library(crc32 STATIC src/crc32.cpp)
 add_library(indexer STATIC src/indexer.cpp)
 add_library(regexfilter STATIC src/regexfilter.cpp)
 add_library(logt STATIC src/logt.cpp)
@@ -138,7 +139,7 @@ target_link_libraries(basic PRIVATE Base64)
 target_link_libraries(datauri PUBLIC basic Base64)
 
 # basic 库依赖关系
-foreach(target regexfilter logc sha256 arguments ini abstract xml keydb condition datauri json yaml aes)
+foreach(target regexfilter logc sha256 crc32 arguments ini abstract xml keydb condition datauri json yaml aes)
     target_link_libraries(${target} PUBLIC basic)
 endforeach()
 
@@ -153,7 +154,7 @@ target_compile_definitions(json PUBLIC
 
 # 库列表
 set(TARGET_LIST
-    variant logd logf sha256 basic indexer regexfilter
+    variant logd logf sha256 crc32 basic indexer regexfilter
     logt logc Base64 platform arguments ini abstract xml debug stream
     console aes keydb types condition filesystem datauri json yaml
     network_core network_dns network_tcp network_udp network_http
