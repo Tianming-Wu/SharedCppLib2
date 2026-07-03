@@ -14,6 +14,7 @@
 
     [SCL_STANDALONE_MODULE]
     version: 1.6.1
+    cpp_generation: cxx17 - cxx23
 */
 
 #pragma once

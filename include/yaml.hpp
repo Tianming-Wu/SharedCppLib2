@@ -40,6 +40,7 @@ enum class type : uint8_t {
 class value;
 class document;
 class parser;
+class yaml_exporter;
 
 class yaml_exception : public std::runtime_error {
 public:
@@ -167,6 +168,30 @@ private:
 };
 
 
+class yaml_exporter {
+public:
+    struct config {
+        int  indent = 2;      // spaces per indent level
+        bool compact = false; // minimal whitespace between top-level items
+    };
+
+    std::string toString(const value& v, config cfg = {});
+
+private:
+    void writeValue(const value& v, int level);
+    void writeMapping(const value& v, int level);
+    void writeSequence(const value& v, int level);
+    void writeScalar(const value& v);
+
+    bool needsQuoting(const std::string& s);
+    std::string escapeDoubleQuoted(const std::string& s);
+    std::string indentStr(int level);
+
+    config _cfg;
+    std::string _result;
+};
+
+
 class document : public value {
     friend class parser;
 public:
@@ -176,6 +201,8 @@ public:
 
     static document fromStream(std::istream& input, features feat = {});
     static document fromString(const std::string& input, features feat = {});
+
+    std::string toString(yaml_exporter::config cfg = {}) const;
 
 private:
     std::map<std::string, value*> _anchors;  // anchor table (deferred)
@@ -240,8 +267,6 @@ private:
     void addValue(value&& v);
     std::string stripComments(const std::string& line) const;
 };
-
-
 
 
 } // namespace scl2::yaml

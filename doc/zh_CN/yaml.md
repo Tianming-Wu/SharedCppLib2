@@ -28,7 +28,7 @@ target_link_libraries(target SharedCppLib2::yaml)
 > [!WARNING]
 > 该模块处于早期开发阶段（v0.1.0）。目前实现了块式映射和序列、标量、注释以及双引号转义。流式风格（`{}`、`[]`）、锚点（`&`、`*`）、标签（`!!`）和多文档流尚未支持，但已在特性标志系统中预留了设计。
 >
-> **该模块仅支持读取。** 目前没有导出器或序列化支持。可以将 YAML 解析为 `document` 树进行读取，但无法写入 YAML 输出。
+
 
 ### 独立导入
 
@@ -67,6 +67,28 @@ bool       is_obj  = doc["scores"].is_array();    // true
 
 std::ifstream file("config.yaml");
 auto doc = scl2::yaml::document::fromStream(file);
+```
+
+### 构建与导出
+
+`document` 类提供了内置的导出方法：
+
+```cpp
+scl2::yaml::document doc;
+doc["name"] = scl2::yaml::value(std::string("Alice"));
+doc["age"]  = scl2::yaml::value(static_cast<int64_t>(30));
+
+std::string yaml = doc.toString();  // 块式 YAML 输出
+```
+
+通过 `yaml_exporter::config` 自定义输出：
+
+```cpp
+scl2::yaml::yaml_exporter::config cfg;
+cfg.indent = 4;        // 每级缩进 4 个空格（默认：2）
+cfg.compact = true;    // 顶层项之间最小空白
+
+std::string yaml = doc.toString(cfg);
 ```
 
 ### 特性标志
@@ -166,6 +188,22 @@ struct features {
     bool anchors    = false;  // &anchor 和 *alias（尚未实现）
     bool tags       = false;  // !!type 标签（尚未实现）
     bool multi_doc  = false;  // --- / ... 文档分隔符（尚未实现）
+};
+```
+
+### yaml_exporter
+
+控制 YAML 输出格式。
+
+```cpp
+class yaml_exporter {
+public:
+    struct config {
+        int  indent = 2;      // 每级缩进空格数
+        bool compact = false; // 顶层项之间最小空白
+    };
+
+    std::string toString(const value& v, config cfg = {});
 };
 ```
 

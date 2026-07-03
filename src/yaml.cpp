@@ -262,6 +262,11 @@ document document::fromString(const std::string& input, features feat)
     return parser::fromString(input, feat);
 }
 
+std::string document::toString(yaml_exporter::config cfg) const
+{
+    return yaml_exporter().toString(*this, cfg);
+}
+
 bool parser::readLine(std::istream &input)
 {
     _line_num += 1;
@@ -675,6 +680,151 @@ std::string parser::stripComments(const std::string &line) const
         }
     }
     return result;
+}
+
+// ============================================================
+//  yaml_exporter
+// ============================================================
+
+std::string yaml_exporter::toString(const value& v, config cfg)
+{
+    _cfg = cfg;
+    _result.clear();
+    writeValue(v, 0);
+    return _result;
+}
+
+void yaml_exporter::writeValue(const value& v, int level)
+{
+    if (v.is_null() || v.is_bool() || v.is_int() || v.is_double() || v.is_string())
+        writeScalar(v);
+    else if (v.is_array())
+        writeSequence(v, level);
+    else if (v.is_object())
+        writeMapping(v, level);
+    else
+        _result += "null";
+}
+
+void yaml_exporter::writeMapping(const value& v, int level)
+{
+    const auto& map = v.as_object();
+    if (map.empty()) {
+        _result += "{}";
+        return;
+    }
+    bool first = true;
+    for (const auto& [key, val] : map) {
+        if (!first) {
+            _result += "\n";
+            _result += indentStr(level);
+        }
+        first = false;
+
+        // Key
+        if (needsQuoting(key))
+            _result += "\"" + escapeDoubleQuoted(key) + "\"";
+        else
+            _result += key;
+        _result += ":";
+
+        // Value
+        if (val.is_null() || val.is_bool() || val.is_int() || val.is_double() || val.is_string()) {
+            _result += " ";
+            writeScalar(val);
+        } else {
+            _result += "\n";
+            _result += indentStr(level + 1);
+            writeValue(val, level + 1);
+        }
+    }
+}
+
+void yaml_exporter::writeSequence(const value& v, int level)
+{
+    const auto& arr = v.as_array();
+    if (arr.empty()) {
+        _result += "[]";
+        return;
+    }
+    bool first = true;
+    for (const auto& elem : arr) {
+        if (!first) {
+            _result += "\n";
+            _result += indentStr(level);
+        }
+        first = false;
+
+        _result += "- ";
+        if (elem.is_null() || elem.is_bool() || elem.is_int() || elem.is_double() || elem.is_string()) {
+            writeScalar(elem);
+        } else {
+            _result += "\n";
+            _result += indentStr(level + 1);
+            writeValue(elem, level + 1);
+        }
+    }
+}
+
+void yaml_exporter::writeScalar(const value& v)
+{
+    if (v.is_null()) {
+        _result += "null";
+    } else if (v.is_bool()) {
+        _result += v.as_bool() ? "true" : "false";
+    } else if (v.is_int()) {
+        _result += std::to_string(v.as_int());
+    } else if (v.is_double()) {
+        _result += std::to_string(v.as_double());
+    } else if (v.is_string()) {
+        const auto& s = v.as_string();
+        if (needsQuoting(s))
+            _result += "\"" + escapeDoubleQuoted(s) + "\"";
+        else
+            _result += s;
+    } else {
+        _result += "null";
+    }
+}
+
+bool yaml_exporter::needsQuoting(const std::string& s)
+{
+    if (s.empty()) return true;
+    // Check for leading/trailing whitespace
+    if (std::isspace(static_cast<unsigned char>(s.front())) ||
+        std::isspace(static_cast<unsigned char>(s.back())))
+        return true;
+    // Check for YAML special characters and patterns
+    for (size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if (c == ':' || c == '#' || c == '{' || c == '}' || c == '[' || c == ']' ||
+            c == ',' || c == '&' || c == '*' || c == '?' || c == '|' || c == '>' ||
+            c == '-' || c == '!' || c == '%' || c == '@' || c == '`')
+            return true;
+    }
+    // Check if it looks like a YAML keyword or number
+    return false;  // plain scalars pass through
+}
+
+std::string yaml_exporter::escapeDoubleQuoted(const std::string& s)
+{
+    std::string r;
+    for (char c : s) {
+        switch (c) {
+            case '"':  r += "\\\""; break;
+            case '\\': r += "\\\\"; break;
+            case '\n': r += "\\n";  break;
+            case '\t': r += "\\t";  break;
+            case '\r': r += "\\r";  break;
+            default:   r += c;
+        }
+    }
+    return r;
+}
+
+std::string yaml_exporter::indentStr(int level)
+{
+    return std::string(level * _cfg.indent, ' ');
 }
 
 } // namespace scl2::yaml

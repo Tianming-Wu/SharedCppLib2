@@ -28,7 +28,7 @@ target_link_libraries(target SharedCppLib2::yaml)
 > [!WARNING]
 > This module is in early development (v0.1.0). Currently implements block-style mappings and sequences, scalars, comments, and double-quoted escapes. Flow style (`{}`, `[]`), anchors (`&`, `*`), tags (`!!`), and multi-document streams are not yet supported but are designed into the feature flag system.
 >
-> **This module is read-only.** There is no exporter or serialization support yet. It can parse YAML into a `document` tree for reading, but cannot write YAML output.
+
 
 ### Standalone Import
 
@@ -67,6 +67,28 @@ bool       is_obj  = doc["scores"].is_array();    // true
 
 std::ifstream file("config.yaml");
 auto doc = scl2::yaml::document::fromStream(file);
+```
+
+### Build and export
+
+The `document` class provides a built-in export method:
+
+```cpp
+scl2::yaml::document doc;
+doc["name"] = scl2::yaml::value(std::string("Alice"));
+doc["age"]  = scl2::yaml::value(static_cast<int64_t>(30));
+
+std::string yaml = doc.toString();  // block-style YAML output
+```
+
+Customize output with `yaml_exporter::config`:
+
+```cpp
+scl2::yaml::yaml_exporter::config cfg;
+cfg.indent = 4;        // 4 spaces per indent (default: 2)
+cfg.compact = true;    // minimal whitespace between top-level items
+
+std::string yaml = doc.toString(cfg);
 ```
 
 ### Feature flags
@@ -166,6 +188,22 @@ struct features {
     bool anchors    = false;  // &anchor and *alias (not yet implemented)
     bool tags       = false;  // !!type tags (not yet implemented)
     bool multi_doc  = false;  // --- / ... document separators (not yet implemented)
+};
+```
+
+### yaml_exporter
+
+Controls YAML output formatting.
+
+```cpp
+class yaml_exporter {
+public:
+    struct config {
+        int  indent = 2;      // spaces per indent level
+        bool compact = false; // minimal whitespace between top-level items
+    };
+
+    std::string toString(const value& v, config cfg = {});
 };
 ```
 
