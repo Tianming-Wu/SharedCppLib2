@@ -292,7 +292,9 @@ std::string exportToCompatString(const json& j);
 class json_pointer {
 public:
     explicit json_pointer(const std::string& pointer_str);
-    json_value& apply(json_value& root) const;
+    json_value& apply(const json_value& root) const;   // 只读：缺失路径时抛出异常
+    json_value& apply(json_value& root) const;          // 可变：自动创建中间节点
+    bool contains(const json_value& root) const;        // 安全存在性检查，永不抛出
 };
 ```
 
@@ -314,7 +316,7 @@ escaped = "~0" (→ "~") | "~1" (→ "/")
 | `"/c~1d"` | 含字面 `/` 的键名：`"c/d"` |
 | `"/e~0f"` | 含字面 `~` 的键名：`"e~f"` |
 
-**用法：**
+**用法 — const apply（只读）：**
 ```cpp
 scl2::json j = scl2::json::fromString(R"({"a": {"b": [10, 20]}})");
 
@@ -322,8 +324,28 @@ scl2::json_pointer ptr("/a/b/1");
 scl2::json_value& target = ptr.apply(j);  // → 20
 ```
 
-- 返回**可变引用**——可以直接原地修改值。
+- 返回**可变引用**（通过 `const_cast`）——可以直接原地修改值。
 - 路径无效、键缺失或索引越界时抛出 `std::runtime_error`。
+
+**用法 — mutable apply（自动创建）：**
+```cpp
+scl2::json_value doc(nullptr);  // 从 null 开始
+scl2::json_pointer ptr("/a/b/c");
+ptr.apply(doc) = scl2::json_value(42);
+// doc 现在是 {"a": {"b": {"c": 42}}}
+```
+
+- 自动创建中间对象（字符串键）或数组（数字索引）。
+- 数组通过 `resize(index + 1)` 自动扩展，空缺位置填充 `null`。
+
+**用法 — contains（安全检查）：**
+```cpp
+if (ptr.contains(doc)) {
+    auto& val = ptr.apply(doc);  // 保证不抛异常
+}
+```
+
+- 路径存在时返回 `true`，否则返回 `false`。永不抛出异常。
 
 ## 扩展功能（`SCL2_JSON_ENABLE_EXTENSIONS`）
 

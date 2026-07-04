@@ -292,7 +292,9 @@ Implements RFC 6901 — a path-based navigation syntax for JSON values.
 class json_pointer {
 public:
     explicit json_pointer(const std::string& pointer_str);
-    json_value& apply(json_value& root) const;
+    json_value& apply(const json_value& root) const;   // read-only: throws on missing path
+    json_value& apply(json_value& root) const;          // mutable: auto-creates intermediate nodes
+    bool contains(const json_value& root) const;        // safe existence check, never throws
 };
 ```
 
@@ -314,7 +316,7 @@ escaped = "~0" (→ "~") | "~1" (→ "/")
 | `"/c~1d"` | Key with literal `/`: `"c/d"` |
 | `"/e~0f"` | Key with literal `~`: `"e~f"` |
 
-**Usage:**
+**Usage — const apply (read-only):**
 ```cpp
 scl2::json j = scl2::json::fromString(R"({"a": {"b": [10, 20]}})");
 
@@ -322,8 +324,28 @@ scl2::json_pointer ptr("/a/b/1");
 scl2::json_value& target = ptr.apply(j);  // → 20
 ```
 
-- Returns a **mutable reference** — you can modify the value in-place.
+- Returns a **mutable reference** (via `const_cast`) — you can modify the value in-place.
 - Throws `std::runtime_error` on invalid path, missing keys, or index out of bounds.
+
+**Usage — mutable apply (auto-create):**
+```cpp
+scl2::json_value doc(nullptr);  // starts as null
+scl2::json_pointer ptr("/a/b/c");
+ptr.apply(doc) = scl2::json_value(42);
+// doc is now {"a": {"b": {"c": 42}}}
+```
+
+- Auto-creates intermediate objects (for string keys) or arrays (for numeric indices).
+- Arrays auto-expand via `resize(index + 1)` with `null` fill.
+
+**Usage — contains (safe check):**
+```cpp
+if (ptr.contains(doc)) {
+    auto& val = ptr.apply(doc);  // guaranteed not to throw
+}
+```
+
+- Returns `true` if the path exists, `false` otherwise. Never throws.
 
 ## Extensions (`SCL2_JSON_ENABLE_EXTENSIONS`)
 
