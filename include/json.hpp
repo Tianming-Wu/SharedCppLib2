@@ -77,6 +77,8 @@ public:
     json_pointer(const std::string& pointer_str);
 
     json_value& apply(const json_value& root) const;
+    json_value& apply(json_value& root) const;
+    bool contains(const json_value& root) const;
 
     std::string to_string() const;
 
@@ -84,6 +86,8 @@ private:
     void split_tokens();
     std::string unescape_segment(std::string segment) const;
     json_value& apply_impl(const json_value& current, size_t depth) const;
+    json_value& apply_impl(json_value& current, size_t depth) const;
+    bool contains_impl(const json_value& current, size_t depth) const;
 
     std::string pointer_str;
     std::vector<std::string> tokens;
@@ -185,8 +189,8 @@ public:
     void clear(); // clear the value, set it to null
 
     // json pointer
-    json_value& at(const json_pointer& pointer);
-    const json_value& at(const json_pointer& pointer) const;
+    json_value& at_path(const json_pointer& pointer);
+    const json_value& at_path(const json_pointer& pointer) const;
 
     json_value_type type() const;
 

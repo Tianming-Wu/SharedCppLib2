@@ -22,6 +22,12 @@ json_value &json_pointer::apply(const json_value &root) const
     return apply_impl(root, 0);
 }
 
+json_value &json_pointer::apply(json_value &root) const
+{
+    if (tokens.empty()) return root;
+    return apply_impl(root, 0);
+}
+
 std::string json_pointer::to_string() const
 {
     return pointer_str;
@@ -84,6 +90,73 @@ json_value &json_pointer::apply_impl(const json_value &current, size_t depth) co
 
     // Intermediate: recurse deeper
     return apply_impl(*next, depth + 1);
+}
+
+json_value &json_pointer::apply_impl(json_value &current, size_t depth) const
+{
+    const std::string& segment = tokens[depth];
+    bool is_last = (depth == tokens.size() - 1);
+
+    // Auto-create container if current is null
+    if (current.is_null()) {
+        bool is_index = !segment.empty()
+            && segment.find_first_not_of("0123456789") == std::string::npos;
+        if (is_index)
+            current = json_value(std::vector<json_value>{});
+        else
+            current = json_value(std::map<std::string, json_value>{});
+    }
+
+    if (current.is_array()) {
+        size_t index;
+        try { index = std::stoul(segment); } catch (const std::exception&) {
+            throw std::runtime_error("json_pointer::apply: invalid array index: " + segment);
+        }
+        // Auto-expand array if needed
+        if (index >= current.array_size())
+            current.as_array().resize(index + 1);
+        if (is_last) return current[index];
+        return apply_impl(current[index], depth + 1);
+    } else if (current.is_object()) {
+        if (!current.has_key(segment))
+            current[segment] = json_value(nullptr);
+        if (is_last) return current[segment];
+        return apply_impl(current[segment], depth + 1);
+    } else {
+        throw std::runtime_error("json_pointer::apply: cannot apply pointer to scalar value");
+    }
+}
+
+bool json_pointer::contains(const json_value &root) const
+{
+    if (tokens.empty()) return true;
+    return contains_impl(root, 0);
+}
+
+bool json_pointer::contains_impl(const json_value &current, size_t depth) const
+{
+    const std::string& segment = tokens[depth];
+
+    const json_value* next = nullptr;
+    if (current.is_array()) {
+        size_t index;
+        try { index = std::stoul(segment); } catch (const std::exception&) {
+            return false;
+        }
+        if (index >= current.array_size())
+            return false;
+        next = &current[index];
+    } else if (current.is_object()) {
+        if (!current.has_key(segment))
+            return false;
+        next = &current[segment];
+    } else {
+        return false;
+    }
+
+    if (depth == tokens.size() - 1)
+        return true;
+    return contains_impl(*next, depth + 1);
 }
 
 json_value::json_value(std::nullptr_t) : value(nullptr) {}
@@ -279,12 +352,12 @@ void json_value::clear()
     value = nullptr;
 }
 
-json_value &json_value::at(const json_pointer &pointer)
+json_value &json_value::at_path(const json_pointer &pointer)
 {
     return pointer.apply(*this);
 }
 
-const json_value &json_value::at(const json_pointer &pointer) const
+const json_value &json_value::at_path(const json_pointer &pointer) const
 {
     return pointer.apply(*this);
 }
