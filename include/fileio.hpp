@@ -173,4 +173,11 @@ bool syncWith(const fs::path& path, T& data, const file_timestamp& src_tm, const
     }
 }
 
+
+/// @brief Line-based text file helper.
+/// @return The number of lines processed.
+unsigned int foreachLine(const fs::path& path, const std::function<void(unsigned int, const std::string&)>& func);
+
+
+
 } // namespace scl2

@@ -82,6 +82,24 @@ std::bytearray readFile(const fs::path &path)
     return ba;
 }
 
+unsigned int foreachLine(const fs::path &path, const std::function<void(unsigned int, const std::string &)> &func)
+{
+    std::ifstream ifs(path);
+
+    if(!ifs) {
+        throw std::runtime_error("Failed to open file for reading: " + path.string());
+    }
+
+    std::string line;
+    unsigned int line_number = 0;
+    while (std::getline(ifs, line)) {
+        func(line_number, line);
+        ++line_number;
+    }
+
+    return line_number;
+}
+
 // Helper function for sync.
 namespace {
 std::strong_ordering compareFileTimestamp(file_timestamp src_tm, const fs::path& target)
