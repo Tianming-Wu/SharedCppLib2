@@ -68,7 +68,7 @@ add_library(structural_binding INTERFACE include/structural_binding.hpp)
 add_library(typemask INTERFACE include/typemask.hpp)
 
 # 定义所有库
-add_library(basic STATIC src/bytearray.cpp src/ansiio.cpp src/color.cpp src/stringlist.cpp src/basics.cpp)
+add_library(basic STATIC src/bytearray.cpp src/ansiio.cpp src/color.cpp src/stringlist.cpp src/basics.cpp src/string.cpp)
 add_library(sha256 STATIC src/sha256.cpp)
 add_library(crc32 STATIC src/crc32.cpp)
 add_library(indexer STATIC src/indexer.cpp)
