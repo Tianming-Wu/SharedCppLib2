@@ -38,13 +38,14 @@ concept has_generic_dump = __has_generic_dump_memberfx<T> || __has_generic_stati
 template<typename T>
 concept has_generic_load = __has_generic_load_memberfx<T> || __has_generic_static_load_memberfx<T>;
 
+template<typename T>
+concept has_generic_dump_load = has_generic_dump<T> && has_generic_load<T>;
 
 #define scl2_check_generic_dump(T) static_assert(::scl2::has_generic_dump<T>, "Type " #T " does not support generic dumping");
 #define scl2_check_generic_load(T) static_assert(::scl2::has_generic_load<T>, "Type " #T " does not support generic loading");
 #define scl2_check_generic_dump_load(T) \
     static_assert(::scl2::has_generic_dump<T>, "Type " #T " does not support generic dumping"); \
     static_assert(::scl2::has_generic_load<T>, "Type " #T " does not support generic loading");
-
 
 template<typename T>
 std::bytearray generic_dump(const T& value) {
