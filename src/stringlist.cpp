@@ -267,17 +267,17 @@ basic_stringlist<CharT> basic_stringlist<CharT>::exsplit(const basic_stringlist<
     basic_stringlist<CharT>::string_type buffer;
     size_t idx = 0;
     for(; idx < s.length(); ) {
-        if((tpbind_id = begin_bind.find(s[idx])) != string_type::npos) {
-            // bind_id.push(tpbind_id);
-            bind_id.push_back(tpbind_id);
-            depth++;
-            if(!remove_binding) buffer += s[idx++];
-        // } else if(depth != 0 && s[idx] == end_bind[bind_id.top()]) {
-        } else if(depth != 0 && s[idx] == end_bind[bind_id.back()]) {
-            // bind_id.pop();
+        // Check closing bind first when nested (fixes same-char open/close pairs)
+        if(depth != 0 && s[idx] == end_bind[bind_id.back()]) {
             bind_id.pop_back();
             depth--;
-            if(!remove_binding) buffer += s[idx++];
+            if(!remove_binding) buffer += s[idx];
+            ++idx;  // always advance (fixes remove_binding infinite loop)
+        } else if((tpbind_id = begin_bind.find(s[idx])) != string_type::npos) {
+            bind_id.push_back(tpbind_id);
+            depth++;
+            if(!remove_binding) buffer += s[idx];
+            ++idx;  // always advance
         } else if(depth == 0 && s.substr(idx, delim.length()) == delim) {
             result.push_back(buffer);
             buffer.clear();
