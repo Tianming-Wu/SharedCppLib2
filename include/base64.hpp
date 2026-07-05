@@ -1,9 +1,9 @@
 /*
-    A simple Base64 encoding and decoding library.
+    A simple base64 encoding and decoding library.
     namespace:
-        Base64
+        base64
     link target:
-        SharedCppLib2::Base64
+        SharedCppLib2::base64
 */
 #pragma once
 
@@ -11,7 +11,7 @@
 
 #include "bytearray.hpp"
 
-namespace Base64 {
+namespace base64 {
 
 std::string encode(const scl2::bytearray& input);
 scl2::bytearray decode(const std::string& input);

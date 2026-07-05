@@ -1,8 +1,8 @@
-#include "Base64.hpp"
+#include "base64.hpp"
 
 #include <string.h>
 
-namespace Base64 {
+namespace base64 {
 
 // int index(const char c) {
 //     std::string code= "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; int ic;

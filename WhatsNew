@@ -1,5 +1,10 @@
 # Changelog
 
+- Removed: Deprecated modules `variant`, `logd`, `logf` removed from the library and install targets.
+- Changed: `std::stringlist`, `std::wstringlist`, `std::bytearray`, `std::bytearray_view` migrated from `std` namespace to `scl2` namespace. Update your code to use `scl2::stringlist` etc.
+- Changed: `Base64` module renamed to `base64` for consistency with the library's naming convention. Update CMake target to `SharedCppLib2::base64` and namespace to `base64`.
+- Fixed: `exsplit` now correctly handles same-character open/close pairs (e.g. `"..."` quoting), and `remove_binding=true` no longer causes an infinite loop.
+
 ### v2.2.4
 - New: YAML module now supports anchors (`&`) and aliases (`*`) — `is_alias()`, `alias_name()`, `resolve()` for alias following, `_anchors` table for anchor registration, and alias-aware exporter output.
 - Changed: YAML `features::anchors` now defaults to `true`.

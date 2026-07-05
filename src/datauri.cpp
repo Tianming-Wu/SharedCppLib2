@@ -4,7 +4,7 @@
 #include <iomanip>
 #include <cctype>
 
-#include "Base64.hpp"
+#include "base64.hpp"
 
 namespace scl2 {
 
@@ -34,7 +34,7 @@ std::string data_uri::encode(const std::string& data) const
         oss << media_type_;
     }
     if (is_base64_) {
-        oss << ";base64," << Base64::encode(data);
+        oss << ";base64," << base64::encode(data);
     } else {
         oss << "," << percent_encode(data);
     }

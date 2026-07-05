@@ -158,7 +158,7 @@ After fetching, you can link with these SharedCppLib2 targets:
 - `SharedCppLib2::logc`
 - `SharedCppLib2::regexfilter`
 - `SharedCppLib2::indexer`
-- `SharedCppLib2::Base64`
+- `SharedCppLib2::base64`
 - `SharedCppLib2::platform`
 
 You can get the link target in the comment above the header file.
