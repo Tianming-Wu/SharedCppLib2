@@ -131,14 +131,16 @@ factories:
     factory condition_node create_logical(condition_node&& left, condition_node&& right, logical_operator op);
     factory condition_node create_unary(condition_node&& child, logical_operator op);
 
-interface:
+public:
     // api
-    static condition_node load(const std::bytearray_view& data);
-    static std::bytearray dump(const condition_node& node);
+    static condition_node load(scl2::bytearray& data);
+    static scl2::bytearray dump(const condition_node& node);
 
     // Build a logical expression tree from a string.
     // For the format of the string, check document (condition.md).
     static condition_node parse(const std::string& str);
+    static condition_node parseNormal(const std::string& str); // parse by format "normal", check document for details.
+    // static condition_node parseLatex(const std::string& str); // parse by format "latex", check document for details.
 
     static std::string to_string(const condition_node& node);
 };

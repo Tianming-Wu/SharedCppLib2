@@ -1,5 +1,5 @@
 /*
-    A std::byte array class for handling raw binary data.
+    A byte array class for handling raw binary data.
     classes:
         scl2::bytearray, scl2::bytearray_view
     link target:
@@ -61,458 +61,450 @@ struct bytes
     #define PCB(IN) reinterpret_cast<const std::byte*>(&IN)
 #endif
 
-class bytearray : public std::vector<std::byte>
+class bytearray : private std::vector<std::byte>
 {
-    typedef ::std::vector<std::byte> vector_type;
+    using base_type = std::vector<std::byte>;
 public:
-    bytearray();
-    bytearray(const bytearray &ba);
-    bytearray(std::byte b); // Single-Element Constructor is fine to be implicit, since std::byte is safe.
-    explicit bytearray(const std::string &str); // note: assumes raw data, does not include length and null terminator
-    explicit bytearray(const char *raw, size_t size);
-    explicit bytearray(const std::byte *raw, size_t size);
-    explicit bytearray(const void *raw, size_t size);
+    // ── Construction ──────────────────────────────────────────────────
+    bytearray() = default;
+    bytearray(const bytearray&) = default;
+    bytearray(bytearray&&) noexcept = default;
+    bytearray& operator=(const bytearray&) = default;
+    bytearray& operator=(bytearray&&) noexcept = default;
+
+    bytearray(std::byte b);                                   // single byte
+    explicit bytearray(const std::string& str);               // raw data, no terminator
+    explicit bytearray(const char* raw, size_t size);
+    explicit bytearray(const std::byte* raw, size_t size);
+    explicit bytearray(const void* raw, size_t size);
     explicit bytearray(size_t count, std::byte value);
-    explicit bytearray(size_t count);
+    explicit bytearray(size_t count);                         // zeroed
     bytearray(std::initializer_list<std::byte> init);
 
     template<typename InputIt>
-    bytearray(InputIt first, InputIt last) : std::vector<std::byte>(first, last) {}
+    bytearray(InputIt first, InputIt last) : base_type(first, last) {}
 
     template<typename _Any>
     requires (_is_bytearray_constructable<_Any>)
-    explicit bytearray(const _Any& in)
-    {
+    explicit bytearray(const _Any& in) {
         const std::byte* src = reinterpret_cast<const std::byte*>(&in);
-        vector_type::assign(src, src + sizeof(std::remove_cvref_t<_Any>));
+        base_type::assign(reinterpret_cast<const std::byte*>(src),
+                          reinterpret_cast<const std::byte*>(src) + sizeof(_Any));
     }
 
-    // Alignment related things are not yet tested. Furthur tests are required before
-    // saying that this is safe and works for all trivially copyable types. Use with caution.
-    template<typename _T>
-    // requires (std::is_aggregate_v<_T>)
-    requires (std::is_trivially_copyable_v<_T>)
-    _T convert_to() const {
-        if (size() != sizeof(_T)) throw std::runtime_error("bytearray::convert_to: type size mismatch");
-        if (reinterpret_cast<uintptr_t>(data()) % alignof(_T) != 0)
-            throw std::runtime_error("bytearray::convert_to: alignment mismatch");
-        return *std::bit_cast<const _T*>(data());
+    // ── Write: position-based ────────────────────────────────────────
+    void insert(size_t pos, const bytearray& data) { base_type::insert(begin() + pos, data.begin(), data.end()); }
+    void insert(size_t pos, const std::byte* data, size_t len) {
+        base_type::insert(begin() + pos, reinterpret_cast<const std::byte*>(data),
+                          reinterpret_cast<const std::byte*>(data) + len);
     }
-
-    // another shorter name for convert_to
-    template<typename _T>
-    requires (std::is_trivially_copyable_v<_T>)
-    _T as() const {
-        return convert_to<_T>();
-    }
-
-    // construct _T from raw data pointer and size, for some STL containers
-    // This is for the fixed-size element.
-    // Warning: is NOT COMPATIBLE with addContainer(). That one should be used with _view::readContainer() instead.
-    template<typename _T>
-    requires ( std::is_class_v<_T> && std::is_trivially_copyable_v<typename _T::value_type> )
-    _T toContainer() const {
-        using _Tp = typename _T::value_type;
-        return _T(
-            reinterpret_cast<const _Tp*>(this->data()),
-            this->size() / sizeof(_Tp)
-        );
-    }
-
-    void copy_from(const void* raw, size_t size);
-    void copy_to(void* raw, size_t size) const;
-
-    inline const std::byte* rawData() const { return data(); }
-    inline size_t rawSize() const { return size(); }
-
-    std::byte at(size_t i) const;
-    std::byte vat(size_t p, const std::byte &v = std::byte('\0')) const;
-
-    void append(const bytearray &ba);
-    void append(std::byte b);
-    void append(const std::byte* pb, size_t size);
-    void append(const char* str, size_t size);
-    void append(const char* str); // this is a little dangerous, be careful! it follows the null terminator.
-    void append(uint8_t val);
-    inline void append(int8_t val) { append(static_cast<uint8_t>(val)); }
-
-    // fuck you std standard for no explicit parameters
-    inline void append(uint16_t val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(uint16_t))); }
-    inline void append(int16_t val)  { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(int16_t)));  }
-    inline void append(uint32_t val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(uint32_t))); }
-    inline void append(int32_t val)  { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(int32_t)));  }
-    inline void append(uint64_t val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(uint64_t))); }
-    inline void append(int64_t val)  { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(int64_t)));  }
-
-    inline void append(bool val)     { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(bool)));     }
-
-    // explicit overloads for unsigned long and long (only when distinct from fixed-width types)
-    template<typename T>
-    requires (std::is_same_v<T, unsigned long> && 
-              !std::is_same_v<unsigned long, uint32_t> && 
-              !std::is_same_v<unsigned long, uint64_t>)
-    inline void append(T val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(unsigned long))); }
-
-    // All arithmetic types will be merged into this template in a future version.
-    // template<typename T>
-    // requires (std::is_arithmetic_v<T> &&
-    //           !std::is_same_v<T, long> && 
-    //           !std::is_same_v<T, unsigned long> && 
-    //           !std::is_same_v<unsigned long, uint32_t> && 
-    //           !std::is_same_v<unsigned long, uint64_t>)
-    // inline void append(T val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(T))); }
+    void insert(size_t pos, std::byte b) { insert(pos, &b, 1); }
 
     template<typename T>
-    requires (std::is_same_v<T, long> && 
-              !std::is_same_v<long, int32_t> && 
-              !std::is_same_v<long, int64_t>)
-    inline void append(T val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(long))); }
-
-    // special handle for enum types.
-    template<typename E>
-    requires std::is_enum_v<E>
-    inline void append(E val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(E))); }
-
-    // appending size_t (to avoid ambiguity with everything else)
-    inline void appendSize(size_t val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(size_t))); }
-
-    // special one for safe string storage. extract with bytearray_view::readString().
-    void addString(const std::string& str);
-    void addWString(const std::wstring& wstr);
-
-    // special one for containers of trivially copyable types
-    template<::scl2::stl::trivially_copyable_container _T>
-    void appendContainer(const _T& in) {
-        using _Ty = typename _T::value_type;
-        const std::byte* src = reinterpret_cast<const std::byte*>(in.data());
-
-        const size_t count = in.size();
-        const size_t elemSize = sizeof(_Ty);
-
-        appendSize(count);
-        appendSize(elemSize);
-        vector_type::insert(end(), src, src + in.size() * sizeof(_Ty));
+    requires std::is_trivially_copyable_v<T>
+    void insert(size_t pos, const T& data) {
+        base_type::insert(begin() + pos, reinterpret_cast<const std::byte*>(&data),
+                          reinterpret_cast<const std::byte*>(&data) + sizeof(T));
     }
 
+    // ── Write: at write_pointer ──────────────────────────────────────
+    void insert(const bytearray& data) { insert(write_pointer, data); }
+    void insert(const std::byte* data, size_t len) { insert(write_pointer, data, len); }
+    void insert(std::byte b) { insert(write_pointer, b); }
+
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    void insert(const T& data) { insert(write_pointer, data); }
+
+    // ── Write: append (at end) ───────────────────────────────────────
+    void append(const bytearray& data) { insert(size(), data); }
+    void append(const std::byte* data, size_t len) { insert(size(), data, len); }
+    void append(std::byte b) { insert(size(), b); }
+
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    void append(const T& data) { insert(size(), data); }
+
+    // ── String write (uint32_t length-prefixed) ──────────────────────
+    void insert(size_t pos, const std::string& str) {
+        uint32_t len = static_cast<uint32_t>(str.size());
+        insert<uint32_t>(pos, len);
+        insert(pos + sizeof(len), reinterpret_cast<const std::byte*>(str.data()), str.size());
+    }
+    void insert(const std::string& str) { insert(write_pointer, str); }
+    void append(const std::string& str) { insert(size(), str); }
+
+    void insert(size_t pos, const std::wstring& str) {
+        uint32_t len = static_cast<uint32_t>(str.size());
+        insert<uint32_t>(pos, len);
+        insert(pos + sizeof(len), reinterpret_cast<const std::byte*>(str.data()), str.size() * sizeof(wchar_t));
+    }
+    void insert(const std::wstring& str) { insert(write_pointer, str); }
+    void append(const std::wstring& str) { insert(size(), str); }
+
+    // ── Raw string write (no length prefix) ──────────────────────────
+    void insertRawString(size_t pos, const std::string& str) {
+        insert(pos, reinterpret_cast<const std::byte*>(str.data()), str.size());
+    }
+    void insertRawString(const std::string& str) { insertRawString(write_pointer, str); }
+    void appendRawString(const std::string& str) { insertRawString(size(), str); }
+
+    void insertRawWString(size_t pos, const std::wstring& str) {
+        insert(pos, reinterpret_cast<const std::byte*>(str.data()), str.size() * sizeof(wchar_t));
+    }
+    void insertRawWString(const std::wstring& str) { insertRawWString(write_pointer, str); }
+    void appendRawWString(const std::wstring& str) { insertRawWString(size(), str); }
+
+    // ── Container write (trivially copyable elements) ────────────────
+    template<typename ContainerType>
+    requires requires { typename ContainerType::value_type; }
+          && std::is_trivially_copyable_v<typename ContainerType::value_type>
+    void insertContainer(size_t pos, const ContainerType& container) {
+        insert<uint32_t>(pos, static_cast<uint32_t>(container.size()));
+        insert<uint32_t>(pos + sizeof(uint32_t), static_cast<uint32_t>(sizeof(typename ContainerType::value_type)));
+        insert(pos + 2 * sizeof(uint32_t),
+               reinterpret_cast<const std::byte*>(container.data()),
+               container.size() * sizeof(typename ContainerType::value_type));
+    }
+
+    // ── Container write (gdump elements) ─────────────────────────────
     template<typename _T>
     requires (!::scl2::stl::trivially_copyable_container<_T> && ::scl2::has_gdump_container<_T>)
     void appendContainer(const _T& in) {
-        using _Ty = typename _T::value_type;
-        const std::byte* src = reinterpret_cast<const std::byte*>(in.data());
-
-        const size_t count = in.size();
-        // element size is not fixed.
-
-        appendSize(count);
-
-        for(const auto& elem : in) {
-            // gdump is responsible for distribution here.
+        append<uint32_t>(static_cast<uint32_t>(in.size()));
+        for (const auto& elem : in) {
             append(::scl2::gdump(elem));
         }
     }
 
-    void reverse();
+    // ── Byte-level convenience ───────────────────────────────────────
+    void insertByte(size_t pos, uint8_t byte) { insert(pos, static_cast<std::byte>(byte)); }
+    void insertByte(uint8_t byte) { insert(write_pointer, static_cast<std::byte>(byte)); }
+    void appendByte(uint8_t byte) { append(static_cast<std::byte>(byte)); }
 
-    void swap(bytearray &ba);
-    void swap(size_t a, size_t b, size_t size = 1);
+    // ── Read (cursor-based) ──────────────────────────────────────────
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    T read() const {
+        if (!available<T>()) throw std::out_of_range("bytearray::read: not enough data");
+        T data;
+        std::memcpy(&data, this->data() + read_pointer, sizeof(T));
+        read_pointer += sizeof(T);
+        return data;
+    }
 
-    scl2::bytearray& replace(size_t pos, size_t len, const bytearray &ba);
-    scl2::bytearray& insert(size_t pos, const bytearray &ba);
+    // For generic_load types
+    template<typename T>
+    requires ::scl2::has_generic_load<T>
+    T read() const {
+        return ::scl2::generic_load<T>(*this);
+    }
 
-    bytearray subarr(size_t begin, size_t size = -1) const;
+    // Mutable reference at cursor (unsafe: caller must ensure lifetime)
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    T& getref() {
+        if (!available<T>()) throw std::out_of_range("bytearray::getref: not enough data");
+        T& ref = *reinterpret_cast<T*>(this->data() + read_pointer);
+        read_pointer += sizeof(T);
+        return ref;
+    }
 
-    std::string toStdString() const;
-    scl2::stringlist toStringlist(const std::string& split = " ") const;
+    std::string readString() const {
+        if (!available<uint32_t>()) throw std::out_of_range("bytearray::readString: not enough data for length");
+        uint32_t length = read<uint32_t>();
+        if (length == 0) return {};
+        if (!bytesAvailable(length)) throw std::out_of_range("bytearray::readString: not enough data");
+        std::string str(length, '\0');
+        std::memcpy(&str[0], this->data() + read_pointer, length);
+        read_pointer += length;
+        return str;
+    }
+
+    std::wstring readWString() const {
+        if (!available<uint32_t>()) throw std::out_of_range("bytearray::readWString: not enough data for length");
+        uint32_t length = read<uint32_t>();
+        if (length == 0) return {};
+        if (!bytesAvailable(length * sizeof(wchar_t))) throw std::out_of_range("bytearray::readWString: not enough data");
+        std::wstring str(length, L'\0');
+        std::memcpy(&str[0], this->data() + read_pointer, length * sizeof(wchar_t));
+        read_pointer += length * sizeof(wchar_t);
+        return str;
+    }
+
+    std::string readRawString(size_t const charCount) {
+        if (charCount == 0) return {};
+        if (!bytesAvailable(charCount)) throw std::out_of_range("bytearray::readRawString: not enough data");
+        std::string str(charCount, '\0');
+        std::memcpy(&str[0], this->data() + read_pointer, charCount);
+        read_pointer += charCount;
+        return str;
+    }
+
+    std::wstring readRawWString(size_t const charCount) {
+        if (charCount == 0) return {};
+        if (!bytesAvailable(charCount * sizeof(wchar_t))) throw std::out_of_range("bytearray::readRawWString: not enough data");
+        std::wstring str(charCount, L'\0');
+        std::memcpy(&str[0], this->data() + read_pointer, charCount * sizeof(wchar_t));
+        read_pointer += charCount * sizeof(wchar_t);
+        return str;
+    }
+
+    bytearray readBytes(size_t const length) {
+        if (!bytesAvailable(length)) throw std::out_of_range("bytearray::readBytes: not enough data");
+        bytearray result(reinterpret_cast<const std::byte*>(this->data() + read_pointer), length);
+        read_pointer += length;
+        return result;
+    }
+
+    // Container read (trivially copyable elements)
+    template<typename ContainerType>
+    requires requires { typename ContainerType::value_type; }
+          && std::is_trivially_copyable_v<typename ContainerType::value_type>
+    ContainerType readContainer() const {
+        if (!available<uint32_t>()) throw std::out_of_range("bytearray::readContainer: not enough data for count");
+        uint32_t count = read<uint32_t>();
+        if (count == 0) return {};
+        if (!available<uint32_t>()) throw std::out_of_range("bytearray::readContainer: not enough data for elem size");
+        uint32_t elemSize = read<uint32_t>();
+        if (elemSize != sizeof(typename ContainerType::value_type))
+            throw std::runtime_error("bytearray::readContainer: element size mismatch");
+        if (!bytesAvailable(count * elemSize)) throw std::out_of_range("bytearray::readContainer: not enough data");
+        ContainerType container(count);
+        std::memcpy(container.data(), this->data() + read_pointer, count * elemSize);
+        read_pointer += count * elemSize;
+        return container;
+    }
+
+    // Container read (gdump elements)
+    template<typename _T>
+    requires (!::scl2::stl::trivially_copyable_container<_T> && ::scl2::has_gdump_container<_T>)
+    _T readContainer() {
+        if (!available<uint32_t>()) throw std::out_of_range("bytearray::readContainer: not enough data for count");
+        uint32_t count = read<uint32_t>();
+        _T result;
+        if constexpr (requires(_T& c) { c.reserve(size_t{}); }) result.reserve(count);
+        for (uint32_t i = 0; i < count; ++i) {
+            ::scl2::stl::universal_insert(result, ::scl2::gload<typename _T::value_type>(*this));
+        }
+        return result;
+    }
+
+    // ── Cursor management ────────────────────────────────────────────
+    static constexpr size_t seek_end = static_cast<size_t>(-1);
+
+    void seekr(size_t pos) const {
+        if (pos == seek_end) pos = size();
+        if (pos > size()) throw std::out_of_range("bytearray::seekr: out of range");
+        read_pointer = pos;
+    }
+    void seekw(size_t pos) {
+        if (pos == seek_end) pos = size();
+        if (pos > size()) throw std::out_of_range("bytearray::seekw: out of range");
+        write_pointer = pos;
+    }
+    size_t tellr() const { return read_pointer; }
+    size_t tellw() const { return write_pointer; }
+
+    // ── Query ────────────────────────────────────────────────────────
+    size_t size() const { return base_type::size(); }
+    bool empty() const { return base_type::empty(); }
+    void clear() { base_type::clear(); write_pointer = 0; read_pointer = 0; }
+
+    const std::byte* data() const { return base_type::data(); }
+    std::byte* data() { return base_type::data(); }
+
+    std::byte at(size_t i) const { return base_type::at(i); }
+    std::byte vat(size_t p, const std::byte& v = std::byte{0}) const {
+        return p < size() ? at(p) : v;
+    }
+
+    // ── Element access (vector forwarding) ───────────────────────────
+    std::byte& operator[](size_t i) { return base_type::operator[](i); }
+    const std::byte& operator[](size_t i) const { return base_type::operator[](i); }
+    std::byte& back() { return base_type::back(); }
+    const std::byte& back() const { return base_type::back(); }
+    std::byte& front() { return base_type::front(); }
+    const std::byte& front() const { return base_type::front(); }
+
+    void push_back(std::byte b) { base_type::push_back(b); }
+    void resize(size_t n) { base_type::resize(n); }
+    void resize(size_t n, std::byte v) { base_type::resize(n, v); }
+    void reserve(size_t n) { base_type::reserve(n); }
+
+    // ── Iterators ────────────────────────────────────────────────────
+    using base_type::begin;
+    using base_type::end;
+    using base_type::cbegin;
+    using base_type::cend;
+
+    bool bytesAvailable(size_t length) const { return read_pointer + length <= size(); }
+    size_t remaining() const { return size() > read_pointer ? size() - read_pointer : 0; }
+
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    bool available() const { return bytesAvailable(sizeof(T)); }
+
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    bool fits() const { return size() == sizeof(T); }
+
+    void copy_from(const void* raw, size_t size);
+    void copy_to(void* raw, size_t size) const;
+
+    // ── Conversion (whole-content) ───────────────────────────────────
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    const T& as() const {
+        if (!fits<T>()) throw std::out_of_range("bytearray::as: size mismatch");
+        return *reinterpret_cast<const T*>(this->data());
+    }
+
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    T& as() {
+        if (!fits<T>()) throw std::out_of_range("bytearray::as: size mismatch");
+        return *reinterpret_cast<T*>(this->data());
+    }
+
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    T to() const {
+        if (size() != sizeof(T)) throw std::runtime_error("bytearray::to: size mismatch");
+        if (reinterpret_cast<uintptr_t>(data()) % alignof(T) != 0)
+            throw std::runtime_error("bytearray::to: alignment mismatch");
+        return *std::bit_cast<const T*>(data());
+    }
+
+    template<typename _T>
+    requires (std::is_class_v<_T> && std::is_trivially_copyable_v<typename _T::value_type>)
+    _T toContainer() const {
+        using _Tp = typename _T::value_type;
+        return _T(reinterpret_cast<const _Tp*>(this->data()), this->size() / sizeof(_Tp));
+    }
+
+    std::string toString() const;        // length-prefixed format
+    std::wstring toWString() const;
+
+    std::string toStdString() const;     // raw bytes as string
     std::wstring toStdWString() const;
-    scl2::wstringlist toWStringlist(const std::wstring& split = L" ") const;
+
+    stringlist toStringlist(const std::string& split = " ") const;
+    wstringlist toWStringlist(const std::wstring& split = L" ") const;
+
     std::string toHex() const;
-    std::string toHex(size_t begin, size_t size = -1) const;
+    std::string toHex(size_t begin, size_t size = seek_end) const;
     std::string toEscapedString() const;
     std::string xtoEscapedString() const;
 
     std::u8string toUtf8() const;
     std::u16string toUtf16() const;
     std::u32string toUtf32() const;
-#ifndef BYTEARRAY_NO_BASE64
+
     std::string toBase64() const;
-#endif
 
-    bool operator== (const bytearray &ba) const;
+    // ── Manipulation ─────────────────────────────────────────────────
+    void reverse();
+    void swap(bytearray& other);
+    void swap(size_t a, size_t b, size_t len = 1);
 
-    scl2::bytearray operator+ (const bytearray &ba) const;
+    bytearray& replace(size_t pos, size_t len, const bytearray& data);
+    bytearray& erase(size_t pos, size_t len);
 
-    scl2::bytearray operator << (size_t offset) const;
-    scl2::bytearray operator >> (size_t offset) const;
+    bytearray subarr(size_t begin, size_t n = seek_end) const;
 
-    scl2::bytearray shiftLeft(size_t offset) const;
-    scl2::bytearray shiftRight(size_t offset) const;
+    bytearray shiftLeft(size_t offset) const;
+    bytearray shiftRight(size_t offset) const;
+    bytearray rotateLeft(size_t offset) const;
+    bytearray rotateRight(size_t offset) const;
 
-    scl2::bytearray rotateLeft(size_t offset) const;
-    scl2::bytearray rotateRight(size_t offset) const;
+    // ── Operators ────────────────────────────────────────────────────
+    bool operator==(const bytearray& other) const;
+    bool operator!=(const bytearray& other) const { return !(*this == other); }
+    bytearray operator+(const bytearray& other) const;
+
+    // ── Stream I/O ───────────────────────────────────────────────────
+    bool readFromStream(std::istream& is, size_t size);
+    bool readAllFromStream(std::istream& is);
+    bool readUntilDelimiter(std::istream& is, char delimiter = '\0');
+    void writeRaw(std::ostream& os) const {
+        os.write(reinterpret_cast<const char*>(data()), static_cast<std::streamsize>(size()));
+    }
+
+    // ── Static factories ─────────────────────────────────────────────
+    static bytearray fromTriviallyCopyable(const auto& data) { bytearray ba; ba.append(data); return ba; }
+
+    static bytearray fromString(const std::string& str);       // length-prefixed
+    static bytearray fromWString(const std::wstring& str);
+
+    static bytearray fromStdString(const std::string& str);    // raw
+    static bytearray fromStdWString(const std::wstring& str);
 
     static bytearray fromHex(const std::string& hex);
+    static bytearray fromBase64(const std::string& base64);
+
     static bytearray fromRaw(const char* raw, size_t size);
     static bytearray fromRaw(const unsigned char* raw, size_t size);
     static bytearray fromPointer(const void* ptr);
 
     template<typename _T>
-    static bytearray fromPointer(const _T* ptr) {
-        return fromPointer(static_cast<const void*>(ptr));
-    }
+    static bytearray fromPointer(const _T* ptr) { return fromPointer(static_cast<const void*>(ptr)); }
 
-    static bytearray fromStdString(const std::string& str);
-    static bytearray fromStdWString(const std::wstring& wstr);
+    static bytearray fromUtf8(const std::u8string& utf8);
+    static bytearray fromUtf16(const std::u16string& utf16);
+    static bytearray fromUtf32(const std::u32string& utf32);
 
-    static bytearray fromUtf8(const std::u8string& utf8str);
-    static bytearray fromUtf16(const std::u16string& utf16str);
-    static bytearray fromUtf32(const std::u32string& utf32str);
-#ifndef BYTEARRAY_NO_BASE64
-    static bytearray fromBase64(const std::string& base64str);
-#endif
-
-    bool readFromStream(std::istream& is, size_t size);
-    bool readAllFromStream(std::istream& is);
-    bool readUntilDelimiter(std::istream& is, char delimiter = '\0');
-    // bool readFromStreamAt(std::istream& is, size_t position, size_t size);
-    // bool readFromStreamAtEnd(std::istream& is, size_t size);
-
-    inline void writeRaw(std::ostream& os) const {
-        os.write(reinterpret_cast<const char*>(data()), size());
-    }
-
+private:
+    size_t write_pointer = 0;
+    mutable size_t read_pointer = 0;
 };
 
-class bytearray_view
-{
+// ── bytearray_view (non-owning span, like string_view) ───────────────
+
+class bytearray_view {
 public:
-    explicit bytearray_view(const bytearray& data);
-    bytearray_view(const bytearray&&) = delete; // prevent binding to temporaries
+    bytearray_view() : data_(nullptr), size_(0) {}
+    bytearray_view(const bytearray& ba) : data_(ba.data()), size_(ba.size()) {}
+    bytearray_view(const std::byte* data, size_t size) : data_(data), size_(size) {}
+    bytearray_view(const bytearray&&) = delete;  // prevent dangling
 
-    enable_move_only(bytearray_view) // Disable copy and allow move
+    const std::byte* data() const { return data_; }
+    size_t size() const { return size_; }
+    bool empty() const { return size_ == 0; }
 
-    // 穿透底层 bytearray 的信息
-    inline size_t size() const { return ba.size(); }
-    inline bool empty() const { return ba.empty(); }
-    inline const std::byte* data() const { return ba.data(); }
-    inline std::byte at(size_t i) const { return ba.at(i); }
-    inline std::byte operator[](size_t i) const { return ba[i]; }
-    inline bytearray subarr(size_t begin, size_t size = -1) const { 
-        return ba.subarr(begin, size); 
+    std::byte operator[](size_t i) const { return data_[i]; }
+    std::byte at(size_t i) const {
+        if (i >= size_) throw std::out_of_range("bytearray_view::at: out of range");
+        return data_[i];
     }
 
-    // 游标操作
-    bool available(size_t bytes) const;
-    size_t remaining() const;
-    void seek(size_t pos);
-    void reset();
-    size_t tell() const;
+    bytearray subarr(size_t begin, size_t n = bytearray::seek_end) const;
 
-    template<typename _T>
-    requires std::is_trivially_copyable_v<_T>
-    _T peek() const {
-        size_t orig_cursor = cursor;
-        // auto guard = std::scope_exit([&] { this->cursor = orig_cursor; });
-        // return read<_T>();
+    bool operator==(const bytearray_view& other) const;
+    bool operator!=(const bytearray_view& other) const { return !(*this == other); }
 
-        _T value = read<_T>();
-        cursor = orig_cursor;
-        return value;
-    }
-
-    template<typename _T>
-    requires std::is_trivially_copyable_v<_T>
-    _T read() const {
-        if (!available(sizeof(_T))) 
-            throw std::out_of_range("bytearray_view: not enough data");
-        _T value = ba.subarr(cursor, sizeof(_T)).convert_to<_T>();
-        cursor += sizeof(_T);
-        return value;
-    }
-
-    template<typename _T>
-    requires ::scl2::has_generic_load<_T>
-    _T read() const {
-        // we can't check the size of _T here.
-        return ::scl2::generic_load<_T>(*this);
-    }
-
-    template<typename _T>
-    requires ::scl2::has_generic_load<_T>
-    _T peek() const {
-        size_t orig_cursor = cursor;
-        // auto guard = std::scope_exit([&] { this->cursor = orig_cursor; });
-        // return read<_T>();
-        
-        _T value = read<_T>();
-        cursor = orig_cursor;
-        return value;
-    }
-
-    std::string peekString() const;
-    std::string readString() const;
-
-    std::wstring peekWString() const;
-    std::wstring readWString() const;
-
-    scl2::bytearray readBytes(size_t size) const;
-    scl2::bytearray peekBytes(size_t size) const;
-
-    template<typename _T>
-    requires ::scl2::stl::trivially_copyable_container<_T>
-    _T readContainer() const {
-        using _Ty = typename _T::value_type;
-        
-        if (!available(sizeof(size_t) * 2)) 
-            throw std::out_of_range("bytearray_view::peekContainer: not enough data for metadata");
-        
-        // Create a single temporary view to read both metadata fields sequentially
-        size_t count, elemSize;
-        count = read<size_t>();
-        elemSize = read<size_t>();
-
-        if (elemSize != sizeof(_Ty)) 
-            throw std::runtime_error("bytearray_view::peekContainer: element size mismatch");
-        
-        if (!available(sizeof(size_t) * 2 + count * sizeof(_Ty))) 
-            throw std::out_of_range("bytearray_view::peekContainer: not enough data for elements");
-        
-        // Calculate data start position: cursor + metadata size
-        
-        _T result;
-        result.resize(count);
-        std::memcpy(result.data(), ba.data() + cursor, count * sizeof(_Ty));
-        cursor += sizeof(size_t) * 2 + count * sizeof(_Ty);
-        return result;
-    }
-
-    // read for this type will be implemented instead of peek.
-    // since by the dynamic size of the element, calculating the size afterwards and maintaining the cursor will be painful.
-    // peek is relatively easy since we can just store the original cursor, and restore it after reading.
-    // peek is mostly useless anyway.
-    template<typename _T>
-    requires (!::scl2::stl::trivially_copyable_container<_T> && ::scl2::has_gdump_container<_T>)
-    _T readContainer() const {
-        if (!available(sizeof(size_t))) 
-            throw std::out_of_range("bytearray_view::peekContainer: not enough data for size metadata");
-        
-        size_t count = read<size_t>();
-        // total_size check is not possible here because the element size is not fixed.
-
-        _T result;
-
-        // optimization
-        if constexpr (requires(_T& c) { c.reserve(size_t{}); }) {
-            result.reserve(count);
-        }
-        
-
-        for (size_t i = 0; i < count; ++i) {
-            // gload is responsible for distribution here.
-            ::scl2::stl::universal_insert(result, ::scl2::gload<typename _T::value_type>(*this));
-        }
-
-        return result;
-    }
-
-    template<typename _T>
-    requires ::scl2::stl::trivially_copyable_container<_T>
-    _T peekContainer() const {
-        size_t orig_cursor = cursor;
-        // auto guard = std::scope_exit([&] { this->cursor = orig_cursor; });
-        // return readContainer<_T>();
-
-        _T value = readContainer<_T>();
-        cursor = orig_cursor;
-        return value;
-    }
-
-protected:
-    mutable size_t cursor = 0;
-    const bytearray& ba;
+private:
+    const std::byte* data_;
+    size_t size_;
 };
 
+// ── Stream operators ─────────────────────────────────────────────────
 
-// These operators avoid any unwanted format used. It by default deal with raw data only.
-// If user really need something like hex, they must do it explicitly.
-
-inline std::ostream& operator<<(std::ostream& os, const scl2::bytearray& ba) {
+inline std::ostream& operator<<(std::ostream& os, const bytearray& ba) {
     ba.writeRaw(os);
     return os;
 }
 
-inline std::istream& operator>>(std::istream& is, scl2::bytearray& ba) {
+inline std::istream& operator>>(std::istream& is, bytearray& ba) {
     ba.clear();
-    auto* file_stream = dynamic_cast<std::istream*>(&is);
-    if (file_stream) {
-        // read the entire file content
-        file_stream->seekg(0, std::ios::end);
-        auto size = file_stream->tellg();
-        file_stream->seekg(0, std::ios::beg);
-        
-        if (size > 0) {
-            ba.resize(size);
-            file_stream->read(reinterpret_cast<char*>(ba.data()), size);
-        }
-    } else {
-        is.setstate(std::ios::failbit);
+    is.seekg(0, std::ios::end);
+    auto sz = static_cast<size_t>(is.tellg());
+    is.seekg(0, std::ios::beg);
+    if (sz > 0) {
+        ba = bytearray(sz);
+        is.read(reinterpret_cast<char*>(ba.data()), static_cast<std::streamsize>(sz));
     }
     return is;
 }
 
-// inline std::ostream& operator<<(std::ostream& os, const bytearray& ba) {
-//     if (os.flags() & std::ios_base::hex) {
-//         return os << ba.tohex();
-//     }
-//     return os << ba.tostdstring();
-// }
-
-
-// inline std::ostream& operator<<(std::ostream& os, const scl2::bytearray& ba) {
-//     if (os.flags() & ios_base::hex) {
-//         ios_base::fmtflags original_flags = os.flags();
-//         os << hex << setfill('0');
-//         for (const auto& b : ba) {
-//             os << setw(2) << static_cast<int>(b);
-//         }
-//         os.flags(original_flags);
-//     } else {
-//         os << ba.tostdstring();
-//     }
-//     return os;
-// }
-
-// inline std::istream& operator>>(std::istream& is, bytearray& ba) {
-//     ba.clear();
-    
-//     // check if is file stream and in binary mode
-//     auto* file_stream = dynamic_cast<std::istream*>(&is);
-//     if (file_stream && (file_stream->flags() & std::ios::binary)) {
-//         // read the entire file content
-//         file_stream->seekg(0, std::ios::end);
-//         auto size = file_stream->tellg();
-//         file_stream->seekg(0, std::ios::beg);
-        
-//         if (size > 0) {
-//             ba.resize(size);
-//             file_stream->read(reinterpret_cast<char*>(ba.data()), size);
-//         }
-//     }
-//     else if (is.flags() & std::ios_base::hex) {
-//         // hex text mode
-//         std::string hexInput;
-//         is >> hexInput;
-//         try {
-//             ba = bytearray::fromHex(hexInput);
-//         } catch (...) {
-//             is.setstate(std::ios::failbit);
-//         }
-//     } else {
-//         // normal text mode: read a "word"
-//         std::string strInput;
-//         is >> strInput;
-//         ba = bytearray(strInput);
-//     }
-//     return is;
-// }
-
-} // namespace std
+} // namespace scl2

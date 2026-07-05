@@ -200,12 +200,12 @@ scl2::bytearray ipv6::to_bytearray() const noexcept
 ipv6 ipv6::from_bytearray(const scl2::bytearray &ba)
 {
     ipv6 ip_addr;
-    if (ba.rawSize() != 16) {
+    if (ba.size() != 16) {
         throw network_error("Invalid bytearray size for IPv6 address");
     }
 
     for (size_t i = 0; i < 8; ++i) {
-        ip_addr.blocks[i] = (static_cast<uint16_t>(ba.rawData()[i * 2]) << 8) | static_cast<uint16_t>(ba.rawData()[i * 2 + 1]);
+        ip_addr.blocks[i] = (static_cast<uint16_t>(ba.data()[i * 2]) << 8) | static_cast<uint16_t>(ba.data()[i * 2 + 1]);
     }
     return ip_addr;
 }

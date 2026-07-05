@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.10)
 # endif()
 
 project(SharedCppLib2
-    VERSION 2.2.4
+    VERSION 3.0.0
     LANGUAGES CXX
 )
 
@@ -50,7 +50,7 @@ add_library(api INTERFACE include/api.hpp)
 set(INTERFACE_TARGET_LIST
     hmac logh rerr bits cache exexception engineering multindex percentage RAII singleinst
     structural_binding typemask
-    network
+    network base64
 )
 
 add_library(hmac INTERFACE include/hmac.hpp)
@@ -68,14 +68,15 @@ add_library(structural_binding INTERFACE include/structural_binding.hpp)
 add_library(typemask INTERFACE include/typemask.hpp)
 
 # 定义所有库
-add_library(basic STATIC src/bytearray.cpp src/bytearray_base64.cpp src/ansiio.cpp src/color.cpp src/stringlist.cpp src/basics.cpp)
+add_library(basic STATIC src/bytearray.cpp src/ansiio.cpp src/color.cpp src/stringlist.cpp src/basics.cpp)
 add_library(sha256 STATIC src/sha256.cpp)
 add_library(crc32 STATIC src/crc32.cpp)
 add_library(indexer STATIC src/indexer.cpp)
 add_library(regexfilter STATIC src/regexfilter.cpp)
 add_library(logt STATIC src/logt.cpp)
 add_library(logc STATIC src/logc.cpp)
-add_library(base64 STATIC src/base64.cpp)
+add_library(base64 INTERFACE)
+target_link_libraries(base64 INTERFACE basic)
 add_library(platform STATIC src/platform.cpp)
 # add_library(process STATIC src/process.cpp) # A major update in progress, not ready to use
 add_library(arguments STATIC src/arguments.cpp)
@@ -127,11 +128,8 @@ target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要
 # Network module dependencies (commented out until ready)
 # target_link_libraries(network PUBLIC basic platform)
 
-# 按需链接：bytearray_base64.cpp 会引用 base64，但只有在用户代码调用相关函数时才会被链接
-target_link_libraries(basic PRIVATE base64)
-
 # datauri 依赖
-target_link_libraries(datauri PUBLIC basic base64)
+target_link_libraries(datauri PUBLIC basic)
 
 # basic 库依赖关系
 foreach(target regexfilter logc sha256 crc32 arguments ini abstract xml keydb condition datauri json yaml aes)
@@ -150,7 +148,7 @@ target_compile_definitions(json PUBLIC
 # 库列表
 set(TARGET_LIST
     sha256 crc32 basic indexer regexfilter
-    logt logc base64 platform arguments ini abstract xml debug stream
+    logt logc platform arguments ini abstract xml debug stream
     console aes keydb types condition filesystem datauri json yaml
     network_core network_dns network_tcp network_udp network_http
 )

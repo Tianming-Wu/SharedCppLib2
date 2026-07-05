@@ -19,16 +19,16 @@ concept __has_generic_static_dump_memberfx = requires {
     { T::dump(std::declval<const T&>()) } -> std::same_as<scl2::bytearray>;
 };
 
-// For `void load(const scl2::bytearray&)`
+// For `void load(scl2::bytearray&)`
 template<typename T>
 concept __has_generic_load_memberfx = requires(T& v) {
-    { v.load(std::declval<const scl2::bytearray_view&>()) } -> std::same_as<void>;
+    { v.load(std::declval<scl2::bytearray&>()) } -> std::same_as<void>;
 };
 
-// For `static T load(const scl2::bytearray&)`
+// For `static T load(scl2::bytearray&)`
 template<typename T>
 concept __has_generic_static_load_memberfx = requires {
-    { T::load(std::declval<const scl2::bytearray_view&>()) } -> std::same_as<T>;
+    { T::load(std::declval<scl2::bytearray&>()) } -> std::same_as<T>;
 };
 
 

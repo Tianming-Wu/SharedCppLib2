@@ -50,7 +50,7 @@ public:
     // Note: using std::sort, may not be stable.
     void sortFiles(SortMethod method, SortOrder order = AscendingOrder);
 
-    static filepack load(const scl2::bytearray_view& data);
+    static filepack load(scl2::bytearray& data);
     static scl2::bytearray dump(const filepack& pack);
 
 private:

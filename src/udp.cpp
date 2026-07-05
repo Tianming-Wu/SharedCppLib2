@@ -159,7 +159,7 @@ void socket::close()
 size_t socket::sendTo(const scl2::bytearray& data,
                       const network_address& dest, uint16_t port)
 {
-    if (m_socket == invalid_socket || data.rawSize() == 0) {
+    if (m_socket == invalid_socket || data.size() == 0) {
         return 0;
     }
 
@@ -168,8 +168,8 @@ size_t socket::sendTo(const scl2::bytearray& data,
 
     int sent = ::sendto(
         m_socket,
-        reinterpret_cast<const char*>(data.rawData()),
-        static_cast<int>(data.rawSize()),
+        reinterpret_cast<const char*>(data.data()),
+        static_cast<int>(data.size()),
         0, // flags
         reinterpret_cast<const sockaddr*>(&ss),
         sizeof(sockaddr_in)
@@ -180,22 +180,22 @@ size_t socket::sendTo(const scl2::bytearray& data,
 
 size_t socket::send(const scl2::bytearray& data)
 {
-    if (m_socket == invalid_socket || data.rawSize() == 0) {
+    if (m_socket == invalid_socket || data.size() == 0) {
         return 0;
     }
 
 #ifdef OS_WINDOWS
     int sent = ::send(
         m_socket,
-        reinterpret_cast<const char*>(data.rawData()),
-        static_cast<int>(data.rawSize()),
+        reinterpret_cast<const char*>(data.data()),
+        static_cast<int>(data.size()),
         0
     );
 #else
     ssize_t sent = ::send(
         m_socket,
-        data.rawData(),
-        data.rawSize(),
+        data.data(),
+        data.size(),
         0
     );
 #endif

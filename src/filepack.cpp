@@ -12,11 +12,11 @@ struct filepack_metadata {
 
     std::vector<std::pair<std::string, uint64_t>> entries; // filename and file size
 
-    static filepack_metadata load(const scl2::bytearray_view& data);
+    static filepack_metadata load(scl2::bytearray& data);
     static scl2::bytearray dump(const filepack_metadata& metadata);
 };
 
-filepack_metadata filepack_metadata::load(const scl2::bytearray_view &data)
+filepack_metadata filepack_metadata::load(scl2::bytearray& data)
 {
     filepack_metadata metadata;
     metadata.file_count = data.read<uint64_t>(); // file count
@@ -93,7 +93,7 @@ void filepack::sortFiles(SortMethod method, SortOrder order)
     std::sort(entries.begin(), entries.end(), comparator);
 }
 
-filepack filepack::load(const scl2::bytearray_view &data)
+filepack filepack::load(scl2::bytearray& data)
 {
     // bytearray_view passing support serialized parsing.
     filepack_metadata metadata = filepack_metadata::load(data);

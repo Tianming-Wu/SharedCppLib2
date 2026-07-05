@@ -8,12 +8,12 @@ namespace scl2 {
 template<typename _T>
 requires (::scl2::trivially_copyable<_T> && !::scl2::has_generic_load<_T>)
 _T gload(const scl2::bytearray& data) {
-    return data.convert_to<_T>();
+    return data.to<_T>();
 }
 
 template<typename T>
 requires has_gload_container<T> && (!::scl2::has_gload<T>)
-T gload(const scl2::bytearray_view& data) {
+T gload(scl2::bytearray& data) {
     return data.readContainer<T>();
 }
 
