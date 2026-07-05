@@ -68,10 +68,7 @@ add_library(structural_binding INTERFACE include/structural_binding.hpp)
 add_library(typemask INTERFACE include/typemask.hpp)
 
 # 定义所有库
-add_library(variant STATIC src/variant.cpp)
 add_library(basic STATIC src/bytearray.cpp src/bytearray_base64.cpp src/ansiio.cpp src/color.cpp src/stringlist.cpp src/basics.cpp)
-add_library(logd STATIC src/logd.cpp)
-add_library(logf STATIC src/logf.cpp)
 add_library(sha256 STATIC src/sha256.cpp)
 add_library(crc32 STATIC src/crc32.cpp)
 add_library(indexer STATIC src/indexer.cpp)
@@ -120,8 +117,6 @@ if(MSVC)
 endif()
 
 # 库依赖关系
-target_link_libraries(logd PUBLIC variant)
-target_link_libraries(logf PUBLIC logd)
 target_link_libraries(logc PUBLIC logt)
 target_link_libraries(hmac INTERFACE api basic)
 
@@ -154,7 +149,7 @@ target_compile_definitions(json PUBLIC
 
 # 库列表
 set(TARGET_LIST
-    variant logd logf sha256 crc32 basic indexer regexfilter
+    sha256 crc32 basic indexer regexfilter
     logt logc Base64 platform arguments ini abstract xml debug stream
     console aes keydb types condition filesystem datauri json yaml
     network_core network_dns network_tcp network_udp network_http

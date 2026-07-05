@@ -157,7 +157,6 @@ target_link_libraries(my_app
 - `SharedCppLib2::logt`
 - `SharedCppLib2::logc`
 - `SharedCppLib2::regexfilter`
-- `SharedCppLib2::variant`
 - `SharedCppLib2::indexer`
 - `SharedCppLib2::Base64`
 - `SharedCppLib2::platform`

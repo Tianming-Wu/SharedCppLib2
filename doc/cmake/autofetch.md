@@ -157,7 +157,6 @@ After fetching, you can link with these SharedCppLib2 targets:
 - `SharedCppLib2::logt`
 - `SharedCppLib2::logc`
 - `SharedCppLib2::regexfilter`
-- `SharedCppLib2::variant`
 - `SharedCppLib2::indexer`
 - `SharedCppLib2::Base64`
 - `SharedCppLib2::platform`
