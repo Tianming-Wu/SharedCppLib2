@@ -20,7 +20,11 @@ public:
     using std::basic_string<CharT>::basic_string; // inherit all constructors
 
     typedef std::basic_string<CharT> string_type;
-    typedef string_type value_type; // For STL compatibility (?)
+    typedef string_type value_type;
+
+    // MSVC sometimes fails to inherit conversion from base type
+    basic_string(const string_type& s) : string_type(s) {}
+    basic_string(string_type&& s) noexcept : string_type(std::move(s)) {}
 
     scl2::basic_stringlist<CharT> split(CharT delim);
     scl2::basic_stringlist<CharT> split(const string_type &delim);

@@ -1,5 +1,8 @@
 # Changelog
 
+### v3.1.0
+- New: `scl2::basic_string` (alias `scl2::string`, `scl2::wstring`) — `std::string` subclass with `split()`, `xsplit()`, `exsplit()` convenience wrappers returning `stringlist`.
+
 ### v3.0.0
 - Removed: Deprecated modules `variant`, `logd`, `logf` removed from the library and install targets.
 - Changed: `std::stringlist`, `std::wstringlist`, `std::bytearray`, `std::bytearray_view` migrated from `std` namespace to `scl2` namespace. Update your code to use `scl2::stringlist` etc.
