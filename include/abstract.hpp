@@ -46,12 +46,12 @@ public:
     std::string join(const std::string& separator) const; // in case user wants a different separator
     std::filesystem::path toFilesystemPath() const;
 
-    std::stringlist toStringList() const;
+    scl2::stringlist toStringList() const;
 
     uint32_t depth() const;
 
 private:
-    std::stringlist m_components;
+    scl2::stringlist m_components;
     char m_separator = '/';
 
     bool is_root = {false}; // if the path is root (starts with separator)

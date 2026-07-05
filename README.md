@@ -101,7 +101,7 @@ target_link_libraries(your_target SharedCppLib2::basic)
 #include <SharedCppLib2/stringlist.hpp>
 
 int main(int argc, char** argv) {
-    std::stringlist args(argc, argv);
+    scl2::stringlist args(argc, argv);
     // Process command line arguments
     return 0;
 }
@@ -115,10 +115,10 @@ int main(int argc, char** argv) {
 #include <SharedCppLib2/hmac.hpp>
 #include <SharedCppLib2/sha256.hpp>
 
-std::bytearray key(std::string("secret-key"));
-std::bytearray payload(std::string("binary-message"));
+scl2::bytearray key(std::string("secret-key"));
+scl2::bytearray payload(std::string("binary-message"));
 
-std::bytearray tag = scl2::hmac<scl2::sha256>::compute(payload, key);
+scl2::bytearray tag = scl2::hmac<scl2::sha256>::compute(payload, key);
 ```
 
 For tag verification, use constant-time comparison:

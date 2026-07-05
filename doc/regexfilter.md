@@ -29,7 +29,7 @@ regexfilter is a powerful regular expression-based string filtering library that
 #include <SharedCppLib2/stringlist.hpp>
 
 int main() {
-    std::stringlist files = {"main.cpp", "temp.txt", "backup.tmp", "header.h"};
+    scl2::stringlist files = {"main.cpp", "temp.txt", "backup.tmp", "header.h"};
     
     // Create blacklist to exclude temporary files
     rf::blacklist exclude_temp({".*\\.tmp", "temp.*"});
@@ -43,7 +43,7 @@ int main() {
 
 ### Whitelist Example
 ```cpp
-std::stringlist sources = {"main.cpp", "util.cpp", "data.txt", "config.ini"};
+scl2::stringlist sources = {"main.cpp", "util.cpp", "data.txt", "config.ini"};
 
 // Create whitelist to keep only C++ source files
 rf::whitelist include_cpp({".*\\.cpp", ".*\\.hpp"});
@@ -59,7 +59,7 @@ The foundation class that implements core regex matching and filtering logic.
 
 #### Constructor
 ```cpp
-base_list(const std::stringlist& patterns = std::stringlist());
+base_list(const scl2::stringlist& patterns = scl2::stringlist());
 ```
 Creates a filter with the specified regex patterns. Invalid regex patterns are silently ignored.
 
@@ -73,7 +73,7 @@ Checks if a string matches any of the regex patterns.
 
 #### apply
 ```cpp
-int apply(std::stringlist& list, bool reverse) const;
+int apply(scl2::stringlist& list, bool reverse) const;
 ```
 Applies filtering to a stringlist.
 
@@ -88,7 +88,7 @@ Excludes strings that match the specified patterns.
 
 #### Constructor
 ```cpp
-blacklist(const std::stringlist& patterns = std::stringlist());
+blacklist(const scl2::stringlist& patterns = scl2::stringlist());
 ```
 Creates a blacklist with the specified exclusion patterns.
 
@@ -100,7 +100,7 @@ bool filtered(const std::string& s) const;
 
 #### apply
 ```cpp
-bool apply(std::stringlist& list) const;
+bool apply(scl2::stringlist& list) const;
 ```
 Removes all strings that match the blacklist patterns from the list.
 
@@ -111,7 +111,7 @@ Includes only strings that match the specified patterns.
 
 #### Constructor
 ```cpp
-whitelist(const std::stringlist& patterns = std::stringlist());
+whitelist(const scl2::stringlist& patterns = scl2::stringlist());
 ```
 Creates a whitelist with the specified inclusion patterns.
 
@@ -123,7 +123,7 @@ bool filtered(const std::string& s) const;
 
 #### apply
 ```cpp
-bool apply(std::stringlist& list) const;
+bool apply(scl2::stringlist& list) const;
 ```
 Removes all strings that do NOT match the whitelist patterns from the list.
 
@@ -147,7 +147,7 @@ rf::whitelist source_files({
 
 ### Combining Multiple Filters
 ```cpp
-std::stringlist items = {"file1.cpp", "file2.txt", "temp.cpp", "backup.h"};
+scl2::stringlist items = {"file1.cpp", "file2.txt", "temp.cpp", "backup.h"};
 
 // First, exclude temporary files
 rf::blacklist temp_filter({"temp.*", "backup.*"});
@@ -171,7 +171,7 @@ rf::blacklist safe_filter({"valid.*", "[invalid-regex", "another.*"});
 
 ### Log File Filtering
 ```cpp
-std::stringlist log_entries = {
+scl2::stringlist log_entries = {
     "2024-01-15 INFO: Application started",
     "2024-01-15 DEBUG: Loading configuration",
     "2024-01-15 ERROR: Database connection failed",
@@ -192,8 +192,8 @@ error_filter.apply(log_entries);
 #include <filesystem>
 namespace fs = std::filesystem;
 
-std::stringlist get_filtered_files(const fs::path& directory) {
-    std::stringlist all_files;
+scl2::stringlist get_filtered_files(const fs::path& directory) {
+    scl2::stringlist all_files;
     
     for (const auto& entry : fs::directory_iterator(directory)) {
         all_files.push_back(entry.path().filename().string());
@@ -214,9 +214,9 @@ std::stringlist get_filtered_files(const fs::path& directory) {
 
 ### Configuration Filtering
 ```cpp
-std::stringlist load_config_with_filter(const std::string& filename) {
+scl2::stringlist load_config_with_filter(const std::string& filename) {
     std::ifstream file(filename);
-    std::stringlist lines;
+    scl2::stringlist lines;
     
     // Read all lines
     std::string line;
@@ -267,7 +267,7 @@ std::stringlist load_config_with_filter(const std::string& filename) {
 regexfilter works seamlessly with stringlist:
 
 ```cpp
-std::stringlist data = std::stringlist::split(input_text, "\n")
+scl2::stringlist data = scl2::stringlist::split(input_text, "\n")
                       .remove_empty();
 
 rf::blacklist unwanted_patterns({"spam", "advertisement"});

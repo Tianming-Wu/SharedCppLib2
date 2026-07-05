@@ -29,7 +29,7 @@ regexfilter 是一个基于正则表达式的强大字符串过滤库，为 stri
 #include <SharedCppLib2/stringlist.hpp>
 
 int main() {
-    std::stringlist files = {"main.cpp", "temp.txt", "backup.tmp", "header.h"};
+    scl2::stringlist files = {"main.cpp", "temp.txt", "backup.tmp", "header.h"};
     
     // 创建黑名单排除临时文件
     rf::blacklist exclude_temp({".*\\.tmp", "temp.*"});
@@ -43,7 +43,7 @@ int main() {
 
 ### 白名单示例
 ```cpp
-std::stringlist sources = {"main.cpp", "util.cpp", "data.txt", "config.ini"};
+scl2::stringlist sources = {"main.cpp", "util.cpp", "data.txt", "config.ini"};
 
 // 创建白名单只保留 C++ 源文件
 rf::whitelist include_cpp({".*\\.cpp", ".*\\.hpp"});
@@ -59,7 +59,7 @@ include_cpp.apply(sources);
 
 #### 构造函数
 ```cpp
-base_list(const std::stringlist& patterns = std::stringlist());
+base_list(const scl2::stringlist& patterns = scl2::stringlist());
 ```
 使用指定的正则表达式模式创建过滤器。无效的正则表达式模式会被静默忽略。
 
@@ -73,7 +73,7 @@ bool filtered(const std::string& s) const;
 
 #### apply
 ```cpp
-int apply(std::stringlist& list, bool reverse) const;
+int apply(scl2::stringlist& list, bool reverse) const;
 ```
 对 stringlist 应用过滤。
 
@@ -88,7 +88,7 @@ int apply(std::stringlist& list, bool reverse) const;
 
 #### 构造函数
 ```cpp
-blacklist(const std::stringlist& patterns = std::stringlist());
+blacklist(const scl2::stringlist& patterns = scl2::stringlist());
 ```
 使用指定的排除模式创建黑名单。
 
@@ -100,7 +100,7 @@ bool filtered(const std::string& s) const;
 
 #### apply
 ```cpp
-bool apply(std::stringlist& list) const;
+bool apply(scl2::stringlist& list) const;
 ```
 从列表中移除所有匹配黑名单模式的字符串。
 
@@ -111,7 +111,7 @@ bool apply(std::stringlist& list) const;
 
 #### 构造函数
 ```cpp
-whitelist(const std::stringlist& patterns = std::stringlist());
+whitelist(const scl2::stringlist& patterns = scl2::stringlist());
 ```
 使用指定的包含模式创建白名单。
 
@@ -123,7 +123,7 @@ bool filtered(const std::string& s) const;
 
 #### apply
 ```cpp
-bool apply(std::stringlist& list) const;
+bool apply(scl2::stringlist& list) const;
 ```
 从列表中移除所有不匹配白名单模式的字符串。
 
@@ -147,7 +147,7 @@ rf::whitelist source_files({
 
 ### 组合多个过滤器
 ```cpp
-std::stringlist items = {"file1.cpp", "file2.txt", "temp.cpp", "backup.h"};
+scl2::stringlist items = {"file1.cpp", "file2.txt", "temp.cpp", "backup.h"};
 
 // 首先排除临时文件
 rf::blacklist temp_filter({"temp.*", "backup.*"});
@@ -171,7 +171,7 @@ rf::blacklist safe_filter({"valid.*", "[invalid-regex", "another.*"});
 
 ### 日志文件过滤
 ```cpp
-std::stringlist log_entries = {
+scl2::stringlist log_entries = {
     "2024-01-15 INFO: 应用程序已启动",
     "2024-01-15 DEBUG: 加载配置中",
     "2024-01-15 ERROR: 数据库连接失败",
@@ -192,8 +192,8 @@ error_filter.apply(log_entries);
 #include <filesystem>
 namespace fs = std::filesystem;
 
-std::stringlist get_filtered_files(const fs::path& directory) {
-    std::stringlist all_files;
+scl2::stringlist get_filtered_files(const fs::path& directory) {
+    scl2::stringlist all_files;
     
     for (const auto& entry : fs::directory_iterator(directory)) {
         all_files.push_back(entry.path().filename().string());
@@ -214,9 +214,9 @@ std::stringlist get_filtered_files(const fs::path& directory) {
 
 ### 配置过滤
 ```cpp
-std::stringlist load_config_with_filter(const std::string& filename) {
+scl2::stringlist load_config_with_filter(const std::string& filename) {
     std::ifstream file(filename);
-    std::stringlist lines;
+    scl2::stringlist lines;
     
     // 读取所有行
     std::string line;
@@ -267,7 +267,7 @@ std::stringlist load_config_with_filter(const std::string& filename) {
 regexfilter 与 stringlist 无缝协作：
 
 ```cpp
-std::stringlist data = std::stringlist::split(input_text, "\n")
+scl2::stringlist data = scl2::stringlist::split(input_text, "\n")
                       .remove_empty();
 
 rf::blacklist unwanted_patterns({"垃圾内容", "广告"});

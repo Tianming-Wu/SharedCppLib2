@@ -97,7 +97,7 @@ void server::handleClient(tcp::client_id id)
         } catch (const std::exception&) {
             // Parsing failed, send 400 Bad Request
             response resp = response::make_text(http_status::BAD_REQUEST, "Bad Request");
-            handler.write(std::bytearray(resp.serialize()));
+            handler.write(scl2::bytearray(resp.serialize()));
             m_client_buffers.erase(id);
             return;
         }
@@ -136,7 +136,7 @@ void server::handleClient(tcp::client_id id)
         }
         
         // Send response
-        handler.write(std::bytearray(resp.serialize()));
+        handler.write(scl2::bytearray(resp.serialize()));
         
         // Clear the buffer
         m_client_buffers.erase(id);

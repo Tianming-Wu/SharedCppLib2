@@ -29,7 +29,7 @@ namespace scl2 {
 
 struct filepack_entry {
     std::string filename;
-    std::bytearray data;
+    scl2::bytearray data;
 };
 
 
@@ -37,7 +37,7 @@ class filepack {
 public:
     filepack();
 
-    void addFile(const std::string& filename, const std::bytearray& data);
+    void addFile(const std::string& filename, const scl2::bytearray& data);
 
     uint64_t getFileCount() const;
 
@@ -50,8 +50,8 @@ public:
     // Note: using std::sort, may not be stable.
     void sortFiles(SortMethod method, SortOrder order = AscendingOrder);
 
-    static filepack load(const std::bytearray_view& data);
-    static std::bytearray dump(const filepack& pack);
+    static filepack load(const scl2::bytearray_view& data);
+    static scl2::bytearray dump(const filepack& pack);
 
 private:
     std::vector<filepack_entry> entries;

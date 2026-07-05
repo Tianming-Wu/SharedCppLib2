@@ -243,8 +243,8 @@ style_to_sgr({.bold=true, .italic=true})       → "\033[0;1;3m"
 
 ```cpp
 std::string apply_style(const std::string& input, const text_style& style);
-std::stringlist apply_style(const std::stringlist& lines, const std::vector<text_style>& styles);
-std::string apply_style_inline(const std::stringlist& lines, const std::vector<text_style>& styles);
+scl2::stringlist apply_style(const scl2::stringlist& lines, const std::vector<text_style>& styles);
+std::string apply_style_inline(const scl2::stringlist& lines, const std::vector<text_style>& styles);
 ```
 
 使用 ANSI 样式码包裹文本。单文本版本返回 `style_to_sgr(style) + input + reset_color`。stringlist 版本将样式应用于每一行（如果样式少于行数则循环使用）。

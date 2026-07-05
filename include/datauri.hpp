@@ -28,7 +28,7 @@ public:
     // ---- Encode: build a data: URI from raw data ----
 
     // Encode binary data (always uses base64).
-    std::string encode(const std::bytearray& data) const;
+    std::string encode(const scl2::bytearray& data) const;
 
     // Encode text data (uses percent-encoding when not base64).
     std::string encode(const std::string& data) const;
@@ -42,7 +42,7 @@ public:
     // Decode only the <data> portion back to raw bytes.
     // Auto-detects base64 vs percent-encoding from the prefix.
     // Throws std::runtime_error on invalid input.
-    static std::bytearray decode(const std::string& uri);
+    static scl2::bytearray decode(const std::string& uri);
 
     // ---- Accessors ----
 
@@ -70,7 +70,7 @@ class inline_data_uri : public data_uri {
 public:
     inline_data_uri() = default;
 
-    inline_data_uri(std::string media_type, bool base64, std::bytearray data)
+    inline_data_uri(std::string media_type, bool base64, scl2::bytearray data)
         : data_uri(std::move(media_type), base64), data_(std::move(data)) {}
 
     // Parse a full data: URI string and store both metadata and decoded payload.
@@ -81,15 +81,15 @@ public:
     std::string to_string() const;
 
     // Access the raw decoded payload.
-    const std::bytearray& data() const { return data_; }
-    std::bytearray& data() { return data_; }
+    const scl2::bytearray& data() const { return data_; }
+    scl2::bytearray& data() { return data_; }
 
     bool operator==(const inline_data_uri& other) const {
         return media_type() == other.media_type() && is_base64() == other.is_base64() && data_ == other.data_;
     }
 
 private:
-    std::bytearray data_;
+    scl2::bytearray data_;
 };
 
 } // namespace scl2

@@ -31,20 +31,20 @@ StringList 是 `std::vector<std::string>` 的强大扩展，提供了 Qt 风格�
 #include <SharedCppLib2/stringlist.hpp>
 
 // 从初始化列表创建
-std::stringlist names = {"Alice", "Bob", "Charlie"};
+scl2::stringlist names = {"Alice", "Bob", "Charlie"};
 
 // 使用分隔符连接
 std::cout << names.join(", ") << std::endl;
 // 输出: Alice, Bob, Charlie
 
 // 将字符串分割为列表
-std::stringlist words = std::stringlist::split("hello world from cpp", " ");
+scl2::stringlist words = scl2::stringlist::split("hello world from cpp", " ");
 ```
 
 ### 基本构造
 ```cpp
 int main(int argc, char** argv) {
-    std::stringlist args(argc, argv);
+    scl2::stringlist args(argc, argv);
     
     std::cout << "程序: " << args.vat(0) << std::endl;
     std::cout << "参数: " << args.subarr(1).join(" ") << std::endl;
@@ -83,7 +83,7 @@ string join(size_t begin, size_t size = -1, const string &separator = " ") const
 
 **示例:**
 ```cpp
-std::stringlist sl = {"a", "b", "c"};
+scl2::stringlist sl = {"a", "b", "c"};
 sl.join();           // "a b c"
 sl.join(", ");       // "a, b, c"
 sl.join(1, 2, "-");  // "b-c" (从索引1开始，2个元素)
@@ -97,7 +97,7 @@ string xjoin(const string &separator = " ", const char binding = '\"') const;
 
 **示例:**
 ```cpp
-std::stringlist sl = {"file", "path with spaces"};
+scl2::stringlist sl = {"file", "path with spaces"};
 sl.xjoin(" ");  // "file \"path with spaces\""
 ```
 
@@ -122,10 +122,10 @@ static stringlist split(const string &s, const stringlist &delimiters);
 **示例:**
 ```cpp
 // 单个分隔符
-std::stringlist::split("a,b,c", ",");  // {"a", "b", "c"}
+scl2::stringlist::split("a,b,c", ",");  // {"a", "b", "c"}
 
 // 多个分隔符  
-std::stringlist::split("a,b c\td", {",", " ", "\t"});  // {"a", "b", "c", "d"}
+scl2::stringlist::split("a,b c\td", {",", " ", "\t"});  // {"a", "b", "c", "d"}
 ```
 
 > [!NOTE]
@@ -146,7 +146,7 @@ static stringlist exsplit(const string &s, const string &delim,
 **示例:**
 ```cpp
 // 处理带引号的部分
-std::stringlist::xsplit("cmd arg1 \"quoted arg\" arg3", " ", "\"");
+scl2::stringlist::xsplit("cmd arg1 \"quoted arg\" arg3", " ", "\"");
 // {"cmd", "arg1", "quoted arg", "arg3"}
 ```
 
@@ -186,7 +186,7 @@ string vat(size_t index, const string &default_value = "") const;
 
 #### subarr
 ```cpp
-std::stringlist subarr(size_t start, size_t length = 0) const;
+scl2::stringlist subarr(size_t start, size_t length = 0) const;
 ```
 从列表中提取子范围。
 
@@ -230,7 +230,7 @@ stringlist(int argc, char** argv, int start = 0, int end = -1);
 stringlist(initializer_list<string> elements);
 ```
 ```cpp
-std::stringlist fruits = {"apple", "banana", "orange"};
+scl2::stringlist fruits = {"apple", "banana", "orange"};
 ```
 
 ### 从字符串分割
@@ -239,7 +239,7 @@ stringlist(const string &text, const string &delimiter);
 stringlist(const string &text, const stringlist &delimiters);
 ```
 ```cpp
-std::stringlist words("hello world from cpp", " ");
+scl2::stringlist words("hello world from cpp", " ");
 ```
 
 ### 从单个字符串
@@ -252,14 +252,14 @@ explicit stringlist(const string &single_element);
 
 ### 打包/解包用于序列化
 ```cpp
-std::stringlist data = {"normal", "text with spaces"};
+scl2::stringlist data = {"normal", "text with spaces"};
 std::string packed = data.pack();  // 自动为空格添加引号
-std::stringlist restored = std::stringlist::unpack(packed);
+scl2::stringlist restored = scl2::stringlist::unpack(packed);
 ```
 
 ### 流集成
 ```cpp
-std::stringlist items;
+scl2::stringlist items;
 std::cin >> stringist_split(",", items);  // 解析 CSV 输入
 ```
 
@@ -269,7 +269,7 @@ std::cin >> stringist_split(",", items);  // 解析 CSV 输入
 2. **预分配** 可能的大列表
 3. **高效链式操作**:
    ```cpp
-   auto result = std::stringlist::split(input, " ")
+   auto result = scl2::stringlist::split(input, " ")
                  .remove_empty()
                  .unique();
    ```
@@ -278,12 +278,12 @@ std::cin >> stringist_split(",", items);  // 解析 CSV 输入
 
 ### 配置解析
 ```cpp
-std::stringlist config_lines = std::stringlist::split(config_text, "\n")
+scl2::stringlist config_lines = scl2::stringlist::split(config_text, "\n")
                                .remove_empty();
 
 for (const auto& line : config_lines) {
     if (line.starts_with("#")) continue;  // 跳过注释
-    auto parts = std::stringlist::split(line, "=");
+    auto parts = scl2::stringlist::split(line, "=");
     if (parts.size() == 2) {
         config[parts[0]] = parts[1];
     }
@@ -294,7 +294,7 @@ for (const auto& line : config_lines) {
 ```cpp
 std::string build_command(const std::string& program, 
                          const std::vector<std::string>& args) {
-    std::stringlist cmd = {program};
+    scl2::stringlist cmd = {program};
     cmd.append(args);  // 添加整个向量
     return cmd.xjoin(" ");  // 自动管理带空格的参数
 }
@@ -302,7 +302,7 @@ std::string build_command(const std::string& program,
 // 或单行版本：
 std::string build_command(const std::string& program, 
                          const std::vector<std::string>& args) {
-    return std::stringlist{program}.append(args).xjoin(" ");
+    return scl2::stringlist{program}.append(args).xjoin(" ");
 }
 ```
 
@@ -315,7 +315,7 @@ std::string build_command(const std::string& program,
 
 ### 过滤
 ```cpp
-std::stringlist files = /* ... */;
+scl2::stringlist files = /* ... */;
 
 // 方法1：使用 exec_foreach 和 remove_empty
 files.exec_foreach([](size_t i, std::string& file) {
@@ -331,7 +331,7 @@ rf::whitelist cpp_files({".*\\.cpp", ".*\\.hpp"});
 cpp_files.apply(files);
 
 // 方法3：结合 stringlist 和 regexfilter
-auto result = std::stringlist::split(input, "\n")
+auto result = scl2::stringlist::split(input, "\n")
               .remove_empty()
               .apply_filter([](const std::string& s) {
                   return s.contains("important");
@@ -371,7 +371,7 @@ exclude_patterns.apply(files);
 
 ### 转换
 ```cpp
-std::stringlist paths = {"dir1/file1", "dir2/file2"};
+scl2::stringlist paths = {"dir1/file1", "dir2/file2"};
 paths.exec_foreach([](size_t i, std::string& path) {
     path = "/usr/local/" + path;
 });

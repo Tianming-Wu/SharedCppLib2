@@ -125,44 +125,44 @@ void ini::setValue(const std::string &section, const std::string &key, bool valu
     data[section][key] = value ? "true" : "false";
 }
 
-std::stringlist ini::getValueAsStringList(const std::string &section, const std::string &key) const
+scl2::stringlist ini::getValueAsStringList(const std::string &section, const std::string &key) const
 {
-    return std::stringlist::unpack(getValue(section, key, ""));
+    return scl2::stringlist::unpack(getValue(section, key, ""));
 }
 
-std::stringlist ini::getValueAsStringList(const std::string &section, const std::string &key, const std::stringlist &default_value) const
+scl2::stringlist ini::getValueAsStringList(const std::string &section, const std::string &key, const scl2::stringlist &default_value) const
 {
     if(data.contains(section) && data.at(section).contains(key)) {
         const std::string& valueStr = data.at(section).at(key);
-        return std::stringlist::unpack(valueStr);
+        return scl2::stringlist::unpack(valueStr);
     }
     return default_value;
 }
 
-void ini::setValue(const std::string &section, const std::string &key, const std::stringlist &value)
+void ini::setValue(const std::string &section, const std::string &key, const scl2::stringlist &value)
 {
     data[section][key] = value.pack();
 }
 
-std::bytearray ini::getValueAsByteArray(const std::string &section, const std::string &key) const
+scl2::bytearray ini::getValueAsByteArray(const std::string &section, const std::string &key) const
 {
     if(data.contains(section) && data.at(section).contains(key)) {
         const std::string& valueStr = data.at(section).at(key);
-        return std::bytearray::fromHex(valueStr);
+        return scl2::bytearray::fromHex(valueStr);
     }
-    return std::bytearray();
+    return scl2::bytearray();
 }
 
-std::bytearray ini::getValueAsByteArray(const std::string &section, const std::string &key, const std::bytearray &default_value) const
+scl2::bytearray ini::getValueAsByteArray(const std::string &section, const std::string &key, const scl2::bytearray &default_value) const
 {
     if(data.contains(section) && data.at(section).contains(key)) {
         const std::string& valueStr = data.at(section).at(key);
-        return std::bytearray::fromHex(valueStr);
+        return scl2::bytearray::fromHex(valueStr);
     }
     return default_value;
 }
 
-void ini::setValue(const std::string &section, const std::string &key, const std::bytearray &value)
+void ini::setValue(const std::string &section, const std::string &key, const scl2::bytearray &value)
 {
     data[section][key] = value.toHex();
 }
@@ -188,20 +188,20 @@ std::optional<bool> ini::getValueAsBoolOptional(const std::string& section, cons
     return std::nullopt;
 }
 
-std::optional<std::stringlist> ini::getValueAsStringListOptional(const std::string& section, const std::string& key) const
+std::optional<scl2::stringlist> ini::getValueAsStringListOptional(const std::string& section, const std::string& key) const
 {
     if(data.contains(section) && data.at(section).contains(key)) {
         const std::string& valueStr = data.at(section).at(key);
-        return std::optional<std::stringlist>(std::stringlist::unpack(valueStr));
+        return std::optional<scl2::stringlist>(scl2::stringlist::unpack(valueStr));
     }
     return std::nullopt;
 }
 
-std::optional<std::bytearray> ini::getValueAsByteArrayOptional(const std::string& section, const std::string& key) const
+std::optional<scl2::bytearray> ini::getValueAsByteArrayOptional(const std::string& section, const std::string& key) const
 {
     if(data.contains(section) && data.at(section).contains(key)) {
         const std::string& valueStr = data.at(section).at(key);
-        return std::optional<std::bytearray>(std::bytearray::fromHex(valueStr));
+        return std::optional<scl2::bytearray>(scl2::bytearray::fromHex(valueStr));
     }
     return std::nullopt;
 }

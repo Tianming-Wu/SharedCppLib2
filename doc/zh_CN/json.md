@@ -378,7 +378,7 @@ if (ptr.contains(doc)) {
 | 字符串 | `json_value_type::string` | `std::string` |
 | 数组 | `json_value_type::array` | `std::vector<json_value>` |
 | 对象 | `json_value_type::object` | `std::map<std::string, json_value>` |
-| Bytearray* | `json_value_type::bytearray` | `std::bytearray` |
+| Bytearray* | `json_value_type::bytearray` | `scl2::bytearray` |
 | 数据 URI* | `json_value_type::data_uri` | `inline_data_uri` |
 
 \* 仅在启用 `SCL2_JSON_ENABLE_EXTENSIONS` 时可用。

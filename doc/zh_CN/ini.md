@@ -19,7 +19,7 @@ target_link_libraries(my_target PRIVATE SharedCppLib2::ini)
 
 ## 描述
 
-`ini` 提供了轻量且易用的 INI 配置文件解析与写入能力。支持常见的字符串、整型、浮点、布尔、`std::stringlist` 与 `std::bytearray` 类型；并为不同使用场景提供三种取值接口：带默认值参数、使用类型默认构造值，以及返回 `std::optional<T>` 的可选版本。
+`ini` 提供了轻量且易用的 INI 配置文件解析与写入能力。支持常见的字符串、整型、浮点、布尔、`scl2::stringlist` 与 `scl2::bytearray` 类型；并为不同使用场景提供三种取值接口：带默认值参数、使用类型默认构造值，以及返回 `std::optional<T>` 的可选版本。
 
 ## 快速开始
 
@@ -90,11 +90,11 @@ auto maybeEnabled = cfg.getValueAsBoolOptional("Feature", "Enable");
 ## stringlist 与 bytearray 支持
 
 - `getValueAsStringList(...)` / `getValueAsStringListOptional(...)`：用于解析由 `stringlist::pack()` 生成的字符串列表表示。
-- `getValueAsByteArray(...)` / `getValueAsByteArrayOptional(...)`：用于解析十六进制编码（由 `std::bytearray::tohex()` 生成）的字节数组。
+- `getValueAsByteArray(...)` / `getValueAsByteArrayOptional(...)`：用于解析十六进制编码（由 `scl2::bytearray::tohex()` 生成）的字节数组。
 
 示例：
 ```cpp
-std::stringlist items = cfg.getValueAsStringList("Section", "Items");
+scl2::stringlist items = cfg.getValueAsStringList("Section", "Items");
 auto maybeBytes = cfg.getValueAsByteArrayOptional("Bin", "Data");
 ```
 
@@ -108,8 +108,8 @@ auto maybeBytes = cfg.getValueAsByteArrayOptional("Bin", "Data");
 - `bool getValueAsBool(const std::string& section, const std::string& key, bool default_value = false) const;`
 - `std::optional<std::string> getValueOptional(const std::string& section, const std::string& key) const;`
 - `template<typename T> std::optional<T> getValueAsIntegerOptional(const std::string& section, const std::string& key) const;`
-- `std::stringlist getValueAsStringList(const std::string& section, const std::string& key) const;`
-- `std::bytearray getValueAsByteArray(const std::string& section, const std::string& key) const;`
+- `scl2::stringlist getValueAsStringList(const std::string& section, const std::string& key) const;`
+- `scl2::bytearray getValueAsByteArray(const std::string& section, const std::string& key) const;`
 
 （完整接口请参考 `include/ini.hpp`）
 

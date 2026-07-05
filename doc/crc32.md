@@ -32,8 +32,8 @@ CRC-32 (Cyclic Redundancy Check) is a widely used checksum algorithm for error d
 ### One-shot
 
 ```cpp
-std::bytearray data = std::bytearray("Hello, World!");
-std::bytearray digest = scl2::crc32::hash(data);
+scl2::bytearray data = scl2::bytearray("Hello, World!");
+scl2::bytearray digest = scl2::crc32::hash(data);
 // digest is 4 bytes, big-endian
 ```
 
@@ -44,7 +44,7 @@ scl2::crc32::stream_type hasher;
 hasher.update(chunk1);
 hasher.update(chunk2);
 // ... feed any number of chunks
-std::bytearray digest = hasher.end();
+scl2::bytearray digest = hasher.end();
 ```
 
 ### Stream from istream
@@ -60,7 +60,7 @@ auto digest = scl2::hash_stream<scl2::crc32>(file);
 
 ```cpp
 std::ifstream file("data.bin", std::ios::binary);
-auto expected = std::bytearray::fromHex("cbf43926");
+auto expected = scl2::bytearray::fromHex("cbf43926");
 auto actual = scl2::hash_stream<scl2::crc32>(file);
 bool ok = (expected == actual);
 ```

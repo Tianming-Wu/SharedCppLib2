@@ -25,16 +25,16 @@ public:
     static constexpr size_t block_size  = 1;
 
     /// @brief One-shot CRC32 hash.
-    static std::bytearray hash(const std::bytearray& data);
+    static scl2::bytearray hash(const scl2::bytearray& data);
 
     /// @brief Streaming CRC32 hasher.
     class stream_type {
     public:
         stream_type();
         /// @brief Feed a data chunk.
-        void update(const std::bytearray& chunk);
+        void update(const scl2::bytearray& chunk);
         /// @brief Finalize and return the 4-byte CRC32 digest (big-endian).
-        std::bytearray end();
+        scl2::bytearray end();
     private:
         uint32_t crc_;
     };

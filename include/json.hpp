@@ -145,10 +145,10 @@ public:
     std::map<std::string, json_value>& as_object();
 
 #ifdef SCL2_JSON_ENABLE_EXTENSIONS
-    json_value(std::bytearray&& ba);
+    json_value(scl2::bytearray&& ba);
     bool is_bytearray() const;
-    const std::bytearray& as_bytearray() const;
-    std::bytearray& as_bytearray();
+    const scl2::bytearray& as_bytearray() const;
+    scl2::bytearray& as_bytearray();
 
     json_value(const inline_data_uri& data_uri);
     bool is_data_uri() const;
@@ -207,7 +207,7 @@ private:
         std::vector<json_value>,
         std::map<std::string, json_value>
 #ifdef SCL2_JSON_ENABLE_EXTENSIONS
-        , std::bytearray
+        , scl2::bytearray
         , inline_data_uri
 #endif
     > value;

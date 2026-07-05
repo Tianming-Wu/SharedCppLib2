@@ -1,7 +1,7 @@
 /*
-    A byte array class for handling raw binary data.
+    A std::byte array class for handling raw binary data.
     classes:
-        std::bytearray, std::bytearray_view
+        scl2::bytearray, scl2::bytearray_view
     link target:
         SharedCppLib2::basic
 */
@@ -25,7 +25,7 @@
 #include "basic_api.hpp"
 #include "bytearray_api_forward.hpp"
 
-namespace std {
+namespace scl2 {
 
 template<typename> class basic_stringlist;
 using stringlist = basic_stringlist<char>;
@@ -42,8 +42,8 @@ concept _is_bytearray_constructable =
 
 // now using std::byte. I'm not really satisfied, because it it so EXPLICIT. There are no any implicit conversions at all.
 // Fine. I just need to warn the users to use append(std::byte{0x08}) instead of append(0x08), which is a fucking INTEGER.
-// #undef byte
-// typedef unsigned char byte;
+// #undef std::byte
+// typedef unsigned char std::byte;
 
 // For a better fixed-size construction api which will later be added
 // into the mainstream.
@@ -54,30 +54,30 @@ struct bytes
     std::byte data[ContentSize];
 };
 
-// simplify byte literal construction, so that users can write std::byte{0x08} as B(0x08) instead. Still explicit, but less verbose.
-// The reason not to use BYTE is because of Microsoft's obnoxious definition of EVERYTHING
+// simplify std::byte literal construction, so that users can write std::byte{0x08} as B(0x08) instead. Still explicit, but less verbose.
+// The reason not to use std::byte is because of Microsoft's obnoxious definition of EVERYTHING
 #ifndef BYTEARRAY_NODEFINE
     #define B(IN) std::byte{IN}
     #define PCB(IN) reinterpret_cast<const std::byte*>(&IN)
 #endif
 
-class bytearray : public vector<byte>
+class bytearray : public std::vector<std::byte>
 {
-    typedef ::std::vector<byte> vector_type;
+    typedef ::std::vector<std::byte> vector_type;
 public:
     bytearray();
     bytearray(const bytearray &ba);
-    bytearray(byte b); // Single-Element Constructor is fine to be implicit, since std::byte is safe.
+    bytearray(std::byte b); // Single-Element Constructor is fine to be implicit, since std::byte is safe.
     explicit bytearray(const std::string &str); // note: assumes raw data, does not include length and null terminator
     explicit bytearray(const char *raw, size_t size);
-    explicit bytearray(const byte *raw, size_t size);
+    explicit bytearray(const std::byte *raw, size_t size);
     explicit bytearray(const void *raw, size_t size);
-    explicit bytearray(size_t count, byte value);
+    explicit bytearray(size_t count, std::byte value);
     explicit bytearray(size_t count);
-    bytearray(std::initializer_list<byte> init);
+    bytearray(std::initializer_list<std::byte> init);
 
     template<typename InputIt>
-    bytearray(InputIt first, InputIt last) : vector<byte>(first, last) {}
+    bytearray(InputIt first, InputIt last) : std::vector<std::byte>(first, last) {}
 
     template<typename _Any>
     requires (_is_bytearray_constructable<_Any>)
@@ -122,36 +122,36 @@ public:
     void copy_from(const void* raw, size_t size);
     void copy_to(void* raw, size_t size) const;
 
-    inline const byte* rawData() const { return data(); }
+    inline const std::byte* rawData() const { return data(); }
     inline size_t rawSize() const { return size(); }
 
-    byte at(size_t i) const;
-    byte vat(size_t p, const byte &v = byte('\0')) const;
+    std::byte at(size_t i) const;
+    std::byte vat(size_t p, const std::byte &v = std::byte('\0')) const;
 
     void append(const bytearray &ba);
-    void append(byte b);
-    void append(const byte* pb, size_t size);
+    void append(std::byte b);
+    void append(const std::byte* pb, size_t size);
     void append(const char* str, size_t size);
     void append(const char* str); // this is a little dangerous, be careful! it follows the null terminator.
     void append(uint8_t val);
     inline void append(int8_t val) { append(static_cast<uint8_t>(val)); }
 
     // fuck you std standard for no explicit parameters
-    inline void append(uint16_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(uint16_t))); }
-    inline void append(int16_t val)  { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int16_t)));  }
-    inline void append(uint32_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(uint32_t))); }
-    inline void append(int32_t val)  { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int32_t)));  }
-    inline void append(uint64_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(uint64_t))); }
-    inline void append(int64_t val)  { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(int64_t)));  }
+    inline void append(uint16_t val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(uint16_t))); }
+    inline void append(int16_t val)  { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(int16_t)));  }
+    inline void append(uint32_t val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(uint32_t))); }
+    inline void append(int32_t val)  { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(int32_t)));  }
+    inline void append(uint64_t val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(uint64_t))); }
+    inline void append(int64_t val)  { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(int64_t)));  }
 
-    inline void append(bool val)     { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(bool)));     }
+    inline void append(bool val)     { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(bool)));     }
 
     // explicit overloads for unsigned long and long (only when distinct from fixed-width types)
     template<typename T>
     requires (std::is_same_v<T, unsigned long> && 
               !std::is_same_v<unsigned long, uint32_t> && 
               !std::is_same_v<unsigned long, uint64_t>)
-    inline void append(T val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(unsigned long))); }
+    inline void append(T val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(unsigned long))); }
 
     // All arithmetic types will be merged into this template in a future version.
     // template<typename T>
@@ -160,21 +160,21 @@ public:
     //           !std::is_same_v<T, unsigned long> && 
     //           !std::is_same_v<unsigned long, uint32_t> && 
     //           !std::is_same_v<unsigned long, uint64_t>)
-    // inline void append(T val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(T))); }
+    // inline void append(T val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(T))); }
 
     template<typename T>
     requires (std::is_same_v<T, long> && 
               !std::is_same_v<long, int32_t> && 
               !std::is_same_v<long, int64_t>)
-    inline void append(T val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(long))); }
+    inline void append(T val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(long))); }
 
     // special handle for enum types.
     template<typename E>
     requires std::is_enum_v<E>
-    inline void append(E val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(E))); }
+    inline void append(E val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(E))); }
 
     // appending size_t (to avoid ambiguity with everything else)
-    inline void appendSize(size_t val) { append(bytearray(reinterpret_cast<const byte*>(&val), sizeof(size_t))); }
+    inline void appendSize(size_t val) { append(bytearray(reinterpret_cast<const std::byte*>(&val), sizeof(size_t))); }
 
     // special one for safe string storage. extract with bytearray_view::readString().
     void addString(const std::string& str);
@@ -216,15 +216,15 @@ public:
     void swap(bytearray &ba);
     void swap(size_t a, size_t b, size_t size = 1);
 
-    std::bytearray& replace(size_t pos, size_t len, const bytearray &ba);
-    std::bytearray& insert(size_t pos, const bytearray &ba);
+    scl2::bytearray& replace(size_t pos, size_t len, const bytearray &ba);
+    scl2::bytearray& insert(size_t pos, const bytearray &ba);
 
     bytearray subarr(size_t begin, size_t size = -1) const;
 
     std::string toStdString() const;
-    std::stringlist toStringlist(const std::string& split = " ") const;
+    scl2::stringlist toStringlist(const std::string& split = " ") const;
     std::wstring toStdWString() const;
-    std::wstringlist toWStringlist(const std::wstring& split = L" ") const;
+    scl2::wstringlist toWStringlist(const std::wstring& split = L" ") const;
     std::string toHex() const;
     std::string toHex(size_t begin, size_t size = -1) const;
     std::string toEscapedString() const;
@@ -239,16 +239,16 @@ public:
 
     bool operator== (const bytearray &ba) const;
 
-    std::bytearray operator+ (const bytearray &ba) const;
+    scl2::bytearray operator+ (const bytearray &ba) const;
 
-    std::bytearray operator << (size_t offset) const;
-    std::bytearray operator >> (size_t offset) const;
+    scl2::bytearray operator << (size_t offset) const;
+    scl2::bytearray operator >> (size_t offset) const;
 
-    std::bytearray shiftLeft(size_t offset) const;
-    std::bytearray shiftRight(size_t offset) const;
+    scl2::bytearray shiftLeft(size_t offset) const;
+    scl2::bytearray shiftRight(size_t offset) const;
 
-    std::bytearray rotateLeft(size_t offset) const;
-    std::bytearray rotateRight(size_t offset) const;
+    scl2::bytearray rotateLeft(size_t offset) const;
+    scl2::bytearray rotateRight(size_t offset) const;
 
     static bytearray fromHex(const std::string& hex);
     static bytearray fromRaw(const char* raw, size_t size);
@@ -293,9 +293,9 @@ public:
     // 穿透底层 bytearray 的信息
     inline size_t size() const { return ba.size(); }
     inline bool empty() const { return ba.empty(); }
-    inline const byte* data() const { return ba.data(); }
-    inline byte at(size_t i) const { return ba.at(i); }
-    inline byte operator[](size_t i) const { return ba[i]; }
+    inline const std::byte* data() const { return ba.data(); }
+    inline std::byte at(size_t i) const { return ba.at(i); }
+    inline std::byte operator[](size_t i) const { return ba[i]; }
     inline bytearray subarr(size_t begin, size_t size = -1) const { 
         return ba.subarr(begin, size); 
     }
@@ -354,8 +354,8 @@ public:
     std::wstring peekWString() const;
     std::wstring readWString() const;
 
-    std::bytearray readBytes(size_t size) const;
-    std::bytearray peekBytes(size_t size) const;
+    scl2::bytearray readBytes(size_t size) const;
+    scl2::bytearray peekBytes(size_t size) const;
 
     template<typename _T>
     requires ::scl2::stl::trivially_copyable_container<_T>
@@ -435,12 +435,12 @@ protected:
 // These operators avoid any unwanted format used. It by default deal with raw data only.
 // If user really need something like hex, they must do it explicitly.
 
-inline ostream& operator<<(ostream& os, const std::bytearray& ba) {
+inline std::ostream& operator<<(std::ostream& os, const scl2::bytearray& ba) {
     ba.writeRaw(os);
     return os;
 }
 
-inline istream& operator>>(istream& is, std::bytearray& ba) {
+inline std::istream& operator>>(std::istream& is, scl2::bytearray& ba) {
     ba.clear();
     auto* file_stream = dynamic_cast<std::istream*>(&is);
     if (file_stream) {
@@ -467,7 +467,7 @@ inline istream& operator>>(istream& is, std::bytearray& ba) {
 // }
 
 
-// inline ostream& operator<<(ostream& os, const std::bytearray& ba) {
+// inline std::ostream& operator<<(std::ostream& os, const scl2::bytearray& ba) {
 //     if (os.flags() & ios_base::hex) {
 //         ios_base::fmtflags original_flags = os.flags();
 //         os << hex << setfill('0');

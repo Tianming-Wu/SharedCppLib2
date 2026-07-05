@@ -151,14 +151,14 @@ Plain structures are directly supported, however you need to construct the bytea
 
 ```cpp
 myConfig cfg{800, 600, true};
-std::bytearray ba(cfg); // as simple.
+scl2::bytearray ba(cfg); // as simple.
 
 myConfig cfg2 = ba.as<MyConfig>(); // and also simple.
 ```
 
 If it is meant to be embedded, you can also make the load and dump functions for the struct. The only difference is the load function, where you need to specify the size:
 ```cpp
-myStruct myStruct::load(const std::bytearray_view& data) {
+myStruct myStruct::load(const scl2::bytearray_view& data) {
     return data.readBytes(sizeof(myStruct)).as<myStruct>();
 }
 ```
@@ -180,8 +180,8 @@ For the API to work, it's suggested to use the following method:
 struct MyConfig {
     // ... previous definition ...
 
-    static MyConfig load(const std::bytearray_view& data);
-    static std::bytearray dump(const MyConfig& config);
+    static MyConfig load(const scl2::bytearray_view& data);
+    static scl2::bytearray dump(const MyConfig& config);
 };
 
 // You can use this macro to do an assert about whether you have written the API correctly:
@@ -195,7 +195,7 @@ The ONLY thing you need to ensure is that these functions are consistent with ea
 
 ```cpp
 
-MyConfig MyConfig::load(const std::bytearray_view& data) {
+MyConfig MyConfig::load(const scl2::bytearray_view& data) {
     MyConfig config;
 
     // For string, use the provided readString.
@@ -214,8 +214,8 @@ MyConfig MyConfig::load(const std::bytearray_view& data) {
     return config;
 }
 
-std::bytearray MyConfig::dump(const MyConfig& config) {
-    std::bytearray ba;
+scl2::bytearray MyConfig::dump(const MyConfig& config) {
+    scl2::bytearray ba;
 
     // You can choose to pre-allocate the bytearray. The grammar is the same as STL containers.
     ba.reserve(256); // This is not necessary, but it can improve performance by reducing the number of memory allocations.
@@ -244,7 +244,7 @@ struct AppConfig {
 
 And here's the amazing part. Load/dump functions can be called recursively for sub-structures.
 ```cpp
-AppConfig AppConfig::load(const std::bytearray_view& data) {
+AppConfig AppConfig::load(const scl2::bytearray_view& data) {
     AppConfig config;
 
     // Just call the load function of the sub-structure, and it will handle everything for you.
@@ -255,8 +255,8 @@ AppConfig AppConfig::load(const std::bytearray_view& data) {
     return config;
 }
 
-std::bytearray AppConfig::dump(const AppConfig& config) {
-    std::bytearray ba;
+scl2::bytearray AppConfig::dump(const AppConfig& config) {
+    scl2::bytearray ba;
 
     // Just call the dump function of the sub-structure, and it will handle everything for you.
     ba.append(MyConfig::dump(config.myConfig));
@@ -282,7 +282,7 @@ int main() {
         // You must open the file in binary mode for any Read api work correctly.
         std::ifstream cfgf("config.db", std::ios::binary);
 
-        std::bytearray ba;
+        scl2::bytearray ba;
         cfgf >> ba;
 
         // It's not pretty clear here, but NO MATTER WHAT, you must let the current scope own
@@ -297,7 +297,7 @@ int main() {
     }
 
     {
-        std::bytearray outba = MyConfig::dump(config);
+        scl2::bytearray outba = MyConfig::dump(config);
         std::ofstream outcfgf("config.db", std::ios::binary);
         outcfgf << outba;
     }
@@ -344,12 +344,12 @@ However, currently there is no encryption algorithm implemented in SharedCppLib2
 #include <SharedCppLib2/api.hpp>
 #include <AES256.hpp> // This is an example placeholder for a supported encryption algorithm.
 
-std::bytearray cfgData = MyConfig::dump(config);
+scl2::bytearray cfgData = MyConfig::dump(config);
 
-std::bytearray enc = scl2::encrypt<AES256>(cfgData, key);
+scl2::bytearray enc = scl2::encrypt<AES256>(cfgData, key);
 scl2::writeFile("config.enc", enc);
 
-std::bytearray uecfgData = scl2::decrypt<AES256>(enc, key);
+scl2::bytearray uecfgData = scl2::decrypt<AES256>(enc, key);
 
 // ...
 ```

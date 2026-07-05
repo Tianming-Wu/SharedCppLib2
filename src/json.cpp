@@ -214,10 +214,10 @@ std::map<std::string, json_value>& json_value::as_object() {
 }
 
 #ifdef SCL2_JSON_ENABLE_EXTENSIONS
-    json_value::json_value(std::bytearray&& ba) : value(ba) {}
-    bool json_value::is_bytearray() const { return std::holds_alternative<std::bytearray>(value); }
-    const std::bytearray& json_value::as_bytearray() const { return std::get<std::bytearray>(value); }
-    std::bytearray& json_value::as_bytearray() { return std::get<std::bytearray>(value); }
+    json_value::json_value(scl2::bytearray&& ba) : value(ba) {}
+    bool json_value::is_bytearray() const { return std::holds_alternative<scl2::bytearray>(value); }
+    const scl2::bytearray& json_value::as_bytearray() const { return std::get<scl2::bytearray>(value); }
+    scl2::bytearray& json_value::as_bytearray() { return std::get<scl2::bytearray>(value); }
 
     json_value::json_value(const inline_data_uri &data_uri) : value(data_uri) {}
     bool json_value::is_data_uri() const { return std::holds_alternative<inline_data_uri>(value); }
@@ -730,7 +730,7 @@ json_value json_parser::parseString()
             return json_value(inline_data_uri::from_string(str));
         } else if (str.starts_with("base64:")) {
             // base64 string, decode it to bytearray
-            return json_value(std::bytearray::fromBase64(str.substr(7)));
+            return json_value(scl2::bytearray::fromBase64(str.substr(7)));
         }
 #endif
 

@@ -156,7 +156,7 @@ void socket::close()
 
 // ---- Send ----
 
-size_t socket::sendTo(const std::bytearray& data,
+size_t socket::sendTo(const scl2::bytearray& data,
                       const network_address& dest, uint16_t port)
 {
     if (m_socket == invalid_socket || data.rawSize() == 0) {
@@ -178,7 +178,7 @@ size_t socket::sendTo(const std::bytearray& data,
     return (sent == socket_error) ? 0 : static_cast<size_t>(sent);
 }
 
-size_t socket::send(const std::bytearray& data)
+size_t socket::send(const scl2::bytearray& data)
 {
     if (m_socket == invalid_socket || data.rawSize() == 0) {
         return 0;
@@ -266,7 +266,7 @@ datagram socket::receiveFrom(std::chrono::milliseconds timeout)
         return dg;
     }
 
-    dg.data = std::bytearray(buf.data(), static_cast<size_t>(received));
+    dg.data = scl2::bytearray(buf.data(), static_cast<size_t>(received));
 
     // Extract sender address
     auto* sin = reinterpret_cast<sockaddr_in*>(&from);
@@ -326,10 +326,10 @@ size_t socket::available()
 #endif
 }
 
-std::bytearray socket::read(size_t bytes)
+scl2::bytearray socket::read(size_t bytes)
 {
     if (m_socket == invalid_socket || bytes == 0) {
-        return std::bytearray();
+        return scl2::bytearray();
     }
 
     std::vector<std::byte> buf(bytes);
@@ -355,18 +355,18 @@ std::bytearray socket::read(size_t bytes)
 #endif
 
     if (received <= 0) {
-        return std::bytearray();
+        return scl2::bytearray();
     }
 
-    return std::bytearray(buf.data(), static_cast<size_t>(received));
+    return scl2::bytearray(buf.data(), static_cast<size_t>(received));
 }
 
-std::bytearray socket::readAll()
+scl2::bytearray socket::readAll()
 {
     return read(MAX_UDP_PAYLOAD);
 }
 
-size_t socket::write(const std::bytearray& data)
+size_t socket::write(const scl2::bytearray& data)
 {
     return send(data);
 }

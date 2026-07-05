@@ -470,7 +470,7 @@ std::arguments args(argc, argv, strict_policy);
 - 类型检查零运行时开销（concepts + `if constexpr`）
 - 模板函数仅在头文件中实现
 - 同时支持美式拼写（`deserialize`）和英式拼写（`deserialise`）
-- 基于 `std::basic_stringlist<CharT>` 进行高效字符串处理
+- 基于 `scl2::basic_stringlist<CharT>` 进行高效字符串处理
 
 ## 相关文档
 

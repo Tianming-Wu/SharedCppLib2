@@ -20,12 +20,12 @@ concept __has_hash_result_size = requires {
     };
 };
 
-// For classes that has static member function `static std::bytearray hash(const std::bytearray& data);`
+// For classes that has static member function `static scl2::bytearray hash(const scl2::bytearray& data);`
 template<typename T>
 concept __has_hashing_support = requires {
     requires std::is_class_v<T>
     && requires {
-        { T::hash(std::declval<const std::bytearray&>()) } -> std::same_as<std::bytearray>;
+        { T::hash(std::declval<const scl2::bytearray&>()) } -> std::same_as<scl2::bytearray>;
     };
 };
 
@@ -37,7 +37,7 @@ concept has_fixed_hash_result_size = has_hashing_support<T> && __has_hash_result
 
 template<typename T>
 requires has_hashing_support<T>
-std::bytearray generic_hash(const std::bytearray& data) {
+scl2::bytearray generic_hash(const scl2::bytearray& data) {
     return T::hash(data);
 }
 
@@ -62,18 +62,18 @@ concept has_streamed_hash = requires {
         typename T::stream_type;
         requires std::is_class_v<typename T::stream_type>
         && requires(typename T::stream_type h) {
-            h.update(std::declval<const std::bytearray&>());
-            { h.end() } -> std::same_as<std::bytearray>;
+            h.update(std::declval<const scl2::bytearray&>());
+            { h.end() } -> std::same_as<scl2::bytearray>;
         };
     };
 };
 
 template<typename T>
 requires has_streamed_hash<T>
-std::bytearray hash_stream(std::istream& input) {
+scl2::bytearray hash_stream(std::istream& input) {
     constexpr size_t bufsz = generic_buffer_size<T>();
     typename T::stream_type hasher;
-    std::bytearray buffer(bufsz);
+    scl2::bytearray buffer(bufsz);
 
     while (input) {
         buffer.resize(bufsz);

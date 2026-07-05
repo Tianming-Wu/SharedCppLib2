@@ -19,7 +19,7 @@ int index(const char c) {
     return 0;
 }
 
-std::string encode(const std::bytearray &input)
+std::string encode(const scl2::bytearray &input)
 {
     std::string result;
 
@@ -68,9 +68,9 @@ std::string encode(const std::bytearray &input)
     return result;
 }
 
-std::bytearray decode(const std::string &input)
+scl2::bytearray decode(const std::string &input)
 {
-    std::bytearray output;
+    scl2::bytearray output;
 
     unsigned char input_char[4];
 	unsigned char output_char[4];

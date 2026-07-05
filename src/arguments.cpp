@@ -17,21 +17,21 @@ template class basic_arguments<wchar_t>;
 
 template<typename CharT>
 basic_arguments<CharT>::basic_arguments(int argc, CharT** argv)
-    : std::basic_stringlist<CharT>(argc, argv), m_policy(default_policy), m_style(Style_GNU)
+    : scl2::basic_stringlist<CharT>(argc, argv), m_policy(default_policy), m_style(Style_GNU)
 {
     parse();
 }
 
 template <typename CharT>
 basic_arguments<CharT>::basic_arguments(int argc, CharT **argv, parse_policy policy)
-    : std::basic_stringlist<CharT>(argc, argv), m_policy(policy), m_style(Style_GNU)
+    : scl2::basic_stringlist<CharT>(argc, argv), m_policy(policy), m_style(Style_GNU)
 {
     parse();
 }
 
 template <typename CharT>
 basic_arguments<CharT>::basic_arguments(int argc, CharT **argv, parse_policy policy, argument_style style)
-    : std::basic_stringlist<CharT>(argc, argv), m_policy(policy), m_style(style)
+    : scl2::basic_stringlist<CharT>(argc, argv), m_policy(policy), m_style(style)
 {
     parse();
 }
@@ -255,13 +255,13 @@ bool basic_arguments<CharT>::testPolicy(parse_policy p)
 template <typename CharT>
 basic_arguments<CharT>::string_type basic_arguments<CharT>::joinArgs() const
 {
-    return std::basic_stringlist<CharT>::join(1); // Join all arguments except argv[0]
+    return scl2::basic_stringlist<CharT>::join(1); // Join all arguments except argv[0]
 }
 
 template <typename CharT>
 basic_arguments<CharT>::string_type basic_arguments<CharT>::xjoinArgs() const
 {
-    return std::basic_stringlist<CharT>::xjoin(1);
+    return scl2::basic_stringlist<CharT>::xjoin(1);
 }
 
 template <typename CharT>

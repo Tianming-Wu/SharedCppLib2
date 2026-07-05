@@ -28,7 +28,7 @@ Bytearray 是一个强大的二进制数据容器，它扩展了 `std::vector<st
 #include <SharedCppLib2/bytearray.hpp>
 
 // 从字符串创建
-std::bytearray data = "Hello World";
+scl2::bytearray data = "Hello World";
 std::cout << "大小: " << data.size() << std::endl;
 
 // 转换为十六进制
@@ -36,7 +36,7 @@ std::cout << "十六进制: " << data.tohex() << std::endl;
 
 // 文件操作
 std::ifstream file("data.bin", std::ios::binary);
-std::bytearray file_content;
+scl2::bytearray file_content;
 file_content.readAllFromStream(file);
 ```
 
@@ -45,7 +45,7 @@ file_content.readAllFromStream(file);
 // 类型转换
 struct Point { int x, y; };
 Point p{10, 20};
-std::bytearray serialized = p;  // 自动序列化
+scl2::bytearray serialized = p;  // 自动序列化
 
 Point restored = serialized.convert_to<Point>();  // 反序列化
 ```
@@ -72,7 +72,7 @@ bytearray(const _Any& in);
 **示例:**
 ```cpp
 int value = 42;
-std::bytearray ba = value;  // 序列化整数
+scl2::bytearray ba = value;  // 序列化整数
 ```
 
 ### 数据访问与操作
@@ -86,7 +86,7 @@ byte vat(size_t p, const byte &v = byte('\0')) const;
 
 **示例:**
 ```cpp
-std::bytearray data = "Hello";
+scl2::bytearray data = "Hello";
 std::byte b1 = data.at(0);     // 'H'
 std::byte b2 = data.vat(10, std::byte{'X'});  // 'X' (安全访问)
 ```
@@ -99,15 +99,15 @@ bytearray subarr(size_t begin, size_t size = -1) const;
 
 **示例:**
 ```cpp
-std::bytearray data = "Hello World";
-std::bytearray hello = data.subarr(0, 5);  // "Hello"
-std::bytearray world = data.subarr(6);     // "World"
+scl2::bytearray data = "Hello World";
+scl2::bytearray hello = data.subarr(0, 5);  // "Hello"
+scl2::bytearray world = data.subarr(6);     // "World"
 ```
 
 #### replace & insert
 ```cpp
-std::bytearray& replace(size_t pos, size_t len, const bytearray &ba);
-std::bytearray& insert(size_t pos, const bytearray &ba);
+scl2::bytearray& replace(size_t pos, size_t len, const bytearray &ba);
+scl2::bytearray& insert(size_t pos, const bytearray &ba);
 ```
 通过替换或插入数据修改内容。
 
@@ -128,14 +128,14 @@ std::string tohex(size_t begin, size_t size = -1) const;
 
 **示例:**
 ```cpp
-std::bytearray data = "AB";
+scl2::bytearray data = "AB";
 std::cout << data.tohex();  // "4142"
 ```
 
 #### tostringlist & towstringlist
 ```cpp
-std::stringlist tostringlist(const std::string& split = " ") const;
-std::wstringlist towstringlist(const std::wstring& split = L" ") const;
+scl2::stringlist tostringlist(const std::string& split = " ") const;
+scl2::wstringlist towstringlist(const std::wstring& split = L" ") const;
 ```
 使用分隔符将 bytearray 分割为字符串列表。
 
@@ -153,7 +153,7 @@ _T convert_to() const;
 
 **示例:**
 ```cpp
-std::bytearray serialized = 3.14f;
+scl2::bytearray serialized = 3.14f;
 float value = serialized.convert_to<float>();
 ```
 
@@ -193,7 +193,7 @@ static bytearray fromHex(const std::string& hex);
 
 **示例:**
 ```cpp
-std::bytearray data = std::bytearray::fromHex("48656c6c6f");
+scl2::bytearray data = scl2::bytearray::fromHex("48656c6c6f");
 std::cout << data.tostdstring();  // "Hello"
 ```
 
@@ -231,14 +231,14 @@ void swap(size_t a, size_t b, size_t size = 1);
 
 ### 流操作符
 ```cpp
-std::ostream& operator<<(std::ostream& os, const std::bytearray& ba);
+std::ostream& operator<<(std::ostream& os, const scl2::bytearray& ba);
 std::istream& operator>>(std::istream& is, bytearray& ba);
 ```
 智能流操作，自动处理十六进制/文本格式。
 
 **示例:**
 ```cpp
-std::bytearray data;
+scl2::bytearray data;
 std::cin >> std::hex >> data;  // 读取十六进制输入
 std::cout << std::hex << data; // 以十六进制输出
 ```
@@ -253,9 +253,9 @@ bool operator== (const bytearray &ba) const;
 
 ### 二进制文件处理
 ```cpp
-std::bytearray process_file(const std::string& filename) {
+scl2::bytearray process_file(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
-    std::bytearray content;
+    scl2::bytearray content;
     
     if (content.readAllFromStream(file)) {
         // 处理二进制数据
@@ -268,9 +268,9 @@ std::bytearray process_file(const std::string& filename) {
 
 ### 网络数据处理
 ```cpp
-void send_packet(std::ostream& network_stream, const std::bytearray& data) {
+void send_packet(std::ostream& network_stream, const scl2::bytearray& data) {
     // 添加头部
-    std::bytearray packet;
+    scl2::bytearray packet;
     packet.append(static_cast<uint32_t>(data.size()));  // 大小前缀
     packet.append(data);
     
@@ -286,11 +286,11 @@ struct NetworkPacket {
     float value;
 };
 
-std::bytearray serialize_packet(const NetworkPacket& packet) {
-    return std::bytearray(packet);  // 自动序列化
+scl2::bytearray serialize_packet(const NetworkPacket& packet) {
+    return scl2::bytearray(packet);  // 自动序列化
 }
 
-NetworkPacket deserialize_packet(const std::bytearray& data) {
+NetworkPacket deserialize_packet(const scl2::bytearray& data) {
     return data.convert_to<NetworkPacket>();
 }
 ```
@@ -316,17 +316,17 @@ struct User {
 };
 
 // 序列化
-std::bytearray serialize(const User& user) {
-    std::bytearray data;
-    data.append(std::bytearray(user.id));
+scl2::bytearray serialize(const User& user) {
+    scl2::bytearray data;
+    data.append(scl2::bytearray(user.id));
     data.append(bytearray::toSafeString(user.name));
-    data.append(std::bytearray(user.created_at));
+    data.append(scl2::bytearray(user.created_at));
     return data;
 }
 
 // 使用 bytearray_view 进行反序列化
-User deserialize(const std::bytearray& data) {
-    std::bytearray_view view(data);
+User deserialize(const scl2::bytearray& data) {
+    scl2::bytearray_view view(data);
     User user;
     user.id = view.read<uint32_t>();
     user.name = view.readString();
@@ -385,9 +385,9 @@ public:
 
 ### SHA256 哈希
 ```cpp
-std::bytearray compute_file_hash(const std::string& filename) {
+scl2::bytearray compute_file_hash(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
-    std::bytearray content;
+    scl2::bytearray content;
     content.readAllFromStream(file);
     return scl2::sha256::getMessageDigest(content);
 }
@@ -395,7 +395,7 @@ std::bytearray compute_file_hash(const std::string& filename) {
 
 ### StringList 转换
 ```cpp
-std::bytearray config_data = "key1=value1,key2=value2";
-std::stringlist pairs = config_data.tostringlist(",");
+scl2::bytearray config_data = "key1=value1,key2=value2";
+scl2::stringlist pairs = config_data.tostringlist(",");
 // 结果: {"key1=value1", "key2=value2"}
 ```

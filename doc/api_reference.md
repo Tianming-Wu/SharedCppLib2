@@ -55,8 +55,8 @@ struct MyData {
     std::string d3;
     std::vector<int> d4;
 
-    std::bytearray dump(const MyData& data) const {
-        std::bytearray ba;
+    scl2::bytearray dump(const MyData& data) const {
+        scl2::bytearray ba;
 
         // numeric types can be directly appended to the bytearray
         ba.append(data.d1);
@@ -78,7 +78,7 @@ struct MyData {
     // Use bytearray_view (must be a reference) for load.
     // The bytearray_view handles all read stuff, and those
     // does not exist in bytearray itself. 
-    MyData load(const std::bytearray_view& ba) const {
+    MyData load(const scl2::bytearray_view& ba) const {
         MyData data;
 
         // numeric types can be directly read from the bytearray_view
@@ -109,8 +109,8 @@ class MyClass {
     std::vector<MyData> datal;
 
 public:
-    std::bytearray dump(const MyClass& data) const {
-        std::bytearray ba;
+    scl2::bytearray dump(const MyClass& data) const {
+        scl2::bytearray ba;
 
         ba.append(data.meta);
         
@@ -130,7 +130,7 @@ public:
         return ba;
     }
 
-    MyClass load(const std::bytearray_view& ba) const {
+    MyClass load(const scl2::bytearray_view& ba) const {
         MyClass data;
 
         data.meta = ba.read<int>();
@@ -168,18 +168,18 @@ A provider class must satisfy the `has_encryption_support` (or `has_decryption_s
 // Static API (one-shot):
 class MyCipher {
 public:
-    using key_type = std::bytearray;
-    static std::bytearray encrypt(const std::bytearray& data, const std::bytearray& key);
-    static std::bytearray decrypt(const std::bytearray& data, const std::bytearray& key);
+    using key_type = scl2::bytearray;
+    static scl2::bytearray encrypt(const scl2::bytearray& data, const scl2::bytearray& key);
+    static scl2::bytearray decrypt(const scl2::bytearray& data, const scl2::bytearray& key);
 };
 
 // Instance API (pre-configured key):
 class MyCipher {
 public:
-    using key_type = std::bytearray;
-    explicit MyCipher(const std::bytearray& key);
-    std::bytearray encrypt(const std::bytearray& data) const;
-    std::bytearray decrypt(const std::bytearray& data) const;
+    using key_type = scl2::bytearray;
+    explicit MyCipher(const scl2::bytearray& key);
+    scl2::bytearray encrypt(const scl2::bytearray& data) const;
+    scl2::bytearray decrypt(const scl2::bytearray& data) const;
 };
 ```
 
@@ -208,14 +208,14 @@ public:
     static constexpr size_t result_size = 32;  // optional, enables has_fixed_hash_result_size
     static constexpr size_t block_size = 64;    // optional, enables generic_buffer_size
 
-    static std::bytearray hash(const std::bytearray& data);
+    static scl2::bytearray hash(const scl2::bytearray& data);
 
     // Streaming support (optional, checked by has_streamed_hash):
     class stream_type {
     public:
         stream_type();
-        void update(const std::bytearray& chunk);
-        std::bytearray end();
+        void update(const scl2::bytearray& chunk);
+        scl2::bytearray end();
     };
 };
 ```
@@ -232,8 +232,8 @@ Any class that satisfies `has_encryption_support` can be used with the generic w
 ```cpp
 #include <SharedCppLib2/aes.hpp>
 
-std::bytearray data = /* your data */;
-std::bytearray key(static_cast<size_t>(16), std::byte{0});
+scl2::bytearray data = /* your data */;
+scl2::bytearray key(static_cast<size_t>(16), std::byte{0});
 
 // Direct call:
 auto ct = scl2::aes_ecb_128::encrypt(data, key);
@@ -261,13 +261,13 @@ Any class that satisfies `has_hashing_support` can be used:
 ```cpp
 #include <SharedCppLib2/sha256.hpp>
 
-std::bytearray data = /* your data */;
+scl2::bytearray data = /* your data */;
 
 // Direct call:
-std::bytearray hash = scl2::sha256::hash(data);
+scl2::bytearray hash = scl2::sha256::hash(data);
 
 // Generic wrapper:
-std::bytearray hash = scl2::generic_hash<scl2::sha256>(data);
+scl2::bytearray hash = scl2::generic_hash<scl2::sha256>(data);
 
 // Hex string:
 std::string hex = hash.toHex();
@@ -276,7 +276,7 @@ std::string hex = hash.toHex();
 scl2::sha256::stream_type hasher;
 hasher.update(chunk1);
 hasher.update(chunk2);
-std::bytearray digest = hasher.end();
+scl2::bytearray digest = hasher.end();
 
 // Stream from istream:
 std::ifstream file("data.bin", std::ios::binary);

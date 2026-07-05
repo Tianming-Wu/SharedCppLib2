@@ -38,7 +38,7 @@ constexpr int socket_error = -1;
 
 /// @brief A received UDP datagram with sender information
 struct datagram {
-    std::bytearray data;          ///< The received data
+    scl2::bytearray data;          ///< The received data
     network_address sender_addr;  ///< Sender's IP address
     uint16_t sender_port = 0;     ///< Sender's port
 };
@@ -54,14 +54,14 @@ struct datagram {
 ///   udp::socket sock;
 ///   sock.bind(12345);
 ///   auto [data, addr, port] = sock.receiveFrom();
-///   sock.sendTo(std::bytearray("reply"), addr, port);
+///   sock.sendTo(scl2::bytearray("reply"), addr, port);
 /// @endcode
 ///
 /// Usage (client-like, connected):
 /// @code
 ///   udp::socket sock;
 ///   sock.connect(ipv4{127,0,0,1}, 12345);
-///   sock.write(std::bytearray("hello"));
+///   sock.write(scl2::bytearray("hello"));
 ///   auto reply = sock.readAll();
 /// @endcode
 class socket : public basic_sclstream
@@ -96,12 +96,12 @@ public:
 
     /// @brief Send data to a specific destination
     /// @return Number of bytes sent, or 0 on failure
-    size_t sendTo(const std::bytearray& data,
+    size_t sendTo(const scl2::bytearray& data,
                   const network_address& dest, uint16_t port);
 
     /// @brief Send data to the default destination (requires connect() first)
     /// @return Number of bytes sent, or 0 on failure
-    size_t send(const std::bytearray& data);
+    size_t send(const scl2::bytearray& data);
 
     // ---- Receive (with peer info) ----
 
@@ -133,13 +133,13 @@ public:
     ///
     /// UDP semantics: if the datagram is larger than @p bytes, the
     /// remaining data is discarded (truncation).
-    std::bytearray read(size_t bytes) override;
+    scl2::bytearray read(size_t bytes) override;
 
     /// @brief Read one complete datagram
-    std::bytearray readAll() override;
+    scl2::bytearray readAll() override;
 
     /// @brief Write data to the default destination (requires connect())
-    size_t write(const std::bytearray& data) override;
+    size_t write(const scl2::bytearray& data) override;
 
     // ---- Info ----
 

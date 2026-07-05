@@ -1,7 +1,7 @@
 #include "bytearray.hpp"
 #include "stringlist.hpp"
 
-namespace std {
+namespace scl2 {
 
 void bytearray::copy_from(const void *raw, size_t size)
 {
@@ -17,32 +17,32 @@ void bytearray::copy_to(void *raw, size_t size) const
     std::memcpy(raw, this->data(), size);
 }
 
-byte bytearray::at(size_t i) const{
-    return ::std::vector<byte>::at(i);
+std::byte bytearray::at(size_t i) const{
+    return ::std::vector<std::byte>::at(i);
 }
 
-byte bytearray::vat(size_t p, const byte &v) const {
+std::byte bytearray::vat(size_t p, const std::byte &v) const {
     return (p<size())?at(p):v;
 }
 
 void bytearray::append(const bytearray &ba) {
-    for(const byte &b : ba) {
+    for(const std::byte &b : ba) {
         push_back(b);
     }
 }
 
-void bytearray::append(byte b) {
+void bytearray::append(std::byte b) {
     push_back(b);
 }
 
-void bytearray::append(const byte* pb, size_t size) {
+void bytearray::append(const std::byte* pb, size_t size) {
     for(size_t i = 0; i < size; i++) {
         push_back(pb[i]);
     }
 }
 
 void bytearray::append(const char* str, size_t size) {
-    append(reinterpret_cast<const byte*>(str), size);
+    append(reinterpret_cast<const std::byte*>(str), size);
 }
 
 void bytearray::append(const char* str) {
@@ -66,7 +66,7 @@ void bytearray::addWString(const std::wstring &wstr)
         throw std::overflow_error("bytearray::addWString: input too large");
     }
     appendSize(wstr.length());
-    append(reinterpret_cast<const byte*>(wstr.data()), wstr.size() * sizeof(wchar_t));
+    append(reinterpret_cast<const std::byte*>(wstr.data()), wstr.size() * sizeof(wchar_t));
 }
 
 void bytearray::reverse()
@@ -84,7 +84,7 @@ void bytearray::swap(size_t a, size_t b, size_t size) {
     }
 }
 
-std::bytearray &bytearray::replace(size_t pos, size_t len, const bytearray &ba)
+scl2::bytearray &bytearray::replace(size_t pos, size_t len, const bytearray &ba)
 {
     if (pos > this->size()) throw std::out_of_range("bytearray::replace: position out of range");
     if (pos + len > this->size()) len = this->size() - pos; // adjust len to fit within bounds
@@ -95,7 +95,7 @@ std::bytearray &bytearray::replace(size_t pos, size_t len, const bytearray &ba)
     return *this;
 }
 
-std::bytearray &bytearray::insert(size_t pos, const bytearray &ba)
+scl2::bytearray &bytearray::insert(size_t pos, const bytearray &ba)
 {
     if (pos > this->size()) throw std::out_of_range("bytearray::insert: position out of range");
     this->::std::vector<::std::byte>::insert(this->begin() + pos, ba.begin(), ba.end());
@@ -117,8 +117,8 @@ std::string bytearray::toStdString() const {
     return std::string(reinterpret_cast<const char*>(this->data()), this->size());
 }
 
-std::stringlist bytearray::toStringlist(const std::string& split) const {
-    return std::stringlist(this->toStdString(), split);
+scl2::stringlist bytearray::toStringlist(const std::string& split) const {
+    return scl2::stringlist(this->toStdString(), split);
 }
 
 std::wstring bytearray::toStdWString() const {
@@ -134,14 +134,14 @@ std::wstring bytearray::toStdWString() const {
     );
 }
 
-std::wstringlist bytearray::toWStringlist(const std::wstring& split) const {
-    return std::wstringlist(this->toStdWString(), split);
+scl2::wstringlist bytearray::toWStringlist(const std::wstring& split) const {
+    return scl2::wstringlist(this->toStdWString(), split);
 }
 
 std::string bytearray::toHex() const {
     std::ostringstream oss;
     oss << std::hex << std::setfill('0');
-    for (const byte &b : *this) {
+    for (const std::byte &b : *this) {
         oss << std::setw(2) << static_cast<int>(b);
     }
     return oss.str();
@@ -159,7 +159,7 @@ std::string bytearray::toHex(size_t begin, size_t size) const {
 
 std::string bytearray::toEscapedString() const {
     std::stringstream ss;
-    for (byte b : *this) {
+    for (std::byte b : *this) {
         if (isprint(static_cast<int>(b))) ss << static_cast<char>(b);
         else ss << "\\x" << std::hex << std::setw(2) << (int)b;
     }
@@ -172,7 +172,7 @@ std::string bytearray::xtoEscapedString() const
 {
     std::stringstream ss;
 
-    for (byte b : *this) {
+    for (std::byte b : *this) {
         unsigned char c = static_cast<unsigned char>(b);
         switch (c) {
             case '\0': ss << "\\0"; break;
@@ -245,17 +245,17 @@ bool bytearray::operator== (const bytearray &ba) const {
     return true;
 }
 
-std::bytearray bytearray::operator+(const bytearray &ba) const
+scl2::bytearray bytearray::operator+(const bytearray &ba) const
 {
     bytearray result(*this);
     result.append(ba);
     return result;
 }
 
-std::bytearray bytearray::operator<<(size_t offset) const { return shiftLeft(offset); }
-std::bytearray bytearray::operator>>(size_t offset) const { return shiftRight(offset); }
+scl2::bytearray bytearray::operator<<(size_t offset) const { return shiftLeft(offset); }
+scl2::bytearray bytearray::operator>>(size_t offset) const { return shiftRight(offset); }
 
-std::bytearray bytearray::shiftLeft(size_t offset) const
+scl2::bytearray bytearray::shiftLeft(size_t offset) const
 {
     if (offset >= size()) {
         // 移位超过大小，返回全0数组
@@ -269,7 +269,7 @@ std::bytearray bytearray::shiftLeft(size_t offset) const
     return result;
 }
 
-std::bytearray bytearray::shiftRight(size_t offset) const
+scl2::bytearray bytearray::shiftRight(size_t offset) const
 {
     if (offset >= size()) {
         // 移位超过大小，返回全0数组
@@ -283,7 +283,7 @@ std::bytearray bytearray::shiftRight(size_t offset) const
     return result;
 }
 
-std::bytearray bytearray::rotateLeft(size_t offset) const
+scl2::bytearray bytearray::rotateLeft(size_t offset) const
 {
     if (empty() || offset == 0) return *this;
     
@@ -307,7 +307,7 @@ std::bytearray bytearray::rotateLeft(size_t offset) const
     return result;
 }
 
-std::bytearray bytearray::rotateRight(size_t offset) const
+scl2::bytearray bytearray::rotateRight(size_t offset) const
 {
     if (empty() || offset == 0) return *this;
     
@@ -332,48 +332,48 @@ std::bytearray bytearray::rotateRight(size_t offset) const
 }
 
 bytearray::bytearray()
-: vector<byte>()
+: std::vector<std::byte>()
 {}
 
-bytearray::bytearray(size_t count, byte value)
-: vector<byte>(count, value)
+bytearray::bytearray(size_t count, std::byte value)
+: std::vector<std::byte>(count, value)
 {}
 
 bytearray::bytearray(size_t count)
-    : vector<byte>(count)
+    : std::vector<std::byte>(count)
 {}
 
-bytearray::bytearray(std::initializer_list<byte> init)
-: vector<byte>(init)
+bytearray::bytearray(std::initializer_list<std::byte> init)
+: std::vector<std::byte>(init)
 {}
 
 bytearray::bytearray(const bytearray &ba) {
-    for (const byte &b : ba)
+    for (const std::byte &b : ba)
         push_back(b);
 }
 
-bytearray::bytearray(byte b)
-    : vector<byte>(1, b)
+bytearray::bytearray(std::byte b)
+    : std::vector<std::byte>(1, b)
 {}
 
 bytearray::bytearray(const std::string &str) {
     for (const char &c : str)
-        push_back(static_cast<byte>(c));
+        push_back(static_cast<std::byte>(c));
 }
 
 bytearray::bytearray(const char *raw, size_t size) {
     for (size_t i = 0; i < size; i++)
-        push_back(static_cast<byte>(raw[i]));
+        push_back(static_cast<std::byte>(raw[i]));
 }
 
-bytearray::bytearray(const byte *raw, size_t size) {
+bytearray::bytearray(const std::byte *raw, size_t size) {
     for (size_t i = 0; i < size; i++)
         push_back(raw[i]);
 }
 
 bytearray::bytearray(const void *raw, size_t size) {
     if (raw == nullptr || size == 0) return;
-    const byte* src = reinterpret_cast<const byte*>(raw);
+    const std::byte* src = reinterpret_cast<const std::byte*>(raw);
     for (size_t i = 0; i < size; i++)
         push_back(src[i]);
 }
@@ -388,9 +388,9 @@ bytearray bytearray::fromHex(const std::string& hex) {
         char* end;
         unsigned long val = strtoul(byteStr.c_str(), &end, 16);
         if (*end != '\0' || val > 0xFF) {
-            throw std::invalid_argument("Invalid hex byte: " + byteStr);
+            throw std::invalid_argument("Invalid hex std::byte: " + byteStr);
         }
-        result.push_back(static_cast<byte>(val));
+        result.push_back(static_cast<std::byte>(val));
     }
     return result;
 }
@@ -401,26 +401,26 @@ bytearray bytearray::fromRaw(const char* raw, size_t size) {
 
 bytearray bytearray::fromRaw(const unsigned char *raw, size_t size)
 {
-    return bytearray(reinterpret_cast<const byte*>(raw), size);
+    return bytearray(reinterpret_cast<const std::byte*>(raw), size);
 }
 
 bytearray bytearray::fromPointer(const void* ptr)
 {
     uintptr_t pointer_value = reinterpret_cast<uintptr_t>(ptr);
-    return bytearray(reinterpret_cast<const byte*>(&pointer_value), sizeof(pointer_value));
+    return bytearray(reinterpret_cast<const std::byte*>(&pointer_value), sizeof(pointer_value));
 }
 
 bytearray bytearray::fromStdString(const std::string &str)
 {
     if (str.empty()) return bytearray();
-    return bytearray(reinterpret_cast<const byte*>(str.data()), str.size());
+    return bytearray(reinterpret_cast<const std::byte*>(str.data()), str.size());
 }
 
 bytearray bytearray::fromStdWString(const std::wstring &wstr)
 {
     if (wstr.empty()) return bytearray();
     return bytearray(
-        reinterpret_cast<const byte*>(wstr.data()),
+        reinterpret_cast<const std::byte*>(wstr.data()),
         wstr.size() * sizeof(wchar_t)
     );
 }
@@ -432,7 +432,7 @@ bytearray bytearray::fromUtf8(const std::u8string& utf8str)
     bytearray result;
     result.reserve(utf8str.size());
     
-    const byte* src = reinterpret_cast<const byte*>(utf8str.data());
+    const std::byte* src = reinterpret_cast<const std::byte*>(utf8str.data());
     for (size_t i = 0; i < utf8str.size(); i++) {
         result.push_back(src[i]);
     }
@@ -448,7 +448,7 @@ bytearray bytearray::fromUtf16(const std::u16string& utf16str)
     size_t byte_size = utf16str.size() * sizeof(char16_t);
     result.reserve(byte_size);
     
-    const byte* src = reinterpret_cast<const byte*>(utf16str.data());
+    const std::byte* src = reinterpret_cast<const std::byte*>(utf16str.data());
     for (size_t i = 0; i < byte_size; i++) {
         result.push_back(src[i]);
     }
@@ -464,7 +464,7 @@ bytearray bytearray::fromUtf32(const std::u32string& utf32str)
     size_t byte_size = utf32str.size() * sizeof(char32_t);
     result.reserve(byte_size);
     
-    const byte* src = reinterpret_cast<const byte*>(utf32str.data());
+    const std::byte* src = reinterpret_cast<const std::byte*>(utf32str.data());
     for (size_t i = 0; i < byte_size; i++) {
         result.push_back(src[i]);
     }
@@ -609,14 +609,14 @@ std::wstring bytearray_view::readWString() const
     return result;
 }
 
-std::bytearray bytearray_view::readBytes(size_t size) const
+scl2::bytearray bytearray_view::readBytes(size_t size) const
 {
     auto result = peekBytes(size);
     cursor += size;
     return result;
 }
 
-std::bytearray bytearray_view::peekBytes(size_t size) const
+scl2::bytearray bytearray_view::peekBytes(size_t size) const
 {
     if (!available(size)) throw std::out_of_range("bytearray_view: not enough data");
     return ba.subarr(cursor, size);

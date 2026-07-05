@@ -73,7 +73,7 @@ target_link_libraries(my_app SharedCppLib2::basic)
 #include <iostream>
 
 int main(int argc, char** argv) {
-    std::stringlist args(argc, argv);
+    scl2::stringlist args(argc, argv);
     
     std::cout << "Program: " << args.vat(0) << std::endl;
     std::cout << "Arguments: " << args.subarr(1).join(" ") << std::endl;

@@ -49,13 +49,13 @@ public:
     size_t available() override;
     
     /// @brief Read specified number of bytes
-    std::bytearray read(size_t bytes) override;
+    scl2::bytearray read(size_t bytes) override;
     
     /// @brief Read all available data
-    std::bytearray readAll() override;
+    scl2::bytearray readAll() override;
     
     /// @brief Write data to the server
-    size_t write(const std::bytearray& data);
+    size_t write(const scl2::bytearray& data);
     
     /// @brief Get the connected server address
     network_address server_address() const;

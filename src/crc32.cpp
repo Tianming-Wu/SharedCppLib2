@@ -27,7 +27,7 @@ static const std::array<uint32_t, 256>& crc32_table() {
 }
 
 // ─── One-shot ─────────────────────────────────────────────────────────
-std::bytearray crc32::hash(const std::bytearray& data) {
+scl2::bytearray crc32::hash(const scl2::bytearray& data) {
     stream_type hasher;
     hasher.update(data);
     return hasher.end();
@@ -38,7 +38,7 @@ crc32::stream_type::stream_type()
     : crc_(0xFFFFFFFF)
 {}
 
-void crc32::stream_type::update(const std::bytearray& chunk) {
+void crc32::stream_type::update(const scl2::bytearray& chunk) {
     const auto& table = crc32_table();
     for (size_t i = 0; i < chunk.size(); ++i) {
         uint8_t index = static_cast<uint8_t>(crc_ ^ static_cast<uint32_t>(chunk[i]));
@@ -46,11 +46,11 @@ void crc32::stream_type::update(const std::bytearray& chunk) {
     }
 }
 
-std::bytearray crc32::stream_type::end() {
+scl2::bytearray crc32::stream_type::end() {
     uint32_t final_crc = crc_ ^ 0xFFFFFFFF;
 
     // Big-endian output to match standard CRC-32 (PKZip / zlib convention).
-    std::bytearray result(4);
+    scl2::bytearray result(4);
     result[0] = static_cast<std::byte>((final_crc >> 24) & 0xFF);
     result[1] = static_cast<std::byte>((final_crc >> 16) & 0xFF);
     result[2] = static_cast<std::byte>((final_crc >> 8) & 0xFF);

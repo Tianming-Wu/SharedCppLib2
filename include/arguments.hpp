@@ -39,11 +39,11 @@ public:
 };
 
 template<typename CharT>
-class basic_arguments : protected std::basic_stringlist<CharT>
+class basic_arguments : protected scl2::basic_stringlist<CharT>
 {
 public:
     typedef std::basic_string<CharT> string_type;
-    typedef std::basic_stringlist<CharT> stringlist_type;
+    typedef scl2::basic_stringlist<CharT> stringlist_type;
 
     // allow unscoped usage to simply, since user will need to combine multiple flags.
     enum parse_policy { 
@@ -72,9 +72,9 @@ public:
 
     enable_move_only(basic_arguments)
 
-    using std::basic_stringlist<CharT>::size;
-    using std::basic_stringlist<CharT>::at;
-    using std::basic_stringlist<CharT>::operator[];
+    using scl2::basic_stringlist<CharT>::size;
+    using scl2::basic_stringlist<CharT>::at;
+    using scl2::basic_stringlist<CharT>::operator[];
     
     /// Get the program name (argv[0])
     /// @return Program name/path

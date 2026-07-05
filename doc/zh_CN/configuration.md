@@ -151,14 +151,14 @@ struct MyConfig {
 
 ```cpp
 myConfig cfg{800, 600, true};
-std::bytearray ba(cfg); // 就这么简单。
+scl2::bytearray ba(cfg); // 就这么简单。
 
 myConfig cfg2 = ba.as<MyConfig>(); // 同样简单。
 ```
 
 如果是用于内嵌场景，你也可以为结构体编写 load 和 dump 函数。唯一的区别在于 load 函数中需要指定大小：
 ```cpp
-myStruct myStruct::load(const std::bytearray_view& data) {
+myStruct myStruct::load(const scl2::bytearray_view& data) {
     return data.readBytes(sizeof(myStruct)).as<myStruct>();
 }
 ```
@@ -180,8 +180,8 @@ struct MyConfig {
 struct MyConfig {
     // ... 之前的定义 ...
 
-    static MyConfig load(const std::bytearray_view& data);
-    static std::bytearray dump(const MyConfig& config);
+    static MyConfig load(const scl2::bytearray_view& data);
+    static scl2::bytearray dump(const MyConfig& config);
 };
 
 // 你可以使用这个宏来断言你是否正确编写了 API：
@@ -195,7 +195,7 @@ scl2_check_generic_dump_load(MyConfig);
 
 ```cpp
 
-MyConfig MyConfig::load(const std::bytearray_view& data) {
+MyConfig MyConfig::load(const scl2::bytearray_view& data) {
     MyConfig config;
 
     // 对于字符串，使用提供的 readString。
@@ -213,8 +213,8 @@ MyConfig MyConfig::load(const std::bytearray_view& data) {
     return config;
 }
 
-std::bytearray MyConfig::dump(const MyConfig& config) {
-    std::bytearray ba;
+scl2::bytearray MyConfig::dump(const MyConfig& config) {
+    scl2::bytearray ba;
 
     // 你可以选择预分配 bytearray。语法与 STL 容器相同。
     ba.reserve(256); // 这不是必须的，但可以减少内存分配次数，提高性能。
@@ -243,7 +243,7 @@ struct AppConfig {
 
 以下是精彩的部分。load/dump 函数可以对子结构体递归调用。
 ```cpp
-AppConfig AppConfig::load(const std::bytearray_view& data) {
+AppConfig AppConfig::load(const scl2::bytearray_view& data) {
     AppConfig config;
 
     // 只需调用子结构体的 load 函数，它就会为你处理一切。
@@ -254,8 +254,8 @@ AppConfig AppConfig::load(const std::bytearray_view& data) {
     return config;
 }
 
-std::bytearray AppConfig::dump(const AppConfig& config) {
-    std::bytearray ba;
+scl2::bytearray AppConfig::dump(const AppConfig& config) {
+    scl2::bytearray ba;
 
     // 只需调用子结构体的 dump 函数，它就会为你处理一切。
     ba.append(MyConfig::dump(config.myConfig));
@@ -281,7 +281,7 @@ int main() {
         // 对于任何读取 API 正常工作，你**必须**以二进制模式打开文件。
         std::ifstream cfgf("config.db", std::ios::binary);
 
-        std::bytearray ba;
+        scl2::bytearray ba;
         cfgf >> ba;
 
         // 这里不太清楚，但**无论如何**，你必须让当前作用域拥有
@@ -295,7 +295,7 @@ int main() {
     }
 
     {
-        std::bytearray outba = MyConfig::dump(config);
+        scl2::bytearray outba = MyConfig::dump(config);
         std::ofstream outcfgf("config.db", std::ios::binary);
         outcfgf << outba;
     }
@@ -342,12 +342,12 @@ SharedCppLib2 还提供了一套加密 API 定义，包含在 SharedCppLib2 通�
 #include <SharedCppLib2/api.hpp>
 #include <AES256.hpp> // 这是一个占位示例，代表支持的加密算法。
 
-std::bytearray cfgData = MyConfig::dump(config);
+scl2::bytearray cfgData = MyConfig::dump(config);
 
-std::bytearray enc = scl2::encrypt<AES256>(cfgData, key);
+scl2::bytearray enc = scl2::encrypt<AES256>(cfgData, key);
 scl2::writeFile("config.enc", enc);
 
-std::bytearray uecfgData = scl2::decrypt<AES256>(enc, key);
+scl2::bytearray uecfgData = scl2::decrypt<AES256>(enc, key);
 
 // ...
 ```

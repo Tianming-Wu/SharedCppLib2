@@ -1,7 +1,7 @@
 #include "bytearray.hpp"
 #include "Base64.hpp"
 
-namespace std {
+namespace scl2 {
 
 #ifndef BYTEARRAY_NO_BASE64
 

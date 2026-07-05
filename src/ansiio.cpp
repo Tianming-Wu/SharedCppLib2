@@ -296,11 +296,11 @@ std::string style_to_sgr(const text_style& style)
     return "\033[" + sgr + "m";
 }
 
-std::stringlist apply_style(const std::stringlist &lines, const std::vector<text_style> &styles)
+scl2::stringlist apply_style(const scl2::stringlist &lines, const std::vector<text_style> &styles)
 {
     if (styles.empty()) return lines;
 
-    std::stringlist result;
+    scl2::stringlist result;
     result.reserve(lines.size());
     for (size_t i = 0; i < lines.size(); ++i) {
         const auto& style = styles[i % styles.size()];
@@ -309,7 +309,7 @@ std::stringlist apply_style(const std::stringlist &lines, const std::vector<text
     return result;
 }
 
-std::string apply_style_inline(const std::stringlist &lines, const std::vector<text_style> &styles)
+std::string apply_style_inline(const scl2::stringlist &lines, const std::vector<text_style> &styles)
 {
     if (styles.empty()) return lines.join();
 

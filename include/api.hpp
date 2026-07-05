@@ -23,11 +23,11 @@
         Internal feature-id: directread/directwrite
         These forms are supported for both:
             1. Member functions:
-                std::bytearray dump() const;
-                void load(const std::bytearray& data);
+                scl2::bytearray dump() const;
+                void load(const scl2::bytearray& data);
             2. Static member functions:
-                static std::bytearray dump(const T& value);
-                static T load(const std::bytearray& data);
+                static scl2::bytearray dump(const T& value);
+                static T load(const scl2::bytearray& data);
         These functions will be matched in order of member functions first,
         then static member functions, and the first match will be used.
         If dump() is supported, it will be automatically called for non-trivially

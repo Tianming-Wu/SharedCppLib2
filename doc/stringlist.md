@@ -31,20 +31,20 @@ StringList is a powerful extension of `std::vector<std::string>` that provides Q
 #include <SharedCppLib2/stringlist.hpp>
 
 // Create from initializer list
-std::stringlist names = {"Alice", "Bob", "Charlie"};
+scl2::stringlist names = {"Alice", "Bob", "Charlie"};
 
 // Join with separator
 std::cout << names.join(", ") << std::endl;
 // Output: Alice, Bob, Charlie
 
 // Split string into list
-std::stringlist words = std::stringlist::split("hello world from cpp", " ");
+scl2::stringlist words = scl2::stringlist::split("hello world from cpp", " ");
 ```
 
 ### Basic Construction
 ```cpp
 int main(int argc, char** argv) {
-    std::stringlist args(argc, argv);
+    scl2::stringlist args(argc, argv);
     
     std::cout << "Program: " << args.vat(0) << std::endl;
     std::cout << "Arguments: " << args.subarr(1).join(" ") << std::endl;
@@ -83,7 +83,7 @@ Joins list elements into a single string.
 
 **Examples:**
 ```cpp
-std::stringlist sl = {"a", "b", "c"};
+scl2::stringlist sl = {"a", "b", "c"};
 sl.join();           // "a b c"
 sl.join(", ");       // "a, b, c"
 sl.join(1, 2, "-");  // "b-c" (from index 1, 2 elements)
@@ -97,7 +97,7 @@ Joins with automatic quoting of elements containing the separator.
 
 **Example:**
 ```cpp
-std::stringlist sl = {"file", "path with spaces"};
+scl2::stringlist sl = {"file", "path with spaces"};
 sl.xjoin(" ");  // "file \"path with spaces\""
 ```
 
@@ -122,10 +122,10 @@ Splits a string into a list using single or multiple delimiters.
 **Examples:**
 ```cpp
 // Single delimiter
-std::stringlist::split("a,b,c", ",");  // {"a", "b", "c"}
+scl2::stringlist::split("a,b,c", ",");  // {"a", "b", "c"}
 
 // Multiple delimiters  
-std::stringlist::split("a,b c\td", {",", " ", "\t"});  // {"a", "b", "c", "d"}
+scl2::stringlist::split("a,b c\td", {",", " ", "\t"});  // {"a", "b", "c", "d"}
 ```
 
 > [!NOTE]
@@ -146,7 +146,7 @@ Advanced splitting with quote/bracket awareness.
 **Example:**
 ```cpp
 // Handle quoted sections
-std::stringlist::xsplit("cmd arg1 \"quoted arg\" arg3", " ", "\"");
+scl2::stringlist::xsplit("cmd arg1 \"quoted arg\" arg3", " ", "\"");
 // {"cmd", "arg1", "quoted arg", "arg3"}
 ```
 
@@ -186,7 +186,7 @@ Safe element access with default value.
 
 #### subarr
 ```cpp
-std::stringlist subarr(size_t start, size_t length = 0) const;
+scl2::stringlist subarr(size_t start, size_t length = 0) const;
 ```
 Extracts a subrange from the list.
 
@@ -230,7 +230,7 @@ Converts C-style arguments to stringlist. For advanced argument parsing, see [`a
 stringlist(initializer_list<string> elements);
 ```
 ```cpp
-std::stringlist fruits = {"apple", "banana", "orange"};
+scl2::stringlist fruits = {"apple", "banana", "orange"};
 ```
 
 ### From String with Splitting
@@ -239,7 +239,7 @@ stringlist(const string &text, const string &delimiter);
 stringlist(const string &text, const stringlist &delimiters);
 ```
 ```cpp
-std::stringlist words("hello world from cpp", " ");
+scl2::stringlist words("hello world from cpp", " ");
 ```
 
 ### From Single String
@@ -252,14 +252,14 @@ Creates a list with one element.
 
 ### Pack/Unpack for Serialization
 ```cpp
-std::stringlist data = {"normal", "text with spaces"};
+scl2::stringlist data = {"normal", "text with spaces"};
 std::string packed = data.pack();  // Auto-quotes spaces
-std::stringlist restored = std::stringlist::unpack(packed);
+scl2::stringlist restored = scl2::stringlist::unpack(packed);
 ```
 
 ### Stream Integration
 ```cpp
-std::stringlist items;
+scl2::stringlist items;
 std::cin >> stringist_split(",", items);  // Parse CSV input
 ```
 
@@ -269,7 +269,7 @@ std::cin >> stringist_split(",", items);  // Parse CSV input
 2. **Pre-allocate** when possible for large lists
 3. **Chain operations** efficiently:
    ```cpp
-   auto result = std::stringlist::split(input, " ")
+   auto result = scl2::stringlist::split(input, " ")
                  .remove_empty()
                  .unique();
    ```
@@ -278,12 +278,12 @@ std::cin >> stringist_split(",", items);  // Parse CSV input
 
 ### Configuration Parsing
 ```cpp
-std::stringlist config_lines = std::stringlist::split(config_text, "\n")
+scl2::stringlist config_lines = scl2::stringlist::split(config_text, "\n")
                                .remove_empty();
 
 for (const auto& line : config_lines) {
     if (line.starts_with("#")) continue;  // Skip comments
-    auto parts = std::stringlist::split(line, "=");
+    auto parts = scl2::stringlist::split(line, "=");
     if (parts.size() == 2) {
         config[parts[0]] = parts[1];
     }
@@ -294,7 +294,7 @@ for (const auto& line : config_lines) {
 ```cpp
 std::string build_command(const std::string& program, 
                          const std::vector<std::string>& args) {
-    std::stringlist cmd = {program};
+    scl2::stringlist cmd = {program};
     cmd.append(args);  // add the entire vector
     return cmd.xjoin(" ");  // automatically manage args with space(s).
 }
@@ -302,7 +302,7 @@ std::string build_command(const std::string& program,
 // or single line version：
 std::string build_command(const std::string& program, 
                          const std::vector<std::string>& args) {
-    return std::stringlist{program}.append(args).xjoin(" ");
+    return scl2::stringlist{program}.append(args).xjoin(" ");
 }
 
 ```
@@ -316,7 +316,7 @@ Powerful search capabilities and data cleaning operations. For advanced regular 
 
 ### Filtering
 ```cpp
-std::stringlist files = /* ... */;
+scl2::stringlist files = /* ... */;
 
 // Method 1: Using exec_foreach and remove_empty
 files.exec_foreach([](size_t i, std::string& file) {
@@ -332,7 +332,7 @@ rf::whitelist cpp_files({".*\\.cpp", ".*\\.hpp"});
 cpp_files.apply(files);
 
 // Method 3: Combining stringlist and regexfilter
-auto result = std::stringlist::split(input, "\n")
+auto result = scl2::stringlist::split(input, "\n")
               .remove_empty()
               .apply_filter([](const std::string& s) {
                   return s.contains("important");
@@ -372,7 +372,7 @@ For more filtering options, refer to the [regexfilter complete documentation](..
 
 ### Transformation
 ```cpp
-std::stringlist paths = {"dir1/file1", "dir2/file2"};
+scl2::stringlist paths = {"dir1/file1", "dir2/file2"};
 paths.exec_foreach([](size_t i, std::string& path) {
     path = "/usr/local/" + path;
 });

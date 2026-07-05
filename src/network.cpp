@@ -41,7 +41,7 @@ ipv4 ipv4::from_string(const std::string &str)
     uint8_t cs[4];
     uint8_t csi = 0;
 
-    std::stringlist cid = std::stringlist::split(str, ".");
+    scl2::stringlist cid = scl2::stringlist::split(str, ".");
     if(cid.size() != 4) throw network_error("Invalid ipv4 address");
 
     try {
@@ -163,7 +163,7 @@ ipv6 ipv6::from_string(const std::string &str)
     }
 
     // we use stringlist for simplicity.
-    std::stringlist strl = std::stringlist::split(str, ':');
+    scl2::stringlist strl = scl2::stringlist::split(str, ':');
     if(strl.size() > 8) {
         throw network_error("Invalid IPv6 address: too many blocks");
     }
@@ -187,9 +187,9 @@ ipv6 ipv6::from_string(const std::string &str)
     return ip_addr;
 }
 
-std::bytearray ipv6::to_bytearray() const noexcept
+scl2::bytearray ipv6::to_bytearray() const noexcept
 {
-    std::bytearray ba(16);
+    scl2::bytearray ba(16);
     for (size_t i = 0; i < 8; ++i) {
         ba[i * 2] = static_cast<std::byte>((blocks[i] >> 8) & 0xFF);
         ba[i * 2 + 1] = static_cast<std::byte>(blocks[i] & 0xFF);
@@ -197,7 +197,7 @@ std::bytearray ipv6::to_bytearray() const noexcept
     return ba;
 }
 
-ipv6 ipv6::from_bytearray(const std::bytearray &ba)
+ipv6 ipv6::from_bytearray(const scl2::bytearray &ba)
 {
     ipv6 ip_addr;
     if (ba.rawSize() != 16) {

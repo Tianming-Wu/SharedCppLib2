@@ -80,7 +80,7 @@ public:
         return sortedArray;
     }
 
-    static hpintarray from_stringlist(const std::stringlist& strlist) {
+    static hpintarray from_stringlist(const scl2::stringlist& strlist) {
         hpintarray result;
         for (const std::string& str : strlist) {
             hpint value = hpint::from_string(str);
@@ -93,7 +93,7 @@ public:
     /// @warning supported splits are: ",", " ", "\t", "\n" 
     static hpintarray from_string(const std::string& str) {
         hpintarray result;
-        std::stringlist strlist(str, std::stringlist({","," ","\t","\n"}));
+        scl2::stringlist strlist(str, scl2::stringlist({","," ","\t","\n"}));
         strlist.remove_empty();
         for (const std::string& s : strlist) {
             hpint value = hpint::from_string(s);
