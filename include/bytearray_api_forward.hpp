@@ -57,7 +57,7 @@ scl2::bytearray generic_dump(const T& value) {
 }
 
 template<typename T>
-T generic_load(const scl2::bytearray_view& data) {
+T generic_load(scl2::bytearray& data) {
     if constexpr (__has_generic_load_memberfx<T>) {
         T value;
         value.load(data);
@@ -108,8 +108,8 @@ requires (::scl2::trivially_copyable<_T> && !::scl2::has_generic_load<_T>)
 _T gload(const scl2::bytearray& data);
 
 template<typename T>
-requires ::scl2::has_generic_load<T> /* && (!::scl2::trivially_copyable<T>) */
-T gload(const scl2::bytearray& data) {
+requires ::scl2::has_generic_load<T>
+T gload(scl2::bytearray& data) {
     return generic_load<T>(data);
 }
 
@@ -183,7 +183,7 @@ scl2::bytearray gdump(const T& container) {
 
 template<typename T>
 requires has_gload_container<T> && (!::scl2::has_gload<T>)
-T gload(const scl2::bytearray_view& data);
+T gload(scl2::bytearray& data);
 
 
 // pair support. This is also very useful for working with maps.
@@ -197,7 +197,7 @@ scl2::bytearray gdump(const T& pair) {
 
 
 template<::scl2::stl::is_pair T>
-T gload(const scl2::bytearray_view& data) {
+T gload(scl2::bytearray& data) {
     using First = std::remove_const_t<typename T::first_type>;
     using Second = typename T::second_type;
     
