@@ -10,6 +10,7 @@
 
 #include <fstream>
 #include <filesystem>
+#include <type_traits>
 
 #include "api.hpp"
 #include "stringlist.hpp"
@@ -132,7 +133,7 @@ T readAndLoad(const fs::path& path) {
 }
 
 template<typename T>
-requires std::is_trivially_assignable<T, T>::value && std::is_trivially_copyable<T>::value
+requires std::is_trivially_copyable_v<T>
 T readAs(const fs::path& path) {
     std::ifstream ifs(path, std::ios::binary);
     if (!ifs) {
