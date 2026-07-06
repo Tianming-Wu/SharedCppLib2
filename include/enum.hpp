@@ -22,7 +22,9 @@
 #pragma once
 
 #include <type_traits>
-#include <generator> // for coroutine
+#if __cpp_lib_generator >= 202207L
+#include <generator>
+#endif
 #include <optional>
 #include <map>
 #include <initializer_list>
@@ -113,6 +115,8 @@ Then scl2's bitenum utilities can recognize the range of your enum and work prop
 */
 
 
+#if __cpp_lib_generator >= 202207L
+
 /// @brief Allow to scroll through bitwide flags using grammer `for (auto bit : enum_bitwiden(flags))`
 /// @tparam E An enum type with bitwise flags, and & operator support.
 /// @param value The enum value containing bitwise flags.
@@ -159,6 +163,8 @@ std::generator<E> bitenum_ranged_iterator(E value, size_t minVal, size_t maxVal)
         }
     }
 }
+
+#endif // __cpp_lib_generator
 
 // enum_bitwiden_range was a pre-migration legacy implementation.
 // It is intentionally removed in favor of generator-based bitenum_iterator.
