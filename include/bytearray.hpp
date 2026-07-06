@@ -23,6 +23,7 @@
 #include "basics.hpp"
 
 #include "basic_api.hpp"
+#include "bytearray_api_forward.hpp"
 
 namespace scl2 {
 
@@ -505,7 +506,5 @@ inline std::istream& operator>>(std::istream& is, bytearray& ba) {
     }
     return is;
 }
-
-#include "bytearray_api_forward.hpp"
 
 } // namespace scl2

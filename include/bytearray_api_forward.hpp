@@ -47,78 +47,43 @@ concept has_generic_dump_load = has_generic_dump<T> && has_generic_load<T>;
     static_assert(::scl2::has_generic_dump<T>, "Type " #T " does not support generic dumping"); \
     static_assert(::scl2::has_generic_load<T>, "Type " #T " does not support generic loading");
 
-template<typename T>
-scl2::bytearray generic_dump(const T& value) {
-    if constexpr (__has_generic_dump_memberfx<T>) {
-        return value.dump();
-    } else if constexpr (__has_generic_static_dump_memberfx<T>) {
-        return T::dump(value);
-    }
-}
+// ── Function declarations (implementations in bytearray_api.hpp) ─────
+// These need scl2::bytearray to be a complete type, so they are defined
+// in bytearray_api.hpp which includes bytearray.hpp first.
 
 template<typename T>
-T generic_load(scl2::bytearray& data) {
-    if constexpr (__has_generic_load_memberfx<T>) {
-        T value;
-        value.load(data);
-        return value;
-    } else if constexpr (__has_generic_static_load_memberfx<T>) {
-        return T::load(data);
-    }
-}
+scl2::bytearray generic_dump(const T& value);
+
+template<typename T>
+T generic_load(scl2::bytearray& data);
 
 
 // Autodetection layer
-// this layer is named "gdump" and "gload". The difference with dump/load is that it automatically supports the "trivially copyable" types.
 
 template<typename T>
 concept has_gdump = ::scl2::has_generic_dump<T> || std::is_trivially_copyable_v<T>;
 
 template<typename T>
 requires (std::is_trivially_copyable_v<T> && !::scl2::has_generic_dump<T>)
-scl2::bytearray gdump(const T& value) {
-    return scl2::bytearray(value);
-}
+scl2::bytearray gdump(const T& value);
 
 template<typename T>
-requires ::scl2::has_generic_dump<T> /* && (!std::is_trivially_copyable_v<T>) */
-scl2::bytearray gdump(const T& value) {
-    return generic_dump(value);
-}
-
-// If both are present, will use the "generic_dump" because it is user-defined.
-// Should be handeled by SFINAE.
-// template<typename T>
-// requires std::is_trivially_copyable_v<T> && (::scl2::has_generic_dump<T>)
-// scl2::bytearray gdump(const T& value) {
-//     return generic_dump(value);
-// }
-
-// If both are not present, will fail (not supported), which is expected.
+requires ::scl2::has_generic_dump<T>
+scl2::bytearray gdump(const T& value);
 
 
 template<typename T>
 concept has_gload = ::scl2::has_generic_load<T> || std::is_trivially_copyable_v<T>;
 
-
-// I don't like the idea of keeping the bytearray version of this function.
-// This api is not designed to behave like it can read something mid-way.
 template<typename _T>
 requires (::scl2::trivially_copyable<_T> && !::scl2::has_generic_load<_T>)
 _T gload(const scl2::bytearray& data);
 
 template<typename T>
 requires ::scl2::has_generic_load<T>
-T gload(scl2::bytearray& data) {
-    return generic_load<T>(data);
-}
+T gload(scl2::bytearray& data);
 
-// If both are present, will use the "generic_load" because it is user-defined.
-// template<typename T>
-// requires ::scl2::trivially_copyable<T> && (::scl2::has_generic_load<T>)
-// T gload(const scl2::bytearray& data) {
-//     return generic_load<T>(data);
-// }
+// ── Nested container concepts ────────────────────────────────────────
 
 
 
@@ -175,35 +140,18 @@ concept has_gload_container = gdp_detail::has_gload_recursive<T>::value;
 
 template<typename T>
 requires has_gdump_container<T> && (!::scl2::has_gdump<T>)
-scl2::bytearray gdump(const T& container) {
-    scl2::bytearray ba;
-    ba.appendContainer(container);
-    return ba;
-}
+scl2::bytearray gdump(const T& container);
 
 template<typename T>
 requires has_gload_container<T> && (!::scl2::has_gload<T>)
 T gload(scl2::bytearray& data);
 
 
-// pair support. This is also very useful for working with maps.
+// pair support
 template<::scl2::stl::is_pair T>
-scl2::bytearray gdump(const T& pair) {
-    scl2::bytearray ba;
-    ba.append(pair.first);
-    ba.append(pair.second);
-    return ba;
-}
-
+scl2::bytearray gdump(const T& pair);
 
 template<::scl2::stl::is_pair T>
-T gload(scl2::bytearray& data) {
-    using First = std::remove_const_t<typename T::first_type>;
-    using Second = typename T::second_type;
-    
-    First f = gload<First>(data);
-    Second s = gload<Second>(data);
-    return T{f, s};
-}
+T gload(scl2::bytearray& data);
 
 } // namespace scl2
