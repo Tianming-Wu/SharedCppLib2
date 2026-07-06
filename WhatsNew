@@ -1,5 +1,9 @@
 # Changelog
 
+### v3.1.1
+- Fixed: `fileio` callback type mismatch (`int` → `file_timestamp`).
+- New: Added `fileio`, `file`, `filepack`, `uri` build targets.
+
 ### v3.1.0
 - New: `scl2::basic_string` (alias `scl2::string`, `scl2::wstring`) — `std::string` subclass with `split()`, `xsplit()`, `exsplit()` convenience wrappers returning `stringlist`.
 
