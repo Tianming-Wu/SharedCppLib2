@@ -4,9 +4,6 @@
 
 namespace scl2 {
 
-template class basic_stringlist<char>;
-template class basic_stringlist<wchar_t>;
-
 template<typename CharT>
 basic_stringlist<CharT>::string_type basic_stringlist<CharT>::join(const string_type &i) const {
     string_type re{};
@@ -378,4 +375,7 @@ size_t basic_stringlist<CharT>::all_size() {
     return result;
 }
 
-} // namespace std
+template class basic_stringlist<char>;
+template class basic_stringlist<wchar_t>;
+
+} // namespace scl2
