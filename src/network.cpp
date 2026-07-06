@@ -7,7 +7,7 @@
 #include "stringlist.hpp"
 
 #ifdef OS_WINDOWS
-    SOCKET _n_sock = INVALID_SOCKET;
+    socket_t _n_sock = INVALID_SOCK;
 #endif
 
 namespace network {
@@ -15,7 +15,7 @@ namespace network {
 
 void init() noexcept
 {
-    if(_n_sock != INVALID_SOCKET) {
+    if(_n_sock != INVALID_SOCK) {
         return;
     }
 
