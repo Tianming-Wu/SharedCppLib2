@@ -220,6 +220,14 @@ ipv6 ipv6::from_bytearray(const scl2::bytearray &ba)
     return ip_addr;
 }
 
+bool ipv6::valid() const
+{
+    for (size_t i = 0; i < 8; ++i) {
+        if (blocks[i] != 0) return true;
+    }
+    return false;
+}
+
 } // namespace network
 
 std::ostream &operator<<(std::ostream &os, const network::ipv4 &addr)

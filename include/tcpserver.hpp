@@ -44,9 +44,9 @@ public:
     scl2::bytearray read(size_t bytes) override final;
     scl2::bytearray readAll() override final;
 
-    size_t write(const scl2::bytearray& data);
+    size_t write(const scl2::bytearray& data) override final;
 
-    bool valid();
+    bool valid() override final;
 
     auto lock() -> std::unique_lock<std::mutex>;
 
