@@ -1,5 +1,9 @@
 # Changelog
 
+### v3.1.2
+- Fixed: Linux (GCC/Clang) cross-compilation compatibility — missing includes, template instantiation ordering, platform guards, `add_subdirectory` header propagation.
+- Fixed: `ipv6::valid()` implemented; `network_tcp` now links `stream` dependency; DNS/network init wrapped with `OS_WINDOWS` guards.
+
 ### v3.1.1
 - Fixed: `fileio` callback type mismatch (`int` → `file_timestamp`).
 - New: Added `fileio`, `file`, `filepack`, `uri` build targets.
