@@ -56,6 +56,8 @@
 */
 
 #pragma once
+#include <exception>
+
 #include "apibase.hpp"
 
 // you need this macro to activate API support in other libraries
