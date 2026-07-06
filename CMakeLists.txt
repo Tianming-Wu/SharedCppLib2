@@ -144,6 +144,9 @@ target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要
 # datauri 依赖
 target_link_libraries(datauri PUBLIC basic)
 
+# network_tcp uses stream for basic_sclistream/basic_sclostream
+target_link_libraries(network_tcp PUBLIC stream)
+
 # basic 库依赖关系
 foreach(target regexfilter logc sha256 crc32 arguments ini abstract xml keydb condition datauri json yaml aes fileio file filepack uri)
     target_link_libraries(${target} PUBLIC basic)
