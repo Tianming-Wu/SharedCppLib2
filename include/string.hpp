@@ -26,26 +26,26 @@ public:
     basic_string(const string_type& s) : string_type(s) {}
     basic_string(string_type&& s) noexcept : string_type(std::move(s)) {}
 
-    scl2::basic_stringlist<CharT> split(CharT delim);
-    scl2::basic_stringlist<CharT> split(const string_type &delim);
-    scl2::basic_stringlist<CharT> split(const scl2::basic_stringlist<CharT> &delims);
+    scl2::basic_stringlist<CharT> split(CharT delim) const;
+    scl2::basic_stringlist<CharT> split(const string_type &delim) const;
+    scl2::basic_stringlist<CharT> split(const scl2::basic_stringlist<CharT> &delims) const;
 
     /// @brief split a string into a stringlist, while the binding characters will be treated as a whole and not be split
     /// @param delim delimiter
     /// @param begin_bind a series of chars that is treated as combinitions
     /// @param end_bind paired one-by-one to the @c begin_bind , and will be the same as it if left empty
-    scl2::basic_stringlist<CharT> xsplit(const string_type &delim, const string_type &begin_bind, string_type end_bind = string_type(), bool remove_binding = true);
+    scl2::basic_stringlist<CharT> xsplit(const string_type &delim, const string_type &begin_bind, string_type end_bind = string_type(), bool remove_binding = true) const;
 
     /// @brief almost the same as xsplit, while it supports binding characters to be found inside the string
-    scl2::basic_stringlist<CharT> exsplit(const string_type &delim, const string_type &begin_bind, string_type end_bind = string_type(), bool remove_binding = false, bool strict = false);
+    scl2::basic_stringlist<CharT> exsplit(const string_type &delim, const string_type &begin_bind, string_type end_bind = string_type(), bool remove_binding = false, bool strict = false) const;
 
     /// @brief Split a string into a stringlist using a regex as the delimiter.
     /// @param regex_delim
-    // scl2::basic_stringlist<CharT> split(const std::regex& regex_delim);
+    // scl2::basic_stringlist<CharT> split(const std::regex& regex_delim) const;
 
     /// @brief Extract substrings from the string that match the given regex pattern.
     /// @param pattern
-    // scl2::basic_stringlist<CharT> extract(const std::regex& pattern);
+    // scl2::basic_stringlist<CharT> extract(const std::regex& pattern) const;
 };
 
 extern template class basic_string<char>;

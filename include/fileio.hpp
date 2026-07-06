@@ -12,6 +12,7 @@
 #include <filesystem>
 
 #include "api.hpp"
+#include "stringlist.hpp"
 #include "bytearray.hpp" // You need to link basic anyway, this is also in basic
 #include "enum.hpp"
 #include "macros.hpp"
@@ -47,15 +48,15 @@ private:
     std::fstream fileStream;
 
     template<typename T>
-    requires (requires(const T& t) { fileStream << t; } && !std::is_same_v<T, std::bytearray>)
+    requires (requires(const T& t) { fileStream << t; } && !std::is_same_v<T, scl2::bytearray>)
     // avoid collision with bytearray (which has an << operator)
     size_t write(const T& data) {
         fileStream << data;
         return sizeof(T);
     }
 
-    size_t write(const std::bytearray& data);
-    size_t write(const std::bytearray& data, size_t count);
+    size_t write(const scl2::bytearray& data);
+    size_t write(const scl2::bytearray& data, size_t count);
 
     template<typename T>
     requires ::scl2::has_generic_serialize<T>
@@ -100,13 +101,24 @@ size_t writeFile(const fs::path& path, const T& data) {
     if (!ofs) {
         throw std::runtime_error("Failed to open file for writing: " + path.string());
     }
-    std::bytearray ba = scl2::generic_dump(data);
+    scl2::bytearray ba = scl2::generic_dump(data);
     ofs << ba;
     return ba.size();
 }
 
+template<typename T>
+requires std::is_trivially_assignable<T, T>::value && std::is_trivially_copyable<T>::value
+size_t writeAs(const fs::path& path, const T& data) {
+    std::ofstream ofs(path, std::ios::binary);
+    if (!ofs) {
+        throw std::runtime_error("Failed to open file for writing: " + path.string());
+    }
+    ofs.write(reinterpret_cast<const char*>(&data), sizeof(T));
+    return sizeof(T);
+}
+
 // Single-line Call for writing a bytearray to file.
-size_t writeFile(const fs::path& path, const std::bytearray& data);
+size_t writeFile(const fs::path& path, const scl2::bytearray& data);
 
 template<typename T>
 requires ::scl2::has_generic_load<T>
@@ -115,11 +127,23 @@ T readAndLoad(const fs::path& path) {
     if (!ifs) {
         throw std::runtime_error("Failed to open file for reading: " + path.string());
     }
-    std::bytearray ba((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+    scl2::bytearray ba((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
     return scl2::generic_load<T>(ba);
 }
 
-std::bytearray readFile(const fs::path& path);
+template<typename T>
+requires std::is_trivially_assignable<T, T>::value && std::is_trivially_copyable<T>::value
+T readAs(const fs::path& path) {
+    std::ifstream ifs(path, std::ios::binary);
+    if (!ifs) {
+        throw std::runtime_error("Failed to open file for reading: " + path.string());
+    }
+    T data;
+    ifs.read(reinterpret_cast<char*>(&data), sizeof(T));
+    return data;
+}
+
+scl2::bytearray readFile(const fs::path& path);
 
 // Syncing system:
 // automatically syncs the data in memory and the file on disk based on timestamps.
@@ -167,16 +191,26 @@ bool syncWith(const fs::path& path, T& data, const file_timestamp& src_tm, const
     } else {
         // error comparing timestamps
         if (updateCallback) {
-            updateCallback(sync_action::Error, 0);
+            updateCallback(sync_action::Error, file_timestamp{});
         }
         return false;
     }
 }
 
+// Line based text file helpers.
 
-/// @brief Line-based text file helper.
+/// @brief Read the file and process each line.
+/// @note In your lambda, return false to stop processing, and true to continue.
 /// @return The number of lines processed.
-unsigned int foreachLine(const fs::path& path, const std::function<void(unsigned int, const std::string&)>& func);
+/// @throws std::runtime_error if the file cannot be opened.
+unsigned int foreachLine(const fs::path& path, const std::function<bool(unsigned int, const std::string&)>& func);
+
+/// @brief Read all lines from a text file and return them as a stringlist.
+/// @param path 
+/// @return The stringlist, each element is a line from the file
+/// @note Does not include newline characters, and does not remove empty lines.
+/// @throws std::runtime_error if the file cannot be opened.
+scl2::stringlist readAllLines(const fs::path& path);
 
 
 

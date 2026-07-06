@@ -39,7 +39,7 @@ scl2::bytearray filepack_metadata::dump(const filepack_metadata &metadata)
     }
 
     for(const auto& [filename, filesize] : metadata.entries) {
-        data.addString(filename); // filename
+        data.append(filename); // filename
         data.append(filesize); // file size
     }
     return data;
