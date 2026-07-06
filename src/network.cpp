@@ -7,7 +7,7 @@
 #include "stringlist.hpp"
 
 #ifdef OS_WINDOWS
-    socket_t _n_sock = INVALID_SOCK;
+    static socket_t _n_sock = INVALID_SOCK;
 #endif
 
 namespace network {
@@ -15,6 +15,7 @@ namespace network {
 
 void init() noexcept
 {
+#ifdef OS_WINDOWS
     if(_n_sock != INVALID_SOCK) {
         return;
     }
@@ -24,11 +25,20 @@ void init() noexcept
 
     _n_sock = socket(AF_INET, SOCK_DGRAM, 0); // udp
     _n_sock = socket(AF_INET, SOCK_STREAM, 0); // tcp
+#else
+    // No initialization needed on Unix-like systems
+#endif
 }
 
 void cleanup() noexcept
 {
-    // currently, do nothing because the OS will clean up everything on exit
+#ifdef OS_WINDOWS
+    if (_n_sock != INVALID_SOCK) {
+        close_socket(_n_sock);
+        _n_sock = INVALID_SOCK;
+    }
+    WSACleanup();
+#endif
 }
 
 std::string ipv4::to_string() const
