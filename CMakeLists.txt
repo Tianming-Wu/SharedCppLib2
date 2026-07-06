@@ -72,6 +72,10 @@ add_library(basic STATIC
     src/bytearray.cpp src/ansiio.cpp src/color.cpp src/stringlist.cpp
     src/stringlist_regex.cpp src/basics.cpp src/string.cpp
 )
+# Propagate generated header dir for add_subdirectory consumers
+target_include_directories(basic PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/SharedCppLib2>"
+)
 
 add_library(sha256 STATIC src/sha256.cpp)
 add_library(crc32 STATIC src/crc32.cpp)
