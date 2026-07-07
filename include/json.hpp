@@ -13,7 +13,7 @@
     Also check jbt if you want some even more compact storage of json data.
 
     [SCL_STANDALONE_MODULE]
-    version: 1.7.1
+    version: 1.8.0
     cpp_generation: cxx17 - cxx23
 */
 
@@ -172,17 +172,29 @@ public:
     void push_back(const json_value& v);
     void push_back(json_value&& v);
     bool clear_as_array(); // clear the value, set it to an empty array
+    void erase(size_t index); // remove element at index
+    bool empty_as_array() const; // check if the value is an array and empty
+
+    json_value& front();
+    const json_value& front() const;
+    json_value& back();
+    const json_value& back() const;
+    void pop_back(); // remove last element
 
     // for object
 #ifdef __cpp_lib_generator
     std::generator<std::pair<const std::string&, const json_value&>> object_members() const;
 #endif
     bool has_key(const std::string& key) const;
+    bool contains(const std::string& key) const { return has_key(key); }
     const json_value& operator[](const std::string& key) const;
     json_value& operator[](const std::string& key);
     const json_value& at(const std::string& key) const;
     size_t object_size() const;
     bool remove_member(const std::string& key);
+    bool erase(const std::string& key) { return remove_member(key); }
+    bool clear_as_object(); // clear the value, set it to an empty object
+    bool empty_as_object() const; // check if the value is an object and empty
 
 #ifdef UNICODE
     // ── wstring compatibility ────────────────────────────────────────
@@ -190,21 +202,29 @@ public:
     json_value(const wchar_t* ws) : json_value(json_wtoa(std::wstring(ws))) {}
 
     bool has_key(const std::wstring& key) const { return has_key(json_wtoa(key)); }
+    bool contains(const std::wstring& key) const { return has_key(key); }
     const json_value& operator[](const std::wstring& key) const { return (*this)[json_wtoa(key)]; }
     json_value& operator[](const std::wstring& key) { return (*this)[json_wtoa(key)]; }
     bool remove_member(const std::wstring& key) { return remove_member(json_wtoa(key)); }
+    bool erase(const std::wstring& key) { return remove_member(key); }
 
     std::wstring as_wstring() const { return json_atow(as_string()); }
 #endif
-    bool clear_as_object(); // clear the value, set it to an empty object
 
     // for string
     size_t length() const;
+    bool empty_as_string() const;
 
     // universal
-    // for array and object, return the size. For string, return length. For other types, return 0.
+    // array & object: size; string: length; other: 0.
     size_t size() const;
-    void clear(); // clear the value, set it to null
+
+    // array & object & string: empty(), null: true, other: false.
+    bool empty() const;
+
+    // clear the value, set it to null.
+    // If you want to maintain the type, use clear_as_array() or clear_as_object() instead.
+    void clear(); 
 
     // json pointer
     json_value& at_path(const json_pointer& pointer);

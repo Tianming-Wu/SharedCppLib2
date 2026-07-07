@@ -1,6 +1,6 @@
 /*
     [SCL_STANDALONE_MODULE]
-    version: 1.7.1
+    version: 1.8.0
     cpp_generation: cxx17 - cxx23 
 */
 #include "json.hpp"
@@ -291,6 +291,53 @@ void json_value::push_back(json_value&& v)
     as_array().push_back(std::move(v));
 }
 
+void json_value::erase(size_t index)
+{
+    auto& arr = as_array();
+    arr.erase(arr.begin() + static_cast<ptrdiff_t>(index));
+}
+
+bool json_value::empty_as_array() const
+{
+    if (!is_array()) throw std::runtime_error("json_value::empty_as_array: not an array");
+    return as_array().empty();
+}
+
+json_value &json_value::front()
+{
+    if (!is_array())
+        throw std::runtime_error("json_value::front: not an array");
+    return as_array().front();
+}
+
+json_value &json_value::back()
+{
+    if (!is_array())
+        throw std::runtime_error("json_value::back: not an array");
+    return as_array().back();
+}
+
+const json_value &json_value::front() const
+{
+    if (!is_array())
+        throw std::runtime_error("json_value::front: not an array");
+    return as_array().front();
+}
+
+const json_value &json_value::back() const
+{
+    if (!is_array())
+        throw std::runtime_error("json_value::back: not an array");
+    return as_array().back();
+}
+
+void json_value::pop_back()
+{
+    if (!is_array())
+        throw std::runtime_error("json_value::pop_back: not an array");
+    as_array().pop_back();
+}
+
 #ifdef __cpp_lib_generator
 std::generator<std::pair<const std::string &, const json_value &>> json_value::object_members() const
 {
@@ -344,6 +391,13 @@ size_t json_value::length() const
     return as_string().size();
 }
 
+bool json_value::empty_as_string() const
+{
+    if (!is_string())
+        throw std::runtime_error("json_value::empty_as_string: not a string");
+    return as_string().empty();
+}
+
 size_t json_value::size() const
 {
     if (is_array())
@@ -354,6 +408,20 @@ size_t json_value::size() const
         return length();
     else
         return 0;
+}
+
+bool json_value::empty() const
+{
+    if (is_null())
+        return true;
+    else if (is_array())
+        return as_array().empty();
+    else if (is_object())
+        return as_object().empty();
+    else if (is_string())
+        return as_string().empty();
+    else
+        return false; // For other types, we consider them as non-empty
 }
 
 void json_value::clear()
@@ -408,6 +476,12 @@ bool json_value::clear_as_object()
     if (!is_object()) return false;
     as_object().clear();
     return true;
+}
+
+bool json_value::empty_as_object() const
+{
+    if (!is_object()) throw std::runtime_error("json_value::empty_as_object: not an object");
+    return as_object().empty();
 }
 
 bool json_value::operator==(const json_value& other) const
