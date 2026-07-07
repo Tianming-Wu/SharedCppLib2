@@ -1,12 +1,21 @@
 /*
     [SCL_STANDALONE_MODULE]
-    version: 1.6.1
+    version: 1.7.1
     cpp_generation: cxx17 - cxx23 
 */
 #include "json.hpp"
 
 #include <fstream>
 #include <sstream>
+
+#ifdef UNICODE
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#else
+#include <cstring>
+#include <clocale>
+#endif
+#endif
 
 namespace scl2 {
 
@@ -1128,5 +1137,34 @@ std::string json_exporter::jquote(const std::string &str)
 {
     return std::string("\"" + escapeJsonString(str) + "\"");
 }
+
+#ifdef UNICODE
+std::string json_value::json_wtoa(const std::wstring& ws) {
+#if defined(_WIN32) || defined(_WIN64)
+    if (ws.empty()) return {};
+    int len = WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), static_cast<int>(ws.size()), nullptr, 0, nullptr, nullptr);
+    std::string s(len, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), static_cast<int>(ws.size()), &s[0], len, nullptr, nullptr);
+    return s;
+#else
+    std::string s;
+    s.reserve(ws.size());
+    for (wchar_t c : ws) s += static_cast<char>(c);
+    return s;
+#endif
+}
+
+std::wstring json_value::json_atow(const std::string& s) {
+#if defined(_WIN32) || defined(_WIN64)
+    if (s.empty()) return {};
+    int len = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()), nullptr, 0);
+    std::wstring ws(len, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()), &ws[0], len);
+    return ws;
+#else
+    return std::wstring(s.begin(), s.end());
+#endif
+}
+#endif
 
 } // namespace scl2

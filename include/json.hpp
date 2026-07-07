@@ -13,7 +13,7 @@
     Also check jbt if you want some even more compact storage of json data.
 
     [SCL_STANDALONE_MODULE]
-    version: 1.6.1
+    version: 1.7.1
     cpp_generation: cxx17 - cxx23
 */
 
@@ -94,6 +94,11 @@ private:
 };
 
 class json_value {
+#ifdef UNICODE
+protected:
+    static std::string json_wtoa(const std::wstring& ws);
+    static std::wstring json_atow(const std::string& s);
+#endif
 public:
     json_value() = default;
 
@@ -178,6 +183,19 @@ public:
     const json_value& at(const std::string& key) const;
     size_t object_size() const;
     bool remove_member(const std::string& key);
+
+#ifdef UNICODE
+    // ── wstring compatibility ────────────────────────────────────────
+    json_value(const std::wstring& ws) : json_value(json_wtoa(ws)) {}
+    json_value(const wchar_t* ws) : json_value(json_wtoa(std::wstring(ws))) {}
+
+    bool has_key(const std::wstring& key) const { return has_key(json_wtoa(key)); }
+    const json_value& operator[](const std::wstring& key) const { return (*this)[json_wtoa(key)]; }
+    json_value& operator[](const std::wstring& key) { return (*this)[json_wtoa(key)]; }
+    bool remove_member(const std::wstring& key) { return remove_member(json_wtoa(key)); }
+
+    std::wstring as_wstring() const { return json_atow(as_string()); }
+#endif
     bool clear_as_object(); // clear the value, set it to an empty object
 
     // for string
@@ -224,10 +242,15 @@ public:
     // static factory functions
     static json fromString(const std::string& str);
     static json fromFile(const std::string& filename);
+#ifdef UNICODE
+    static json fromString(const std::wstring& wstr) { return fromString(json_value::json_wtoa(wstr)); }
+#endif
 
     std::string toString() const;
-    // remove any unnecessary whitespace.
     std::string toCompatString() const;
+#ifdef UNICODE
+    std::wstring toWString() const { return json_value::json_atow(toString()); }
+#endif
 
     // This uses the default format. If you want anything else, do it yourself.
     std::string toFile(const std::string& filename) const;
