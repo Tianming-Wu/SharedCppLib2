@@ -1,6 +1,6 @@
 /*
     [SCL_STANDALONE_MODULE]
-    version: 1.8.0
+    version: 1.8.1
     cpp_generation: cxx17 - cxx23 
 */
 #include "json.hpp"
@@ -505,11 +505,11 @@ json json::fromString(const std::string &str)
     return parser.getResult();
 }
 
-json json::fromFile(const std::string &filename)
+json json::fromFile(const std::filesystem::path& path)
 {
-    std::ifstream file(filename);
+    std::ifstream file(path);
     if (!file) {
-        throw std::runtime_error("Failed to open JSON file: " + filename);
+        throw std::runtime_error("Failed to open JSON file: " + path.string());
     }
     std::stringstream buffer;
     buffer << file.rdbuf();
@@ -529,14 +529,14 @@ std::string json::toCompatString() const
     return exporter.exportToString(*this);
 }
 
-std::string json::toFile(const std::string &filename) const
+std::string json::toFile(const std::filesystem::path& path) const
 {
-    std::ofstream file(filename);
+    std::ofstream file(path);
     if (!file) {
-        throw std::runtime_error("Failed to open file for writing: " + filename);
+        throw std::runtime_error("Failed to open file for writing: " + path.string());
     }
     file << toString();
-    return filename;
+    return path.string();
 }
 
 void json_parser::parseFromString(const std::string &str_input)

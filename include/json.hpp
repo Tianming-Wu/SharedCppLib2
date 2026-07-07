@@ -13,7 +13,7 @@
     Also check jbt if you want some even more compact storage of json data.
 
     [SCL_STANDALONE_MODULE]
-    version: 1.8.0
+    version: 1.8.1
     cpp_generation: cxx17 - cxx23
 */
 
@@ -26,6 +26,7 @@
 #include <optional>
 #include <stdexcept>
 #include <type_traits>
+#include <filesystem>
 
 #ifdef __cpp_lib_generator
     #include <generator>
@@ -261,7 +262,7 @@ public:
 
     // static factory functions
     static json fromString(const std::string& str);
-    static json fromFile(const std::string& filename);
+    static json fromFile(const std::filesystem::path& path);
 #ifdef UNICODE
     static json fromString(const std::wstring& wstr) { return fromString(json_value::json_wtoa(wstr)); }
 #endif
@@ -273,7 +274,7 @@ public:
 #endif
 
     // This uses the default format. If you want anything else, do it yourself.
-    std::string toFile(const std::string& filename) const;
+    std::string toFile(const std::filesystem::path& path) const;
 
     inline json_value& value() { return *this; }
     inline const json_value& value() const { return *this; }
