@@ -233,6 +233,7 @@ strenum(
 **方法：**
 
 - `to_string(E value)` — 返回 `std::optional<string_type>`，包含映射的字符串或回退值。
+- `from_string(const string_type& str)` — 返回 `std::optional<E>`，匹配 `str` 的枚举值（精确匹配，区分大小写）。
 
 **回退类型（`strenum_fallback_type`）：**
 
@@ -258,6 +259,11 @@ bitstrenum(
     bitstrenum_fallback_type fallback = bitstrenum_fallback_none
 );
 ```
+
+**方法：**
+
+- `to_string(E value)` — 返回 `std::optional<string_type>`，用 ` | ` 连接已映射的标志名称。未知位根据 `fallback_type` 回退处理。
+- `from_string(const string_type& str)` — 将 `"FlagA | FlagB"` 格式解析回枚举值。任一部分未找到时返回 `std::nullopt`。
 
 **回退类型（`bitstrenum_fallback_type`）：**
 
@@ -285,6 +291,29 @@ inline std::optional<std::basic_string<CharT>> to_string(E value);
 
 ```cpp
 auto s = scl2::to_string(myValue).value_or("?");
+```
+
+#### from_string
+
+```cpp
+template<typename E, typename CharT = char>
+requires std::is_enum_v<E>
+inline std::optional<E> from_string(const std::basic_string<CharT>& str);
+
+template<typename E, typename CharT = char>
+requires std::is_enum_v<E>
+inline std::optional<E> from_string(const CharT* str);
+```
+
+通过注册的映射将字符串转换回枚举值。
+
+- `strenum` 映射：精确字符串匹配（区分大小写）。
+- `bitstrenum` 映射：解析 `"FlagA | FlagB"` 格式，按 `" | "` 分割并对每个标志位进行 OR 运算。任一部分未找到时返回 `std::nullopt`。
+
+```cpp
+auto c = scl2::from_string<Color>("Red");   // Color::Red
+auto p = scl2::from_string<Perm>("Read | Write");  // Perm::Read | Perm::Write
+auto x = scl2::from_string<Color>("Purple");  // std::nullopt
 ```
 
 ### 枚举转换器

@@ -17,6 +17,9 @@
             depend on traits.
 
 
+    [SCL_STANDALONE_MODULE]
+    version: 3.0.1
+    cpp_generation: cxx20 - cxx23
 */
 
 #pragma once
@@ -279,6 +282,7 @@ public:
     {
         for(auto& pair : list) {
             this->insert(pair);
+            reverse_map.emplace(pair.second, pair.first);
         }
     }
     
@@ -291,8 +295,20 @@ public:
         }
     }
 
+    /// @brief Convert a string back to an enum value.
+    /// @param str The string to look up (must match exactly, case-sensitive).
+    /// @return The enum value, or std::nullopt if not found.
+    std::optional<E> from_string(const string_type& str) const {
+        auto it = reverse_map.find(str);
+        if (it != reverse_map.end()) {
+            return it->second;
+        }
+        return std::nullopt;
+    }
+
 private:
     strenum_fallback_type fallback_type = strenum_fallback_none;
+    std::map<string_type, E> reverse_map;
 
     std::optional<string_type> fallback(E val) const {
         switch (fallback_type) {
@@ -331,6 +347,7 @@ public:
     {
         for(auto& pair : list) {
             this->insert(pair);
+            reverse_map.emplace(pair.second, pair.first);
         }
     }
 
@@ -354,8 +371,51 @@ public:
         return std::make_optional(string_type(result));
     }
 
+    /// @brief Convert a string back to a bitflag enum value.
+    /// Parses "FlagA | FlagB" format, splitting by " | " and OR-ing each flag.
+    /// @param str The string to parse.
+    /// @return The combined enum value, or std::nullopt if any token is unknown.
+    std::optional<E> from_string(const string_type& str) const {
+        using T = std::underlying_type_t<E>;
+        T result = 0;
+        size_t pos = 0;
+        const string_type delim = []{
+            string_type d;
+            d += CharT(' ');
+            d += CharT('|');
+            d += CharT(' ');
+            return d;
+        }();
+
+        while (pos < str.size()) {
+            // Skip leading whitespace
+            while (pos < str.size() && (str[pos] == CharT(' '))) ++pos;
+            if (pos >= str.size()) break;
+
+            // Find end of token (delimiter or end of string)
+            size_t end = str.find(delim, pos);
+            if (end == string_type::npos) {
+                end = str.size();
+            }
+
+            // Also trim trailing spaces before the delimiter
+            size_t token_end = end;
+            while (token_end > pos && str[token_end - 1] == CharT(' ')) --token_end;
+
+            string_type token = str.substr(pos, token_end - pos);
+            auto it = reverse_map.find(token);
+            if (it == reverse_map.end()) {
+                return std::nullopt;  // unknown token → fail
+            }
+            result |= static_cast<T>(it->second);
+            pos = end + delim.size();
+        }
+        return static_cast<E>(result);
+    }
+
 private:
     bitstrenum_fallback_type fallback_type = bitstrenum_fallback_none;
+    std::map<string_type, E> reverse_map;
 
     std::optional<string_type> fallback(E val) const {
         switch (fallback_type) {
@@ -467,6 +527,26 @@ inline std::optional<std::basic_string<CharT>> to_string(E value) {
     } else {
         static_assert(sizeof(E) == 0, "No strenum or bitstrenum map defined for this enum type. Use scl2_strenum or scl2_bitstrenum macro.");
     }
+}
+
+template<typename E, typename CharT = char>
+requires std::is_enum_v<E>
+inline std::optional<E> from_string(const std::basic_string<CharT>& str) {
+    // ADL + unqualified lookup: same detection as to_string.
+    if constexpr (requires { get_strenum_map(E{}).to_string(E{}); }) {
+        return get_strenum_map(E{}).from_string(str);
+    } else if constexpr (requires { get_bitstrenum_map(E{}).to_string(E{}); }) {
+        return get_bitstrenum_map(E{}).from_string(str);
+    } else {
+        static_assert(sizeof(E) == 0, "No strenum or bitstrenum map defined for this enum type. Use scl2_strenum or scl2_bitstrenum macro.");
+    }
+}
+
+/// @brief Overload for C-string literals (e.g. from_string<Color>("Red")).
+template<typename E, typename CharT = char>
+requires std::is_enum_v<E>
+inline std::optional<E> from_string(const CharT* str) {
+    return scl2::from_string<E, CharT>(std::basic_string<CharT>(str));
 }
 
 
