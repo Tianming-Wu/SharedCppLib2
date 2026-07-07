@@ -31,6 +31,7 @@
 #include <optional>
 #include <map>
 #include <initializer_list>
+#include <string>
 
 // Defense against windows.h macros
 // Who would ever use them nowadays?
