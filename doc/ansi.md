@@ -243,8 +243,8 @@ style_to_sgr({.bold=true, .italic=true})       → "\033[0;1;3m"
 
 ```cpp
 std::string apply_style(const std::string& input, const text_style& style);
-std::stringlist apply_style(const std::stringlist& lines, const std::vector<text_style>& styles);
-std::string apply_style_inline(const std::stringlist& lines, const std::vector<text_style>& styles);
+scl2::stringlist apply_style(const scl2::stringlist& lines, const std::vector<text_style>& styles);
+std::string apply_style_inline(const scl2::stringlist& lines, const std::vector<text_style>& styles);
 ```
 
 Wrap text with ANSI style codes. The single-text version returns `style_to_sgr(style) + input + reset_color`. The stringlist versions apply styles to each line (cycling if more lines than styles).

@@ -1,5 +1,25 @@
 # Changelog
 
+### v3.1.2
+- Fixed: Linux (GCC/Clang) cross-compilation compatibility — missing includes, template instantiation ordering, platform guards, `add_subdirectory` header propagation.
+- Fixed: `ipv6::valid()` implemented; `network_tcp` now links `stream` dependency; DNS/network init wrapped with `OS_WINDOWS` guards.
+
+### v3.1.1
+- Fixed: `fileio` callback type mismatch (`int` → `file_timestamp`).
+- New: Added `fileio`, `file`, `filepack`, `uri` build targets.
+
+### v3.1.0
+- New: `scl2::basic_string` (alias `scl2::string`, `scl2::wstring`) — `std::string` subclass with `split()`, `xsplit()`, `exsplit()` convenience wrappers returning `stringlist`.
+
+### v3.0.0
+- Removed: Deprecated modules `variant`, `logd`, `logf` removed from the library and install targets.
+- Changed: `std::stringlist`, `std::wstringlist`, `std::bytearray`, `std::bytearray_view` migrated from `std` namespace to `scl2` namespace. Update your code to use `scl2::stringlist` etc.
+- Changed: `Base64` module renamed to `base64` and merged into `basic`; `base64` is now an INTERFACE target redirecting to `basic`.
+- Changed: `bytearray` redesigned with private inheritance, integrated read/write cursors, and unified `append`/`insert` templates. `bytearray_view` simplified to a non-owning span (like `string_view`). String/container storage now uses `uint32_t` lengths.
+- New: `fits<T>()`, `to<T>()`, `getref<T>()`, `readRawString()`, `readRawWString()`, `insertRawString()`, `insertRawWString()`.
+- Removed from bytearray: `peek()` series, old cursor-based `bytearray_view`, `addString`/`addWString` (use `append(string)`), `appendSize()` (use `append<T>`), `convert_to()` (use `to<T>()`).
+- Fixed: `exsplit` now correctly handles same-character open/close pairs (e.g. `"..."` quoting), and `remove_binding=true` no longer causes an infinite loop.
+
 ### v2.2.4
 - New: YAML module now supports anchors (`&`) and aliases (`*`) — `is_alias()`, `alias_name()`, `resolve()` for alias following, `_anchors` table for anchor registration, and alias-aware exporter output.
 - Changed: YAML `features::anchors` now defaults to `true`.

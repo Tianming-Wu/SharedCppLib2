@@ -19,7 +19,7 @@ target_link_libraries(my_target PRIVATE SharedCppLib2::ini)
 
 ## Description
 
-`ini` provides a lightweight and easy-to-use INI configuration parser and writer. It supports common types such as strings, integral types, floating-point types, booleans, `std::stringlist`, and `std::bytearray`. To accommodate different usage patterns, `ini` offers three styles of accessors: explicit default value, type-default constructor, and `std::optional<T>`-returning variants.
+`ini` provides a lightweight and easy-to-use INI configuration parser and writer. It supports common types such as strings, integral types, floating-point types, booleans, `scl2::stringlist`, and `scl2::bytearray`. To accommodate different usage patterns, `ini` offers three styles of accessors: explicit default value, type-default constructor, and `std::optional<T>`-returning variants.
 
 ## Quick Start
 
@@ -90,11 +90,11 @@ auto maybeEnabled = cfg.getValueAsBoolOptional("Feature", "Enable");
 ## `stringlist` and `bytearray` support
 
 - `getValueAsStringList(...)` / `getValueAsStringListOptional(...)`: parse stringlist formats produced by `stringlist::pack()`.
-- `getValueAsByteArray(...)` / `getValueAsByteArrayOptional(...)`: parse hex-encoded byte arrays produced by `std::bytearray::tohex()`.
+- `getValueAsByteArray(...)` / `getValueAsByteArrayOptional(...)`: parse hex-encoded byte arrays produced by `scl2::bytearray::tohex()`.
 
 Example:
 ```cpp
-std::stringlist items = cfg.getValueAsStringList("Section", "Items");
+scl2::stringlist items = cfg.getValueAsStringList("Section", "Items");
 auto maybeBytes = cfg.getValueAsByteArrayOptional("Bin", "Data");
 ```
 
@@ -108,8 +108,8 @@ auto maybeBytes = cfg.getValueAsByteArrayOptional("Bin", "Data");
 - `bool getValueAsBool(const std::string& section, const std::string& key, bool default_value = false) const;`
 - `std::optional<std::string> getValueOptional(const std::string& section, const std::string& key) const;`
 - `template<typename T> std::optional<T> getValueAsIntegerOptional(const std::string& section, const std::string& key) const;`
-- `std::stringlist getValueAsStringList(const std::string& section, const std::string& key) const;`
-- `std::bytearray getValueAsByteArray(const std::string& section, const std::string& key) const;`
+- `scl2::stringlist getValueAsStringList(const std::string& section, const std::string& key) const;`
+- `scl2::bytearray getValueAsByteArray(const std::string& section, const std::string& key) const;`
 
 (See `include/ini.hpp` for full API.)
 

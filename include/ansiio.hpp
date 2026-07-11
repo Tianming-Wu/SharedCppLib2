@@ -72,7 +72,7 @@ inline std::string apply_style(const std::string& input, const text_style &style
  * 
  * This version adds the "reset" code at the end of each block.
  */
-std::stringlist apply_style(const std::stringlist& lines, const std::vector<text_style>& styles);
+scl2::stringlist apply_style(const scl2::stringlist& lines, const std::vector<text_style>& styles);
 
 /** @brief Apply compiled styles to a stringlist, returning a single string with ANSI codes.
  * @param lines The stringlist to apply styles to.
@@ -83,7 +83,7 @@ std::stringlist apply_style(const std::stringlist& lines, const std::vector<text
  * 
  * The stringlist is joined without any separator. Keep your own separators and new lines in the stringlist.
  */
-std::string apply_style_inline(const std::stringlist& lines, const std::vector<text_style>& styles);
+std::string apply_style_inline(const scl2::stringlist& lines, const std::vector<text_style>& styles);
 
 /** @brief Outputs Ansi Color Control Pattern (Text (and background)).
  * @param text Color of the Text, in colors::tXXXX

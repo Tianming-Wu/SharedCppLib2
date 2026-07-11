@@ -45,10 +45,10 @@ public:
     virtual size_t available() = 0;
 
     // Should read the specified number of bytes from the stream, and return them as a bytearray.
-    virtual std::bytearray read(size_t bytes) = 0;
+    virtual scl2::bytearray read(size_t bytes) = 0;
 
     // Should read all available data from the stream, and return them as a bytearray.
-    virtual std::bytearray readAll() = 0;
+    virtual scl2::bytearray readAll() = 0;
 
     // You'd better not add your own functions like readMessage(), you should reuse readAll()
     // instead.
@@ -70,7 +70,7 @@ public:
     virtual ~basic_sclostream() = default;
 
     // Should write the given data to the stream, and return the number of bytes actually written.
-    virtual size_t write(const std::bytearray& data) = 0;
+    virtual size_t write(const scl2::bytearray& data) = 0;
 };
 
 // The I/O stream that can be used for both input and output.
@@ -102,10 +102,10 @@ Usage note:
 
         virtual size_t available() override;
 
-        virtual std::bytearray read(size_t bytes) override;
-        virtual std::bytearray readAll() override;
+        virtual scl2::bytearray read(size_t bytes) override;
+        virtual scl2::bytearray readAll() override;
 
-        virtual size_t write(const std::bytearray& data) override;
+        virtual size_t write(const scl2::bytearray& data) override;
     private:
         HANDLE read_handle_;
         HANDLE write_handle_;

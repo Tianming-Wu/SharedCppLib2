@@ -81,7 +81,7 @@ scl2::writeFile("condition.bin", expr);
 auto expr = scl2::readAndLoad<condition_expression>("condition.bin");
 
 // 虽然可能性很小，但你也可以加密你的二进制数据。
-std::bytearray enba = scl2::encrypt<scl2::aes128>(ba, key, iv);
+scl2::bytearray enba = scl2::encrypt<scl2::aes128>(ba, key, iv);
 
 ```
 

@@ -73,7 +73,7 @@ target_link_libraries(my_app SharedCppLib2::basic)
 #include <iostream>
 
 int main(int argc, char** argv) {
-    std::stringlist args(argc, argv);
+    scl2::stringlist args(argc, argv);
     
     std::cout << "程序: " << args.vat(0) << std::endl;
     std::cout << "参数: " << args.subarr(1).join(" ") << std::endl;
@@ -157,9 +157,8 @@ target_link_libraries(my_app
 - `SharedCppLib2::logt`
 - `SharedCppLib2::logc`
 - `SharedCppLib2::regexfilter`
-- `SharedCppLib2::variant`
 - `SharedCppLib2::indexer`
-- `SharedCppLib2::Base64`
+- `SharedCppLib2::base64`
 - `SharedCppLib2::platform`
 
 你可以从头文件顶部的注释中获知链接目标。

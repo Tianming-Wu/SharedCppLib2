@@ -378,7 +378,7 @@ When enabled, the following additional features are available:
 | String | `json_value_type::string` | `std::string` |
 | Array | `json_value_type::array` | `std::vector<json_value>` |
 | Object | `json_value_type::object` | `std::map<std::string, json_value>` |
-| Bytearray* | `json_value_type::bytearray` | `std::bytearray` |
+| Bytearray* | `json_value_type::bytearray` | `scl2::bytearray` |
 | Data URI* | `json_value_type::data_uri` | `inline_data_uri` |
 
 \* Available only with `SCL2_JSON_ENABLE_EXTENSIONS`.

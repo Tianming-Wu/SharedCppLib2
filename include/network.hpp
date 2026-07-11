@@ -68,8 +68,8 @@ struct ipv6 {
 
     static ipv6 from_string(const std::string& str);
 
-    std::bytearray to_bytearray() const noexcept;
-    static ipv6 from_bytearray(const std::bytearray& ba);
+    scl2::bytearray to_bytearray() const noexcept;
+    static ipv6 from_bytearray(const scl2::bytearray& ba);
 
     bool valid() const;
 };

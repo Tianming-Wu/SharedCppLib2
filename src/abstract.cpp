@@ -7,7 +7,7 @@
 
 abstract_path::abstract_path(const std::string &str)
 {
-    m_components = std::stringlist::split(str, m_separator);
+    m_components = scl2::stringlist::split(str, m_separator);
 
     if(m_components.size() > 0 && m_components.at(0).empty()) {
         is_root = true;
@@ -22,7 +22,7 @@ abstract_path abstract_path::from(const std::string &str, const std::string &sep
     abstract_path ap;
     ap.m_separator = separator[0];
 
-    ap.m_components = std::stringlist::split(str, ap.m_separator);
+    ap.m_components = scl2::stringlist::split(str, ap.m_separator);
 
     if(ap.m_components.size() > 0 && ap.m_components.at(0).empty()) {
         ap.is_root = true;
@@ -66,7 +66,7 @@ std::filesystem::path abstract_path::toFilesystemPath() const
     return std::filesystem::path(string());
 }
 
-std::stringlist abstract_path::toStringList() const
+scl2::stringlist abstract_path::toStringList() const
 {
     return m_components;
 }

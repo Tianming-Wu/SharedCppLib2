@@ -1,7 +1,7 @@
 /*
     A string list class with various utility functions.
     classes:
-        std::stringlist, std::wstringlist
+        scl2::stringlist, scl2::wstringlist
     link target:
         SharedCppLib2::basic
 */
@@ -24,31 +24,31 @@
 
 */
 
-namespace std {
+namespace scl2 {
 
 template<typename CharT>
-class basic_stringlist : public vector<std::basic_string<CharT>>
+class basic_stringlist : public std::vector<std::basic_string<CharT>>
 {
 public:
     typedef std::basic_string<CharT> string_type;
     typedef string_type value_type; // For STL compatibility
 
-    // linking to default vector methods
-    using vector<string_type>::size;
-    using vector<string_type>::max_size;
-    using vector<string_type>::empty;
-    using vector<string_type>::clear;
-    using vector<string_type>::begin;
-    using vector<string_type>::end;
-    using vector<string_type>::push_back;
-    using vector<string_type>::erase;
-    using vector<string_type>::at;
-    using vector<string_type>::operator[];
+    // linking to default std::vector methods
+    using std::vector<string_type>::size;
+    using std::vector<string_type>::max_size;
+    using std::vector<string_type>::empty;
+    using std::vector<string_type>::clear;
+    using std::vector<string_type>::begin;
+    using std::vector<string_type>::end;
+    using std::vector<string_type>::push_back;
+    using std::vector<string_type>::erase;
+    using std::vector<string_type>::at;
+    using std::vector<string_type>::operator[];
 
-    // class _iterator : public vector<string_type>::iterator {};
-    // class _const_iterator : public vector<string_type>::const_iterator {};
-    typedef typename vector<string_type>::iterator iterator;
-    typedef typename vector<string_type>::const_iterator const_iterator;
+    // class _iterator : public std::vector<string_type>::iterator {};
+    // class _const_iterator : public std::vector<string_type>::const_iterator {};
+    typedef typename std::vector<string_type>::iterator iterator;
+    typedef typename std::vector<string_type>::const_iterator const_iterator;
 
     ~basic_stringlist() = default;
 
@@ -88,12 +88,12 @@ public:
      * 
      * define normally or use lambda.
      */
-    void exec_foreach(function<void(size_t, string_type&)> f);
+    void exec_foreach(std::function<void(size_t, string_type&)> f);
 
     /// @brief Build a stringlist from a dynamic list.
     /// @param build param list, use like {"1", "2"}.
     /// @return the built stringlist
-    static basic_stringlist from_initializer(initializer_list<string_type> build);
+    static basic_stringlist from_initializer(std::initializer_list<string_type> build);
 
     static basic_stringlist split(const string_type &s, CharT delim);
     static basic_stringlist split(const string_type &s, const string_type &delim);
@@ -119,14 +119,14 @@ public:
 
 public:
     explicit basic_stringlist(int size, CharT** content, int begin = 0, int end = -1);
-    basic_stringlist(initializer_list<string_type> build = {});
+    basic_stringlist(std::initializer_list<string_type> build = {});
     basic_stringlist(const basic_stringlist& l);
     explicit basic_stringlist(const string_type& s);
     explicit basic_stringlist(CharT s);
     explicit basic_stringlist(const CharT* s);
     explicit basic_stringlist(const string_type &s, const string_type &delim);
     explicit basic_stringlist(const string_type &s, const basic_stringlist &delim);
-    explicit basic_stringlist(const vector<string_type>& v);
+    explicit basic_stringlist(const std::vector<string_type>& v);
 };
 
 // template<typename CharT>

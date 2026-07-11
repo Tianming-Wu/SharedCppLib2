@@ -73,7 +73,7 @@ target_link_libraries(my_app SharedCppLib2::basic)
 #include <iostream>
 
 int main(int argc, char** argv) {
-    std::stringlist args(argc, argv);
+    scl2::stringlist args(argc, argv);
     
     std::cout << "Program: " << args.vat(0) << std::endl;
     std::cout << "Arguments: " << args.subarr(1).join(" ") << std::endl;
@@ -157,9 +157,8 @@ After fetching, you can link with these SharedCppLib2 targets:
 - `SharedCppLib2::logt`
 - `SharedCppLib2::logc`
 - `SharedCppLib2::regexfilter`
-- `SharedCppLib2::variant`
 - `SharedCppLib2::indexer`
-- `SharedCppLib2::Base64`
+- `SharedCppLib2::base64`
 - `SharedCppLib2::platform`
 
 You can get the link target in the comment above the header file.

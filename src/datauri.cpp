@@ -4,7 +4,7 @@
 #include <iomanip>
 #include <cctype>
 
-#include "Base64.hpp"
+#include "base64.hpp"
 
 namespace scl2 {
 
@@ -12,7 +12,7 @@ namespace scl2 {
 //  Encoding
 // ============================================================
 
-std::string data_uri::encode(const std::bytearray& data) const
+std::string data_uri::encode(const scl2::bytearray& data) const
 {
     // Binary data is always written as base64 — hex in data URIs is non-standard.
     std::string encoded = data.toBase64();
@@ -34,7 +34,7 @@ std::string data_uri::encode(const std::string& data) const
         oss << media_type_;
     }
     if (is_base64_) {
-        oss << ";base64," << Base64::encode(data);
+        oss << ";base64," << base64::encode(data);
     } else {
         oss << "," << percent_encode(data);
     }
@@ -77,7 +77,7 @@ data_uri data_uri::parse(const std::string& uri)
     return result;
 }
 
-std::bytearray data_uri::decode(const std::string& uri)
+scl2::bytearray data_uri::decode(const std::string& uri)
 {
     // Must start with "data:"
     if (!uri.starts_with("data:")) {
@@ -98,9 +98,9 @@ std::bytearray data_uri::decode(const std::string& uri)
     std::string data = uri.substr(comma_pos + 1);
 
     if (is_base64) {
-        return std::bytearray::fromBase64(data);
+        return scl2::bytearray::fromBase64(data);
     } else {
-        return std::bytearray(percent_decode(data));
+        return scl2::bytearray(percent_decode(data));
     }
 }
 

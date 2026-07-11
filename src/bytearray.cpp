@@ -1,625 +1,200 @@
 #include "bytearray.hpp"
 #include "stringlist.hpp"
+#include <algorithm>
+#include <cstring>
+#include <stdexcept>
+#include <limits>
+#include <iomanip>
 
-namespace std {
+namespace scl2 {
 
-void bytearray::copy_from(const void *raw, size_t size)
-{
-    if(raw == nullptr) throw std::invalid_argument("bytearray::copy_from: raw pointer cannot be null");
-    clear(); resize(size);
-    std::memcpy(data(), raw, size);
+bytearray::bytearray(std::byte b) { base_type::push_back(b); }
+
+bytearray::bytearray(const std::string& str) {
+    base_type::assign(reinterpret_cast<const std::byte*>(str.data()),
+                      reinterpret_cast<const std::byte*>(str.data()) + str.size());
 }
 
-void bytearray::copy_to(void *raw, size_t size) const
-{
-    if(raw == nullptr) throw std::invalid_argument("bytearray::copy_to: raw pointer cannot be null");
-    if(size > this->size()) throw std::invalid_argument("bytearray::copy_to: size exceeds bytearray size");
-    std::memcpy(raw, this->data(), size);
+bytearray::bytearray(const char* raw, size_t sz) {
+    if (raw) base_type::assign(reinterpret_cast<const std::byte*>(raw),
+                                reinterpret_cast<const std::byte*>(raw) + sz);
 }
 
-byte bytearray::at(size_t i) const{
-    return ::std::vector<byte>::at(i);
+bytearray::bytearray(const std::byte* raw, size_t sz) {
+    if (raw) base_type::assign(raw, raw + sz);
 }
 
-byte bytearray::vat(size_t p, const byte &v) const {
-    return (p<size())?at(p):v;
+bytearray::bytearray(const void* raw, size_t sz) {
+    if (raw) base_type::assign(reinterpret_cast<const std::byte*>(raw),
+                                reinterpret_cast<const std::byte*>(raw) + sz);
 }
 
-void bytearray::append(const bytearray &ba) {
-    for(const byte &b : ba) {
-        push_back(b);
-    }
+bytearray::bytearray(size_t count, std::byte value) : base_type(count, value) {}
+bytearray::bytearray(size_t count) : base_type(count, std::byte{0}) {}
+bytearray::bytearray(std::initializer_list<std::byte> init) : base_type(init) {}
+
+void bytearray::copy_from(const void* raw, size_t sz) {
+    if (!raw) throw std::invalid_argument("bytearray::copy_from: null pointer");
+    clear(); base_type::resize(sz);
+    std::memcpy(this->data(), raw, sz);
 }
 
-void bytearray::append(byte b) {
-    push_back(b);
+void bytearray::copy_to(void* raw, size_t sz) const {
+    if (!raw) throw std::invalid_argument("bytearray::copy_to: null pointer");
+    if (sz > this->size()) throw std::invalid_argument("bytearray::copy_to: size exceeds data");
+    std::memcpy(raw, this->data(), sz);
 }
 
-void bytearray::append(const byte* pb, size_t size) {
-    for(size_t i = 0; i < size; i++) {
-        push_back(pb[i]);
-    }
+std::string bytearray::toString() const {
+    seekr(0); if (empty()) return {};
+    uint32_t len = read<uint32_t>(); if (len == 0) return {};
+    return std::string(reinterpret_cast<const char*>(this->data() + sizeof(uint32_t)), len);
 }
 
-void bytearray::append(const char* str, size_t size) {
-    append(reinterpret_cast<const byte*>(str), size);
-}
-
-void bytearray::append(const char* str) {
-    if(str == nullptr) return;
-    append(str, std::string(str).length());
-}
-
-void bytearray::append(uint8_t val) {
-    append(static_cast<std::byte>(val));
-}
-
-void bytearray::addString(const std::string &str)
-{
-    appendSize(str.length()); // now size_t is carefully appended
-    append(str.data(), str.size());
-}
-
-void bytearray::addWString(const std::wstring &wstr)
-{
-    if (wstr.size() > (std::numeric_limits<size_t>::max() / sizeof(wchar_t))) {
-        throw std::overflow_error("bytearray::addWString: input too large");
-    }
-    appendSize(wstr.length());
-    append(reinterpret_cast<const byte*>(wstr.data()), wstr.size() * sizeof(wchar_t));
-}
-
-void bytearray::reverse()
-{
-    std::reverse(begin(), end());
-}
-
-void bytearray::swap(bytearray &ba) {
-    std::swap(*this, ba);
-}
-
-void bytearray::swap(size_t a, size_t b, size_t size) {
-    for(size_t i = 0; i < size; i++) {
-        std::swap(this->operator[](a+i), this->operator[](b+i));
-    }
-}
-
-std::bytearray &bytearray::replace(size_t pos, size_t len, const bytearray &ba)
-{
-    if (pos > this->size()) throw std::out_of_range("bytearray::replace: position out of range");
-    if (pos + len > this->size()) len = this->size() - pos; // adjust len to fit within bounds
-
-    this->erase(this->begin() + pos, this->begin() + pos + len);
-    this->::std::vector<::std::byte>::insert(this->begin() + pos, ba.begin(), ba.end());
-
-    return *this;
-}
-
-std::bytearray &bytearray::insert(size_t pos, const bytearray &ba)
-{
-    if (pos > this->size()) throw std::out_of_range("bytearray::insert: position out of range");
-    this->::std::vector<::std::byte>::insert(this->begin() + pos, ba.begin(), ba.end());
-    return *this;
-}
-
-bytearray bytearray::subarr(size_t begin, size_t size) const {
-    bytearray re;
-    if (begin >= this->size()) return re;
-    size_t end = (size == static_cast<size_t>(-1)) ? this->size() : std::min(this->size(), begin + size);
-    for (size_t i = begin; i < end; ++i) {
-        re.push_back(at(i));
-    }
-    return re;
+std::wstring bytearray::toWString() const {
+    seekr(0); if (empty()) return {};
+    uint32_t len = read<uint32_t>(); if (len == 0) return {};
+    std::wstring str(len, L'\0');
+    std::memcpy(&str[0], this->data() + sizeof(uint32_t), len * sizeof(wchar_t));
+    return str;
 }
 
 std::string bytearray::toStdString() const {
-    if (this->empty()) return std::string();
+    if (empty()) return {};
     return std::string(reinterpret_cast<const char*>(this->data()), this->size());
 }
 
-std::stringlist bytearray::toStringlist(const std::string& split) const {
-    return std::stringlist(this->toStdString(), split);
-}
-
 std::wstring bytearray::toStdWString() const {
-    if (this->empty()) return std::wstring();
-
-    if (this->size() % sizeof(wchar_t) != 0) {
-        throw std::runtime_error("bytearray::toStdWString: size must be multiple of wchar_t size");
-    }
-
-    return std::wstring(
-        reinterpret_cast<const wchar_t*>(this->data()),
-        this->size() / sizeof(wchar_t)
-    );
+    if (empty()) return {};
+    return std::wstring(reinterpret_cast<const wchar_t*>(this->data()), this->size() / sizeof(wchar_t));
 }
 
-std::wstringlist bytearray::toWStringlist(const std::wstring& split) const {
-    return std::wstringlist(this->toStdWString(), split);
-}
+scl2::stringlist bytearray::toStringlist(const std::string& split) const { return scl2::stringlist(toStdString(), split); }
+scl2::wstringlist bytearray::toWStringlist(const std::wstring& split) const { return scl2::wstringlist(toStdWString(), split); }
 
-std::string bytearray::toHex() const {
-    std::ostringstream oss;
-    oss << std::hex << std::setfill('0');
-    for (const byte &b : *this) {
-        oss << std::setw(2) << static_cast<int>(b);
-    }
-    return oss.str();
-}
+std::string bytearray::toHex() const { return toHex(0, seek_end); }
 
-std::string bytearray::toHex(size_t begin, size_t size) const {
-    std::ostringstream oss;
-    oss << std::hex << std::setfill('0');
-    if (size == -1) size = this->size();
-    for (size_t i = begin; i < size; i++) {
-        oss << std::setw(2) << static_cast<int>(at(i));
-    }
+std::string bytearray::toHex(size_t begin, size_t n) const {
+    size_t end = (n == seek_end) ? size() : std::min(size(), begin + n);
+    if (begin >= end) return {};
+    std::ostringstream oss; oss << std::hex << std::setfill('0');
+    for (size_t i = begin; i < end; ++i) oss << std::setw(2) << std::to_integer<int>(at(i));
     return oss.str();
 }
 
 std::string bytearray::toEscapedString() const {
-    std::stringstream ss;
-    for (byte b : *this) {
-        if (isprint(static_cast<int>(b))) ss << static_cast<char>(b);
-        else ss << "\\x" << std::hex << std::setw(2) << (int)b;
+    std::ostringstream oss;
+    for (size_t i = 0; i < size(); ++i) {
+        int c = std::to_integer<int>(at(i));
+        if (c >= 0x20 && c <= 0x7E && c != '\\' && c != '"') oss << static_cast<char>(c);
+        else oss << "\\x" << std::hex << std::setfill('0') << std::setw(2) << c;
     }
-    return ss.str();
+    return oss.str();
 }
 
-/// @brief Upgraded version of escaped string, which contains more options.
-/// @return escaped string.
-std::string bytearray::xtoEscapedString() const
-{
-    std::stringstream ss;
+std::string bytearray::xtoEscapedString() const {
+    std::ostringstream oss;
+    for (size_t i = 0; i < size(); ++i) oss << "\\x" << std::hex << std::setfill('0') << std::setw(2) << std::to_integer<int>(at(i));
+    return oss.str();
+}
 
-    for (byte b : *this) {
-        unsigned char c = static_cast<unsigned char>(b);
-        switch (c) {
-            case '\0': ss << "\\0"; break;
-            case '\a': ss << "\\a"; break;
-            case '\b': ss << "\\b"; break;
-            case '\t': ss << "\\t"; break;
-            case '\n': ss << "\\n"; break;
-            case '\v': ss << "\\v"; break;
-            case '\f': ss << "\\f"; break;
-            case '\r': ss << "\\r"; break;
-            case '\\': ss << R"(\\)"; break; // 转义反斜杠
-            default:
-                if (isprint(c)) {
-                    ss << static_cast<char>(c);
-                } else {
-                    ss << "\\x" << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c);
-                }
-                break;
-        }
+std::u8string bytearray::toUtf8() const { return std::u8string(reinterpret_cast<const char8_t*>(this->data()), this->size()); }
+std::u16string bytearray::toUtf16() const { return std::u16string(reinterpret_cast<const char16_t*>(this->data()), this->size() / sizeof(char16_t)); }
+std::u32string bytearray::toUtf32() const { return std::u32string(reinterpret_cast<const char32_t*>(this->data()), this->size() / sizeof(char32_t)); }
+
+// Base64
+static const char kB64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static int b64_idx(char c) { if(c>='A'&&c<='Z')return c-'A'; if(c>='a'&&c<='z')return c-'a'+26; if(c>='0'&&c<='9')return c-'0'+52; if(c=='+')return 62; if(c=='/')return 63; return -1; }
+
+std::string bytearray::toBase64() const {
+    if (empty()) return {};
+    std::string r; r.reserve(((size()+2)/3)*4);
+    size_t k=0;
+    for(size_t i=0;i+2<size();i+=3){
+        uint32_t t=(uint32_t(std::to_integer<uint8_t>(at(i)))<<16)|(uint32_t(std::to_integer<uint8_t>(at(i+1)))<<8)|uint32_t(std::to_integer<uint8_t>(at(i+2)));
+        r+=kB64[(t>>18)&0x3F]; r+=kB64[(t>>12)&0x3F]; r+=kB64[(t>>6)&0x3F]; r+=kB64[t&0x3F]; k=i+3;
     }
-
-    return ss.str();
+    size_t rem=size()-k;
+    if(rem==1){uint32_t v=uint32_t(std::to_integer<uint8_t>(at(k)))<<16; r+=kB64[(v>>18)&0x3F]; r+=kB64[(v>>12)&0x3F]; r+="==";}
+    else if(rem==2){uint32_t v=(uint32_t(std::to_integer<uint8_t>(at(k)))<<16)|(uint32_t(std::to_integer<uint8_t>(at(k+1)))<<8); r+=kB64[(v>>18)&0x3F]; r+=kB64[(v>>12)&0x3F]; r+=kB64[(v>>6)&0x3F]; r+='=';}
+    return r;
 }
 
-std::u8string bytearray::toUtf8() const
-{
-    if (this->empty()) return std::u8string();
-    
-    return std::u8string(
-        reinterpret_cast<const char8_t*>(this->data()),
-        this->size()
-    );
-}
-
-std::u16string bytearray::toUtf16() const
-{
-    if (this->empty()) return std::u16string();
-    
-    // Ensure size is multiple of sizeof(char16_t)
-    if (this->size() % sizeof(char16_t) != 0) {
-        throw std::runtime_error("bytearray::toUtf16: size must be multiple of 2 bytes");
+bytearray bytearray::fromBase64(const std::string& s){
+    if(s.empty())return{};
+    size_t len=s.size(),pad=0;
+    if(len>0&&s[len-1]=='='){++pad;--len;} if(len>0&&s[len-1]=='='){++pad;--len;}
+    size_t outLen=(len/4)*3; if(pad==1)++outLen; else if(pad==2)outLen+=2;
+    bytearray r(outLen); size_t oi=0;
+    for(size_t i=0;i<len;i+=4){
+        int i0=b64_idx(s[i]),i1=b64_idx(s[i+1]),i2=(i+2<len)?b64_idx(s[i+2]):0,i3=(i+3<len)?b64_idx(s[i+3]):0;
+        if(i0<0||i1<0||(i+2<len&&i2<0)||(i+3<len&&i3<0)) throw std::invalid_argument("bytearray::fromBase64: invalid char");
+        uint32_t t=(uint32_t(i0)<<18)|(uint32_t(i1)<<12)|(uint32_t(i2)<<6)|uint32_t(i3);
+        if(oi<outLen)r[oi++]=std::byte{uint8_t((t>>16)&0xFF)};
+        if(oi<outLen)r[oi++]=std::byte{uint8_t((t>>8)&0xFF)};
+        if(oi<outLen)r[oi++]=std::byte{uint8_t(t&0xFF)};
     }
-    
-    return std::u16string(
-        reinterpret_cast<const char16_t*>(this->data()),
-        this->size() / sizeof(char16_t)
-    );
+    return r;
 }
 
-std::u32string bytearray::toUtf32() const
-{
-    if (this->empty()) return std::u32string();
-    
-    // Ensure size is multiple of sizeof(char32_t)
-    if (this->size() % sizeof(char32_t) != 0) {
-        throw std::runtime_error("bytearray::toUtf32: size must be multiple of 4 bytes");
-    }
-    
-    return std::u32string(
-        reinterpret_cast<const char32_t*>(this->data()),
-        this->size() / sizeof(char32_t)
-    );
+void bytearray::reverse() { std::reverse(base_type::begin(), base_type::end()); }
+
+void bytearray::swap(bytearray& o) { base_type::swap(o); std::swap(write_pointer,o.write_pointer); std::swap(read_pointer,o.read_pointer); }
+
+void bytearray::swap(size_t a, size_t b, size_t n) { for(size_t i=0;i<n;++i) std::swap(base_type::operator[](a+i),base_type::operator[](b+i)); }
+
+bytearray& bytearray::replace(size_t pos, size_t n, const bytearray& d){
+    if(pos>size())throw std::out_of_range("bytearray::replace: pos out of range");
+    if(pos+n>size())n=size()-pos;
+    base_type::erase(begin()+pos,begin()+pos+n); base_type::insert(begin()+pos,d.begin(),d.end()); return *this;
 }
 
-bool bytearray::operator== (const bytearray &ba) const {
-    if(size() != ba.size()) return false;
-    for(size_t i = 0; i < size(); i++) {
-        if(at(i) != ba.at(i)) return false;
-    }
-    return true;
+bytearray& bytearray::erase(size_t pos, size_t n){
+    if(pos>size())throw std::out_of_range("bytearray::erase: pos out of range");
+    if(pos+n>size())n=size()-pos;
+    base_type::erase(begin()+pos,begin()+pos+n); return *this;
 }
 
-std::bytearray bytearray::operator+(const bytearray &ba) const
-{
-    bytearray result(*this);
-    result.append(ba);
-    return result;
+bytearray bytearray::subarr(size_t begin, size_t n) const {
+    if(begin>=size())return{}; size_t end=(n==seek_end)?size():std::min(size(),begin+n);
+    return bytearray(this->data()+begin,end-begin);
 }
 
-std::bytearray bytearray::operator<<(size_t offset) const { return shiftLeft(offset); }
-std::bytearray bytearray::operator>>(size_t offset) const { return shiftRight(offset); }
+bytearray bytearray::shiftLeft(size_t o) const { if(o>=size())return bytearray(size(),std::byte{0}); return subarr(o); }
+bytearray bytearray::shiftRight(size_t o) const { if(o>=size())return bytearray(size(),std::byte{0}); bytearray r(o,std::byte{0}); r.append(this->data(),size()-o); return r; }
+bytearray bytearray::rotateLeft(size_t o) const { if(empty()||o==0)return *this; o%=size(); bytearray r=subarr(o); r.append(subarr(0,o)); return r; }
+bytearray bytearray::rotateRight(size_t o) const { if(empty()||o==0)return *this; return rotateLeft(size()-o%size()); }
 
-std::bytearray bytearray::shiftLeft(size_t offset) const
-{
-    if (offset >= size()) {
-        // 移位超过大小，返回全0数组
-        return bytearray(size(), std::byte(0x00));
-    }
-    
-    bytearray result(size(), std::byte(0x00));
-    // 将 [offset, size) 的数据复制到 [0, size-offset)
-    std::copy(begin() + offset, end(), result.begin());
-    
-    return result;
+bool bytearray::operator==(const bytearray& o) const { return size()==o.size()&&(empty()||std::memcmp(data(),o.data(),size())==0); }
+bytearray bytearray::operator+(const bytearray& o) const { bytearray r=*this; r.append(o); return r; }
+
+bool bytearray::readFromStream(std::istream& is, size_t n){ clear(); base_type::resize(n); is.read(reinterpret_cast<char*>(data()),std::streamsize(n)); return is.good()||is.eof(); }
+bool bytearray::readAllFromStream(std::istream& is){ clear(); is.seekg(0,std::ios::end); auto sz=size_t(is.tellg()); is.seekg(0,std::ios::beg); if(sz==0)return true; base_type::resize(sz); is.read(reinterpret_cast<char*>(data()),std::streamsize(sz)); return is.good()||is.eof(); }
+bool bytearray::readUntilDelimiter(std::istream& is, char delim){ clear(); char ch; while(is.get(ch)){if(ch==delim)return true; base_type::push_back(std::byte{uint8_t(ch)});} return !empty(); }
+
+bytearray bytearray::fromString(const std::string& s){ bytearray b; b.append(s); return b; }
+bytearray bytearray::fromWString(const std::wstring& s){ bytearray b; b.append(s); return b; }
+bytearray bytearray::fromStdString(const std::string& s){ return bytearray(s); }
+bytearray bytearray::fromStdWString(const std::wstring& s){ return bytearray(reinterpret_cast<const std::byte*>(s.data()),s.size()*sizeof(wchar_t)); }
+
+bytearray bytearray::fromHex(const std::string& hex){
+    bytearray r; r.reserve((hex.size()+1)/2); int hi=0; bool hf=false;
+    auto hv=[](char c)->int{if(c>='0'&&c<='9')return c-'0'; if(c>='a'&&c<='f')return c-'a'+10; if(c>='A'&&c<='F')return c-'A'+10; return -1;};
+    for(char c:hex){int v=hv(c); if(v<0)continue; if(!hf){hi=v<<4;hf=true;}else{r.push_back(std::byte{uint8_t(hi|v)});hf=false;}}
+    if(hf)r.push_back(std::byte{uint8_t(hi)}); return r;
 }
 
-std::bytearray bytearray::shiftRight(size_t offset) const
-{
-    if (offset >= size()) {
-        // 移位超过大小，返回全0数组
-        return bytearray(size(), std::byte(0x00));
-    }
-    
-    bytearray result(size(), std::byte(0x00));
-    // 将 [0, size-offset) 的数据复制到 [offset, size)
-    std::copy(begin(), end() - offset, result.begin() + offset);
-    
-    return result;
+bytearray bytearray::fromRaw(const char* raw, size_t sz){ return bytearray(raw,sz); }
+bytearray bytearray::fromRaw(const unsigned char* raw, size_t sz){ return bytearray(reinterpret_cast<const void*>(raw),sz); }
+bytearray bytearray::fromPointer(const void* p){ if(!p)return{}; return bytearray(p,sizeof(void*)); }
+bytearray bytearray::fromUtf8(const std::u8string& s){ return bytearray(reinterpret_cast<const std::byte*>(s.data()),s.size()); }
+bytearray bytearray::fromUtf16(const std::u16string& s){ return bytearray(reinterpret_cast<const std::byte*>(s.data()),s.size()*sizeof(char16_t)); }
+bytearray bytearray::fromUtf32(const std::u32string& s){ return bytearray(reinterpret_cast<const std::byte*>(s.data()),s.size()*sizeof(char32_t)); }
+
+bytearray bytearray_view::subarr(size_t begin, size_t n) const {
+    if(begin>=size_)return{}; size_t end=(n==bytearray::seek_end)?size_:std::min(size_,begin+n);
+    return bytearray(data_+begin,end-begin);
 }
+bool bytearray_view::operator==(const bytearray_view& o) const { return size_==o.size_&&(size_==0||std::memcmp(data_,o.data_,size_)==0); }
 
-std::bytearray bytearray::rotateLeft(size_t offset) const
-{
-    if (empty() || offset == 0) return *this;
-    
-    offset %= size();  // 处理超过大小的旋转
-    if (offset == 0) return *this;
-    
-    bytearray result;
-    result.reserve(size());
-    
-    // 将 [offset, size) 复制到前面
-    result.::std::vector<::std::byte>::insert(
-        result.end(),
-        begin() + offset, end()
-    );
-    // 将 [0, offset) 复制到后面
-    result.::std::vector<::std::byte>::insert(
-        result.end(),
-        begin(), begin() + offset
-    );
-    
-    return result;
-}
-
-std::bytearray bytearray::rotateRight(size_t offset) const
-{
-    if (empty() || offset == 0) return *this;
-    
-    offset %= size();  // 处理超过大小的旋转
-    if (offset == 0) return *this;
-    
-    bytearray result;
-    result.reserve(size());
-    
-    // 将 [size-offset, size) 复制到前面
-    result.::std::vector<::std::byte>::insert(
-        result.end(),
-        end() - offset, end()
-    );
-    // 将 [0, size-offset) 复制到后面
-    result.::std::vector<::std::byte>::insert(
-        result.end(),
-        begin(), end() - offset
-    );
-    
-    return result;
-}
-
-bytearray::bytearray()
-: vector<byte>()
-{}
-
-bytearray::bytearray(size_t count, byte value)
-: vector<byte>(count, value)
-{}
-
-bytearray::bytearray(size_t count)
-    : vector<byte>(count)
-{}
-
-bytearray::bytearray(std::initializer_list<byte> init)
-: vector<byte>(init)
-{}
-
-bytearray::bytearray(const bytearray &ba) {
-    for (const byte &b : ba)
-        push_back(b);
-}
-
-bytearray::bytearray(byte b)
-    : vector<byte>(1, b)
-{}
-
-bytearray::bytearray(const std::string &str) {
-    for (const char &c : str)
-        push_back(static_cast<byte>(c));
-}
-
-bytearray::bytearray(const char *raw, size_t size) {
-    for (size_t i = 0; i < size; i++)
-        push_back(static_cast<byte>(raw[i]));
-}
-
-bytearray::bytearray(const byte *raw, size_t size) {
-    for (size_t i = 0; i < size; i++)
-        push_back(raw[i]);
-}
-
-bytearray::bytearray(const void *raw, size_t size) {
-    if (raw == nullptr || size == 0) return;
-    const byte* src = reinterpret_cast<const byte*>(raw);
-    for (size_t i = 0; i < size; i++)
-        push_back(src[i]);
-}
-
-bytearray bytearray::fromHex(const std::string& hex) {
-    if (hex.size() % 2 != 0) throw std::invalid_argument("[bytearray::fromHex()] Invalid hex string (odd length)");
-
-    bytearray result;
-    result.reserve(hex.size() / 2);
-    for (size_t i = 0; i < hex.size(); i += 2) {
-        std::string byteStr = hex.substr(i, 2);
-        char* end;
-        unsigned long val = strtoul(byteStr.c_str(), &end, 16);
-        if (*end != '\0' || val > 0xFF) {
-            throw std::invalid_argument("Invalid hex byte: " + byteStr);
-        }
-        result.push_back(static_cast<byte>(val));
-    }
-    return result;
-}
-
-bytearray bytearray::fromRaw(const char* raw, size_t size) {
-    return bytearray(raw, size);
-}
-
-bytearray bytearray::fromRaw(const unsigned char *raw, size_t size)
-{
-    return bytearray(reinterpret_cast<const byte*>(raw), size);
-}
-
-bytearray bytearray::fromPointer(const void* ptr)
-{
-    uintptr_t pointer_value = reinterpret_cast<uintptr_t>(ptr);
-    return bytearray(reinterpret_cast<const byte*>(&pointer_value), sizeof(pointer_value));
-}
-
-bytearray bytearray::fromStdString(const std::string &str)
-{
-    if (str.empty()) return bytearray();
-    return bytearray(reinterpret_cast<const byte*>(str.data()), str.size());
-}
-
-bytearray bytearray::fromStdWString(const std::wstring &wstr)
-{
-    if (wstr.empty()) return bytearray();
-    return bytearray(
-        reinterpret_cast<const byte*>(wstr.data()),
-        wstr.size() * sizeof(wchar_t)
-    );
-}
-
-bytearray bytearray::fromUtf8(const std::u8string& utf8str)
-{
-    if (utf8str.empty()) return bytearray();
-    
-    bytearray result;
-    result.reserve(utf8str.size());
-    
-    const byte* src = reinterpret_cast<const byte*>(utf8str.data());
-    for (size_t i = 0; i < utf8str.size(); i++) {
-        result.push_back(src[i]);
-    }
-    
-    return result;
-}
-
-bytearray bytearray::fromUtf16(const std::u16string& utf16str)
-{
-    if (utf16str.empty()) return bytearray();
-    
-    bytearray result;
-    size_t byte_size = utf16str.size() * sizeof(char16_t);
-    result.reserve(byte_size);
-    
-    const byte* src = reinterpret_cast<const byte*>(utf16str.data());
-    for (size_t i = 0; i < byte_size; i++) {
-        result.push_back(src[i]);
-    }
-    
-    return result;
-}
-
-bytearray bytearray::fromUtf32(const std::u32string& utf32str)
-{
-    if (utf32str.empty()) return bytearray();
-    
-    bytearray result;
-    size_t byte_size = utf32str.size() * sizeof(char32_t);
-    result.reserve(byte_size);
-    
-    const byte* src = reinterpret_cast<const byte*>(utf32str.data());
-    for (size_t i = 0; i < byte_size; i++) {
-        result.push_back(src[i]);
-    }
-    
-    return result;
-}
-
-bool bytearray::readFromStream(std::istream &is, size_t size) {
-    clear();
-    if (size == 0) return true;
-    
-    resize(size);
-    is.read(reinterpret_cast<char*>(data()), size);
-    size_t bytes_read = static_cast<size_t>(is.gcount());
-    
-    if (bytes_read < size) {
-        resize(bytes_read);
-    }
-    
-    return bytes_read > 0 || size == 0;
-}
-
-bool bytearray::readAllFromStream(std::istream &is)
-{
-    clear();
-    auto current_pos = is.tellg();
-    
-    is.seekg(0, std::ios::end);
-    auto total_size = is.tellg();
-    
-    is.seekg(current_pos, std::ios::beg);
-    
-    auto remaining_size = total_size - current_pos;
-    
-    if (remaining_size <= 0) return false;
-    
-    resize(remaining_size);
-    return static_cast<std::streamsize>(is.read(reinterpret_cast<char*>(data()), remaining_size).gcount()) == remaining_size;
-}
-
-bool bytearray::readUntilDelimiter(std::istream &is, char delimiter)
-{
-    clear();
-    
-    if (!is.good()) return false;
-    
-    std::string temp;
-    char ch;
-    while (is.get(ch) && ch != delimiter) {
-        temp += ch;
-    }
-    
-    if (!temp.empty() || (is.eof() && !temp.empty())) {
-        *this = bytearray(temp);
-        return true;
-    }
-    
-    return false;
-}
-
-
-/*=============================================*\
-|           bytearray_view functions            |
-\*=============================================*/
-
-// what the hell was that above?
-
-bytearray_view::bytearray_view(const bytearray &data)
-    : ba(data), cursor(0)
-{}
-
-bool bytearray_view::available(size_t bytes) const {
-    if (cursor > ba.size()) return false;
-    return bytes <= (ba.size() - cursor);
-}
-size_t bytearray_view::remaining() const {
-    if (cursor > ba.size()) return 0;
-    return ba.size() - cursor;
-}
-void bytearray_view::seek(size_t pos) {
-    if (pos > ba.size()) throw std::out_of_range("bytearray_view::seek: position out of range");
-    cursor = pos;
-}
-void bytearray_view::reset() { cursor = 0; }
-size_t bytearray_view::tell() const { return cursor; }
-
-std::string bytearray_view::peekString() const
-{
-    std::string result;
-    
-    if(!available(sizeof(size_t))) throw std::out_of_range("bytearray_view: not enough size data");
-    size_t str_size = 0;
-    std::memcpy(&str_size, ba.data() + cursor, sizeof(size_t));
-
-    if (str_size > (std::numeric_limits<size_t>::max() - sizeof(size_t))) {
-        throw std::out_of_range("bytearray_view: string size overflow");
-    }
-    size_t total_size = sizeof(size_t) + str_size;
-    
-    if(!available(total_size)) throw std::out_of_range("bytearray_view: not enough string data");
-    result.resize(str_size);
-
-    std::memcpy(result.data(), ba.data() + cursor + sizeof(size_t), str_size);
-    return result;
-}
-
-std::string bytearray_view::readString() const
-{
-    std::string result = peekString();
-    cursor += sizeof(size_t) + result.size();
-    return result;
-}
-
-std::wstring bytearray_view::peekWString() const
-{
-    std::wstring result;
-
-    if(!available(sizeof(size_t))) throw std::out_of_range("bytearray_view: not enough size data");
-    size_t str_size = 0;
-    std::memcpy(&str_size, ba.data() + cursor, sizeof(size_t));
-
-    if (str_size > (std::numeric_limits<size_t>::max() / sizeof(wchar_t))) {
-        throw std::out_of_range("bytearray_view: wide string size overflow");
-    }
-    size_t byte_count = str_size * sizeof(wchar_t);
-    if (byte_count > (std::numeric_limits<size_t>::max() - sizeof(size_t))) {
-        throw std::out_of_range("bytearray_view: wide string payload overflow");
-    }
-    size_t total_size = sizeof(size_t) + byte_count;
-
-    if(!available(total_size)) throw std::out_of_range("bytearray_view: not enough string data");
-    result.resize(str_size);
-
-    std::memcpy(result.data(), ba.data() + cursor + sizeof(size_t), byte_count);
-    return result;
-}
-
-std::wstring bytearray_view::readWString() const
-{
-    std::wstring result = peekWString();
-    cursor += sizeof(size_t) + result.size() * sizeof(wchar_t);
-    return result;
-}
-
-std::bytearray bytearray_view::readBytes(size_t size) const
-{
-    auto result = peekBytes(size);
-    cursor += size;
-    return result;
-}
-
-std::bytearray bytearray_view::peekBytes(size_t size) const
-{
-    if (!available(size)) throw std::out_of_range("bytearray_view: not enough data");
-    return ba.subarr(cursor, size);
-}
-
-} // namespace std
+} // namespace scl2

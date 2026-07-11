@@ -24,7 +24,7 @@ class aes_ecb {
     static_assert(KeyBits == 128 || KeyBits == 192 || KeyBits == 256,
                   "AES key size must be 128, 192, or 256 bits");
 public:
-    using key_type = std::bytearray;
+    using key_type = scl2::bytearray;
 
     static constexpr size_t key_size    = KeyBits / 8;
     static constexpr size_t block_size  = 16;
@@ -33,28 +33,28 @@ public:
     static constexpr size_t rk_count    = block_size * (round_count + 1); // 176/208/240
 
     // ─── Static API ──────────────────────────────────────────────────
-    static std::bytearray encrypt(const std::bytearray& data, const std::bytearray& key);
-    static std::bytearray decrypt(const std::bytearray& data, const std::bytearray& key);
+    static scl2::bytearray encrypt(const scl2::bytearray& data, const scl2::bytearray& key);
+    static scl2::bytearray decrypt(const scl2::bytearray& data, const scl2::bytearray& key);
 
     // ─── Instance API (pre-configured with key) ──────────────────────
-    explicit aes_ecb(const std::bytearray& key) : stored_key_(key) {}
-    std::bytearray encrypt(const std::bytearray& data) const { return encrypt(data, stored_key_); }
-    std::bytearray decrypt(const std::bytearray& data) const { return decrypt(data, stored_key_); }
+    explicit aes_ecb(const scl2::bytearray& key) : stored_key_(key) {}
+    scl2::bytearray encrypt(const scl2::bytearray& data) const { return encrypt(data, stored_key_); }
+    scl2::bytearray decrypt(const scl2::bytearray& data) const { return decrypt(data, stored_key_); }
 
     // ─── Streaming ──────────────────────────────────────────────────
     class stream_type {
     public:
-        stream_type(const std::bytearray& key, cipher_dir dir = cipher_dir::Encrypt);
-        std::bytearray update(const std::bytearray& chunk);
-        std::bytearray end();
+        stream_type(const scl2::bytearray& key, cipher_dir dir = cipher_dir::Encrypt);
+        scl2::bytearray update(const scl2::bytearray& chunk);
+        scl2::bytearray end();
     private:
-        std::bytearray key_;
-        std::bytearray buf_;
+        scl2::bytearray key_;
+        scl2::bytearray buf_;
         cipher_dir dir_;
     };
 
 private:
-    std::bytearray stored_key_;
+    scl2::bytearray stored_key_;
 };
 
 /// @brief AES-CBC mode.
@@ -65,7 +65,7 @@ class aes_cbc {
     static_assert(KeyBits == 128 || KeyBits == 192 || KeyBits == 256,
                   "AES key size must be 128, 192, or 256 bits");
 public:
-    using key_type = std::bytearray;
+    using key_type = scl2::bytearray;
 
     static constexpr size_t key_size    = KeyBits / 8;
     static constexpr size_t block_size  = 16;
@@ -74,28 +74,28 @@ public:
     static constexpr size_t rk_count    = block_size * (round_count + 1);
 
     // ─── Static API (key = key_bytes + iv_bytes) ─────────────────────
-    static std::bytearray encrypt(const std::bytearray& data, const std::bytearray& key);
-    static std::bytearray decrypt(const std::bytearray& data, const std::bytearray& key);
+    static scl2::bytearray encrypt(const scl2::bytearray& data, const scl2::bytearray& key);
+    static scl2::bytearray decrypt(const scl2::bytearray& data, const scl2::bytearray& key);
 
     // ─── Instance API ────────────────────────────────────────────────
-    explicit aes_cbc(const std::bytearray& key) : stored_key_(key) {}
-    std::bytearray encrypt(const std::bytearray& data) const { return encrypt(data, stored_key_); }
-    std::bytearray decrypt(const std::bytearray& data) const { return decrypt(data, stored_key_); }
+    explicit aes_cbc(const scl2::bytearray& key) : stored_key_(key) {}
+    scl2::bytearray encrypt(const scl2::bytearray& data) const { return encrypt(data, stored_key_); }
+    scl2::bytearray decrypt(const scl2::bytearray& data) const { return decrypt(data, stored_key_); }
 
     // ─── Streaming ──────────────────────────────────────────────────
     class stream_type {
     public:
-        stream_type(const std::bytearray& key, cipher_dir dir = cipher_dir::Encrypt);
-        std::bytearray update(const std::bytearray& chunk);
-        std::bytearray end();
+        stream_type(const scl2::bytearray& key, cipher_dir dir = cipher_dir::Encrypt);
+        scl2::bytearray update(const scl2::bytearray& chunk);
+        scl2::bytearray end();
     private:
-        std::bytearray key_;
-        std::bytearray buf_;
+        scl2::bytearray key_;
+        scl2::bytearray buf_;
         cipher_dir dir_;
     };
 
 private:
-    std::bytearray stored_key_;
+    scl2::bytearray stored_key_;
 };
 
 // ─── Convenience aliases ────────────────────────────────────────────────

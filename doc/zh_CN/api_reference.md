@@ -53,8 +53,8 @@ struct MyData {
     std::string d3;
     std::vector<int> d4;
 
-    std::bytearray dump(const MyData& data) const {
-        std::bytearray ba;
+    scl2::bytearray dump(const MyData& data) const {
+        scl2::bytearray ba;
 
         // 数字类型可以直接追加到 bytearray
         ba.append(data.d1);
@@ -76,7 +76,7 @@ struct MyData {
     // 使用 bytearray_view（必须是引用）进行加载。
     // bytearray_view 处理所有读取操作，
     // bytearray 本身没有这些操作。
-    MyData load(const std::bytearray_view& ba) const {
+    MyData load(const scl2::bytearray_view& ba) const {
         MyData data;
 
         // 数字类型可以直接从 bytearray_view 读取
@@ -107,8 +107,8 @@ class MyClass {
     std::vector<MyData> datal;
 
 public:
-    std::bytearray dump(const MyClass& data) const {
-        std::bytearray ba;
+    scl2::bytearray dump(const MyClass& data) const {
+        scl2::bytearray ba;
 
         ba.append(data.meta);
         
@@ -128,7 +128,7 @@ public:
         return ba;
     }
 
-    MyClass load(const std::bytearray_view& ba) const {
+    MyClass load(const scl2::bytearray_view& ba) const {
         MyClass data;
 
         data.meta = ba.read<int>();
@@ -166,18 +166,18 @@ public:
 // 静态 API（一次性）：
 class MyCipher {
 public:
-    using key_type = std::bytearray;
-    static std::bytearray encrypt(const std::bytearray& data, const std::bytearray& key);
-    static std::bytearray decrypt(const std::bytearray& data, const std::bytearray& key);
+    using key_type = scl2::bytearray;
+    static scl2::bytearray encrypt(const scl2::bytearray& data, const scl2::bytearray& key);
+    static scl2::bytearray decrypt(const scl2::bytearray& data, const scl2::bytearray& key);
 };
 
 // 实例 API（预配置密钥）：
 class MyCipher {
 public:
-    using key_type = std::bytearray;
-    explicit MyCipher(const std::bytearray& key);
-    std::bytearray encrypt(const std::bytearray& data) const;
-    std::bytearray decrypt(const std::bytearray& data) const;
+    using key_type = scl2::bytearray;
+    explicit MyCipher(const scl2::bytearray& key);
+    scl2::bytearray encrypt(const scl2::bytearray& data) const;
+    scl2::bytearray decrypt(const scl2::bytearray& data) const;
 };
 ```
 
@@ -206,14 +206,14 @@ public:
     static constexpr size_t result_size = 32;  // 可选，启用 has_fixed_hash_result_size
     static constexpr size_t block_size = 64;    // 可选，启用 generic_buffer_size
 
-    static std::bytearray hash(const std::bytearray& data);
+    static scl2::bytearray hash(const scl2::bytearray& data);
 
     // 流式支持（可选，由 has_streamed_hash 检查）：
     class stream_type {
     public:
         stream_type();
-        void update(const std::bytearray& chunk);
-        std::bytearray end();
+        void update(const scl2::bytearray& chunk);
+        scl2::bytearray end();
     };
 };
 ```
@@ -228,8 +228,8 @@ public:
 ```cpp
 #include <SharedCppLib2/aes.hpp>
 
-std::bytearray data = /* 你的数据 */;
-std::bytearray key(static_cast<size_t>(16), std::byte{0});
+scl2::bytearray data = /* 你的数据 */;
+scl2::bytearray key(static_cast<size_t>(16), std::byte{0});
 
 // 直接调用：
 auto ct = scl2::aes_ecb_128::encrypt(data, key);
@@ -257,13 +257,13 @@ scl2::aes_ecb_128::stream_type enc(key, scl2::cipher_dir::Encrypt);
 ```cpp
 #include <SharedCppLib2/sha256.hpp>
 
-std::bytearray data = /* 你的数据 */;
+scl2::bytearray data = /* 你的数据 */;
 
 // 直接调用：
-std::bytearray hash = scl2::sha256::hash(data);
+scl2::bytearray hash = scl2::sha256::hash(data);
 
 // 通用包装器：
-std::bytearray hash = scl2::generic_hash<scl2::sha256>(data);
+scl2::bytearray hash = scl2::generic_hash<scl2::sha256>(data);
 
 // 十六进制字符串：
 std::string hex = hash.toHex();
@@ -272,7 +272,7 @@ std::string hex = hash.toHex();
 scl2::sha256::stream_type hasher;
 hasher.update(chunk1);
 hasher.update(chunk2);
-std::bytearray digest = hasher.end();
+scl2::bytearray digest = hasher.end();
 
 // 从 istream 流式处理：
 std::ifstream file("data.bin", std::ios::binary);

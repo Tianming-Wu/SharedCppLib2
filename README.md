@@ -36,7 +36,7 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **[`stringlist`](doc/stringlist.md)** - Enhanced string manipulation with Qt-inspired API
 - **[`arguments`](doc/arguments.md)** - Type-safe command-line argument parsing (argparse-inspired)
 - **[`aes`](doc/aes.md)** - AES encryption (128/192/256-bit, ECB/CBC)
-- **`Base64`** - Base64 encoding and decoding utilities
+- **`base64`** - Base64 encoding and decoding utilities
 - **[`bytearray`](doc/bytearray.md)** - Binary data management and serialization
 - **[`sha256`](doc/sha256.md)** - SHA-256 cryptographic hash implementation
 - **[`crc32`](doc/crc32.md)** - CRC-32 checksum implementation
@@ -53,11 +53,6 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **`platform`** - Cross-platform utilities and abstractions
 - **`xml`** - XML parsing and serialization library (in development) (Warning: Though the module is basically functional, some functions are yet unsafe and cause crashes.)
 - **`html`** - HTML parsing and manipulation library (in development)
-
-## Legacy Modules (Not Recommended)
-
-- `logd` - Simple console logger (deprecated)
-- `logf` - Simple file logger (deprecated)
 
 ## Deprecated Modules
 
@@ -99,14 +94,14 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(your_target SharedCppLib2::basic)
 ```
 
-**Available targets:** `variant`, `logd`, `logf`, `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
+**Available targets:** `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
 
 ### 4. Code Example
 ```cpp
 #include <SharedCppLib2/stringlist.hpp>
 
 int main(int argc, char** argv) {
-    std::stringlist args(argc, argv);
+    scl2::stringlist args(argc, argv);
     // Process command line arguments
     return 0;
 }
@@ -120,10 +115,10 @@ int main(int argc, char** argv) {
 #include <SharedCppLib2/hmac.hpp>
 #include <SharedCppLib2/sha256.hpp>
 
-std::bytearray key(std::string("secret-key"));
-std::bytearray payload(std::string("binary-message"));
+scl2::bytearray key(std::string("secret-key"));
+scl2::bytearray payload(std::string("binary-message"));
 
-std::bytearray tag = scl2::hmac<scl2::sha256>::compute(payload, key);
+scl2::bytearray tag = scl2::hmac<scl2::sha256>::compute(payload, key);
 ```
 
 For tag verification, use constant-time comparison:

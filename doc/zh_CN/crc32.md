@@ -32,8 +32,8 @@ CRC-32（循环冗余校验）是一种广泛用于错误检测的校验和算�
 ### 一键计算
 
 ```cpp
-std::bytearray data = std::bytearray("Hello, World!");
-std::bytearray digest = scl2::crc32::hash(data);
+scl2::bytearray data = scl2::bytearray("Hello, World!");
+scl2::bytearray digest = scl2::crc32::hash(data);
 // digest 为 4 字节，大端序
 ```
 
@@ -44,7 +44,7 @@ scl2::crc32::stream_type hasher;
 hasher.update(chunk1);
 hasher.update(chunk2);
 // ... 传入任意数量的数据块
-std::bytearray digest = hasher.end();
+scl2::bytearray digest = hasher.end();
 ```
 
 ### 从输入流读取
@@ -60,7 +60,7 @@ auto digest = scl2::hash_stream<scl2::crc32>(file);
 
 ```cpp
 std::ifstream file("data.bin", std::ios::binary);
-auto expected = std::bytearray::fromHex("cbf43926");
+auto expected = scl2::bytearray::fromHex("cbf43926");
 auto actual = scl2::hash_stream<scl2::crc32>(file);
 bool ok = (expected == actual);
 ```

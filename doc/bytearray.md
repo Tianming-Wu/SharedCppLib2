@@ -28,7 +28,7 @@ Bytearray is a powerful binary data container that extends `std::vector<std::byt
 #include <SharedCppLib2/bytearray.hpp>
 
 // Create from string
-std::bytearray data = "Hello World";
+scl2::bytearray data = "Hello World";
 std::cout << "Size: " << data.size() << std::endl;
 
 // Convert to hex
@@ -36,7 +36,7 @@ std::cout << "Hex: " << data.tohex() << std::endl;
 
 // File operations
 std::ifstream file("data.bin", std::ios::binary);
-std::bytearray file_content;
+scl2::bytearray file_content;
 file_content.readAllFromStream(file);
 ```
 
@@ -45,7 +45,7 @@ file_content.readAllFromStream(file);
 // Type conversion
 struct Point { int x, y; };
 Point p{10, 20};
-std::bytearray serialized = p;  // Automatic serialization
+scl2::bytearray serialized = p;  // Automatic serialization
 
 Point restored = serialized.convert_to<Point>();  // Deserialization
 ```
@@ -72,7 +72,7 @@ Serializes any trivially copyable type to bytearray.
 **Example:**
 ```cpp
 int value = 42;
-std::bytearray ba = value;  // Serializes the integer
+scl2::bytearray ba = value;  // Serializes the integer
 ```
 
 ### Data Access & Manipulation
@@ -86,7 +86,7 @@ Safe element access with bounds checking and default value support.
 
 **Example:**
 ```cpp
-std::bytearray data = "Hello";
+scl2::bytearray data = "Hello";
 std::byte b1 = data.at(0);     // 'H'
 std::byte b2 = data.vat(10, std::byte{'X'});  // 'X' (safe access)
 ```
@@ -99,15 +99,15 @@ Extracts a subarray from the bytearray.
 
 **Example:**
 ```cpp
-std::bytearray data = "Hello World";
-std::bytearray hello = data.subarr(0, 5);  // "Hello"
-std::bytearray world = data.subarr(6);     // "World"
+scl2::bytearray data = "Hello World";
+scl2::bytearray hello = data.subarr(0, 5);  // "Hello"
+scl2::bytearray world = data.subarr(6);     // "World"
 ```
 
 #### replace & insert
 ```cpp
-std::bytearray& replace(size_t pos, size_t len, const bytearray &ba);
-std::bytearray& insert(size_t pos, const bytearray &ba);
+scl2::bytearray& replace(size_t pos, size_t len, const bytearray &ba);
+scl2::bytearray& insert(size_t pos, const bytearray &ba);
 ```
 Modifies content by replacing or inserting data.
 
@@ -128,14 +128,14 @@ Converts to hexadecimal string representation.
 
 **Example:**
 ```cpp
-std::bytearray data = "AB";
+scl2::bytearray data = "AB";
 std::cout << data.tohex();  // "4142"
 ```
 
 #### tostringlist & towstringlist
 ```cpp
-std::stringlist tostringlist(const std::string& split = " ") const;
-std::wstringlist towstringlist(const std::wstring& split = L" ") const;
+scl2::stringlist tostringlist(const std::string& split = " ") const;
+scl2::wstringlist towstringlist(const std::wstring& split = L" ") const;
 ```
 Splits bytearray into string list using delimiter.
 
@@ -153,7 +153,7 @@ Deserializes bytearray back to original type.
 
 **Example:**
 ```cpp
-std::bytearray serialized = 3.14f;
+scl2::bytearray serialized = 3.14f;
 float value = serialized.convert_to<float>();
 ```
 
@@ -193,7 +193,7 @@ Creates bytearray from hexadecimal string.
 
 **Example:**
 ```cpp
-std::bytearray data = std::bytearray::fromHex("48656c6c6f");
+scl2::bytearray data = scl2::bytearray::fromHex("48656c6c6f");
 std::cout << data.tostdstring();  // "Hello"
 ```
 
@@ -231,14 +231,14 @@ Swaps content with another bytearray or swaps ranges within array.
 
 ### Stream Operators
 ```cpp
-std::ostream& operator<<(std::ostream& os, const std::bytearray& ba);
+std::ostream& operator<<(std::ostream& os, const scl2::bytearray& ba);
 std::istream& operator>>(std::istream& is, bytearray& ba);
 ```
 Smart stream operations that automatically handle hex/text formatting.
 
 **Example:**
 ```cpp
-std::bytearray data;
+scl2::bytearray data;
 std::cin >> std::hex >> data;  // Read hex input
 std::cout << std::hex << data; // Output as hex
 ```
@@ -253,9 +253,9 @@ Compares two bytearrays for exact binary equality.
 
 ### Binary File Processing
 ```cpp
-std::bytearray process_file(const std::string& filename) {
+scl2::bytearray process_file(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
-    std::bytearray content;
+    scl2::bytearray content;
     
     if (content.readAllFromStream(file)) {
         // Process binary data
@@ -268,9 +268,9 @@ std::bytearray process_file(const std::string& filename) {
 
 ### Network Data Handling
 ```cpp
-void send_packet(std::ostream& network_stream, const std::bytearray& data) {
+void send_packet(std::ostream& network_stream, const scl2::bytearray& data) {
     // Add header
-    std::bytearray packet;
+    scl2::bytearray packet;
     packet.append(static_cast<uint32_t>(data.size()));  // Size prefix
     packet.append(data);
     
@@ -286,11 +286,11 @@ struct NetworkPacket {
     float value;
 };
 
-std::bytearray serialize_packet(const NetworkPacket& packet) {
-    return std::bytearray(packet);  // Automatic serialization
+scl2::bytearray serialize_packet(const NetworkPacket& packet) {
+    return scl2::bytearray(packet);  // Automatic serialization
 }
 
-NetworkPacket deserialize_packet(const std::bytearray& data) {
+NetworkPacket deserialize_packet(const scl2::bytearray& data) {
     return data.convert_to<NetworkPacket>();
 }
 ```
@@ -316,17 +316,17 @@ struct User {
 };
 
 // Serialization
-std::bytearray serialize(const User& user) {
-    std::bytearray data;
-    data.append(std::bytearray(user.id));
+scl2::bytearray serialize(const User& user) {
+    scl2::bytearray data;
+    data.append(scl2::bytearray(user.id));
     data.append(bytearray::toSafeString(user.name));
-    data.append(std::bytearray(user.created_at));
+    data.append(scl2::bytearray(user.created_at));
     return data;
 }
 
 // Deserialization with bytearray_view
-User deserialize(const std::bytearray& data) {
-    std::bytearray_view view(data);
+User deserialize(const scl2::bytearray& data) {
+    scl2::bytearray_view view(data);
     User user;
     user.id = view.read<uint32_t>();
     user.name = view.readString();
@@ -385,9 +385,9 @@ public:
 
 ### SHA256 Hashing
 ```cpp
-std::bytearray compute_file_hash(const std::string& filename) {
+scl2::bytearray compute_file_hash(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
-    std::bytearray content;
+    scl2::bytearray content;
     content.readAllFromStream(file);
     return scl2::sha256::getMessageDigest(content);
 }
@@ -395,7 +395,7 @@ std::bytearray compute_file_hash(const std::string& filename) {
 
 ### StringList Conversion
 ```cpp
-std::bytearray config_data = "key1=value1,key2=value2";
-std::stringlist pairs = config_data.tostringlist(",");
+scl2::bytearray config_data = "key1=value1,key2=value2";
+scl2::stringlist pairs = config_data.tostringlist(",");
 // Results in {"key1=value1", "key2=value2"}
 ```

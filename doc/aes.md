@@ -33,8 +33,8 @@ target_link_libraries(target SharedCppLib2::aes)
 #include <SharedCppLib2/aes.hpp>
 
 // 16-byte key for AES-128
-std::bytearray key(static_cast<size_t>(16), std::byte{0});
-std::bytearray pt = std::bytearray(std::string("Hello, AES!"));
+scl2::bytearray key(static_cast<size_t>(16), std::byte{0});
+scl2::bytearray pt = scl2::bytearray(std::string("Hello, AES!"));
 
 // Encrypt
 auto ct = scl2::aes_ecb_128::encrypt(pt, key);
@@ -50,11 +50,11 @@ In CBC mode, the 16-byte IV is appended to the key as a single `key_type`:
 
 ```cpp
 // AES-128-CBC: key(16) + iv(16) = 32 bytes
-std::bytearray key(static_cast<size_t>(16), std::byte{0x2b});       // secret key
-std::bytearray iv(static_cast<size_t>(16), std::byte{0x00});        // initial vector
+scl2::bytearray key(static_cast<size_t>(16), std::byte{0x2b});       // secret key
+scl2::bytearray iv(static_cast<size_t>(16), std::byte{0x00});        // initial vector
 
 // Concatenate into one key_type
-std::bytearray keyiv = key;
+scl2::bytearray keyiv = key;
 keyiv.append(iv);
 
 auto ct = scl2::aes_cbc_128::encrypt(pt, keyiv);
@@ -69,16 +69,16 @@ auto dec = scl2::aes_cbc_128::decrypt(ct, keyiv);
 >
 > ```cpp
 > // Encryption
-> std::bytearray iv = /* 16 random bytes */;
-> std::bytearray keyiv = key;
+> scl2::bytearray iv = /* 16 random bytes */;
+> scl2::bytearray keyiv = key;
 > keyiv.append(iv);
 > auto ct = aes_cbc_128::encrypt(data, keyiv);
 > // Transmit or store: iv + ct
 >
 > // Decryption
-> std::bytearray iv2 = received.subarr(0, 16);        // extract IV
-> std::bytearray ct2 = received.subarr(16);            // extract ciphertext
-> std::bytearray keyiv2 = key;
+> scl2::bytearray iv2 = received.subarr(0, 16);        // extract IV
+> scl2::bytearray ct2 = received.subarr(16);            // extract ciphertext
+> scl2::bytearray keyiv2 = key;
 > keyiv2.append(iv2);
 > auto pt = aes_cbc_128::decrypt(ct2, keyiv2);
 > ```
@@ -125,8 +125,8 @@ static constexpr size_t round_count; // 10, 12, or 14
 ### Static API
 
 ```cpp
-static std::bytearray encrypt(const std::bytearray& data, const std::bytearray& key);
-static std::bytearray decrypt(const std::bytearray& data, const std::bytearray& key);
+static scl2::bytearray encrypt(const scl2::bytearray& data, const scl2::bytearray& key);
+static scl2::bytearray decrypt(const scl2::bytearray& data, const scl2::bytearray& key);
 ```
 
 For ECB: `key` must be exactly `key_size` bytes.
@@ -135,9 +135,9 @@ For CBC: `key` must be `key_size + 16` bytes (key + IV concatenated).
 ### Instance API
 
 ```cpp
-explicit aes_ecb_128(const std::bytearray& key);
-std::bytearray encrypt(const std::bytearray& data) const;
-std::bytearray decrypt(const std::bytearray& data) const;
+explicit aes_ecb_128(const scl2::bytearray& key);
+scl2::bytearray encrypt(const scl2::bytearray& data) const;
+scl2::bytearray decrypt(const scl2::bytearray& data) const;
 ```
 
 Construct the cipher with a key, then call `encrypt`/`decrypt` without passing the key again.

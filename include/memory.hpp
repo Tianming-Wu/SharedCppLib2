@@ -128,8 +128,8 @@ struct ValueScannerResult {
 
 class ValueScanner {
 public:
-    static ValueScannerResult SearchMemoryRegion(MemoryRegion mrgn, const std::bytearray &value);
-    static ValueScannerResult SearchProcessMemory(const std::bytearray &value);
+    static ValueScannerResult SearchMemoryRegion(MemoryRegion mrgn, const scl2::bytearray &value);
+    static ValueScannerResult SearchProcessMemory(const scl2::bytearray &value);
 
 };
 
@@ -140,9 +140,9 @@ protect_t RestorePermission(ptr_t address, size_t size, protect_t oldProtect);
 
 // These functions allow you to save a chunk of memory for later use.
 // It is also possible to use this to dump? (pause first!)
-std::bytearray CopyMemory(MemoryRegion mrgn);
-void ApplyMemory(MemoryRegion mrgn, std::bytearray data);
-std::bytearray ReplaceMemory(MemoryRegion mrgn, std::bytearray data);
+scl2::bytearray CopyMemory(MemoryRegion mrgn);
+void ApplyMemory(MemoryRegion mrgn, scl2::bytearray data);
+scl2::bytearray ReplaceMemory(MemoryRegion mrgn, scl2::bytearray data);
 
 
 /// @brief Helper functions.

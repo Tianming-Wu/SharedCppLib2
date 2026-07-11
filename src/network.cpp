@@ -7,7 +7,7 @@
 #include "stringlist.hpp"
 
 #ifdef OS_WINDOWS
-    SOCKET _n_sock = INVALID_SOCKET;
+    static socket_t _n_sock = INVALID_SOCK;
 #endif
 
 namespace network {
@@ -15,7 +15,8 @@ namespace network {
 
 void init() noexcept
 {
-    if(_n_sock != INVALID_SOCKET) {
+#ifdef OS_WINDOWS
+    if(_n_sock != INVALID_SOCK) {
         return;
     }
 
@@ -24,11 +25,20 @@ void init() noexcept
 
     _n_sock = socket(AF_INET, SOCK_DGRAM, 0); // udp
     _n_sock = socket(AF_INET, SOCK_STREAM, 0); // tcp
+#else
+    // No initialization needed on Unix-like systems
+#endif
 }
 
 void cleanup() noexcept
 {
-    // currently, do nothing because the OS will clean up everything on exit
+#ifdef OS_WINDOWS
+    if (_n_sock != INVALID_SOCK) {
+        close_socket(_n_sock);
+        _n_sock = INVALID_SOCK;
+    }
+    WSACleanup();
+#endif
 }
 
 std::string ipv4::to_string() const
@@ -41,7 +51,7 @@ ipv4 ipv4::from_string(const std::string &str)
     uint8_t cs[4];
     uint8_t csi = 0;
 
-    std::stringlist cid = std::stringlist::split(str, ".");
+    scl2::stringlist cid = scl2::stringlist::split(str, ".");
     if(cid.size() != 4) throw network_error("Invalid ipv4 address");
 
     try {
@@ -163,7 +173,7 @@ ipv6 ipv6::from_string(const std::string &str)
     }
 
     // we use stringlist for simplicity.
-    std::stringlist strl = std::stringlist::split(str, ':');
+    scl2::stringlist strl = scl2::stringlist::split(str, ':');
     if(strl.size() > 8) {
         throw network_error("Invalid IPv6 address: too many blocks");
     }
@@ -187,9 +197,9 @@ ipv6 ipv6::from_string(const std::string &str)
     return ip_addr;
 }
 
-std::bytearray ipv6::to_bytearray() const noexcept
+scl2::bytearray ipv6::to_bytearray() const noexcept
 {
-    std::bytearray ba(16);
+    scl2::bytearray ba(16);
     for (size_t i = 0; i < 8; ++i) {
         ba[i * 2] = static_cast<std::byte>((blocks[i] >> 8) & 0xFF);
         ba[i * 2 + 1] = static_cast<std::byte>(blocks[i] & 0xFF);
@@ -197,17 +207,25 @@ std::bytearray ipv6::to_bytearray() const noexcept
     return ba;
 }
 
-ipv6 ipv6::from_bytearray(const std::bytearray &ba)
+ipv6 ipv6::from_bytearray(const scl2::bytearray &ba)
 {
     ipv6 ip_addr;
-    if (ba.rawSize() != 16) {
+    if (ba.size() != 16) {
         throw network_error("Invalid bytearray size for IPv6 address");
     }
 
     for (size_t i = 0; i < 8; ++i) {
-        ip_addr.blocks[i] = (static_cast<uint16_t>(ba.rawData()[i * 2]) << 8) | static_cast<uint16_t>(ba.rawData()[i * 2 + 1]);
+        ip_addr.blocks[i] = (static_cast<uint16_t>(ba.data()[i * 2]) << 8) | static_cast<uint16_t>(ba.data()[i * 2 + 1]);
     }
     return ip_addr;
+}
+
+bool ipv6::valid() const
+{
+    for (size_t i = 0; i < 8; ++i) {
+        if (blocks[i] != 0) return true;
+    }
+    return false;
 }
 
 } // namespace network

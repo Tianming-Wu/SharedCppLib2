@@ -33,8 +33,8 @@ target_link_libraries(target SharedCppLib2::aes)
 #include <SharedCppLib2/aes.hpp>
 
 // AES-128 需要 16 字节密钥
-std::bytearray key(static_cast<size_t>(16), std::byte{0});
-std::bytearray pt = std::bytearray(std::string("Hello, AES!"));
+scl2::bytearray key(static_cast<size_t>(16), std::byte{0});
+scl2::bytearray pt = scl2::bytearray(std::string("Hello, AES!"));
 
 // 加密
 auto ct = scl2::aes_ecb_128::encrypt(pt, key);
@@ -50,11 +50,11 @@ CBC 模式下，16 字节的 IV 附加在密钥后面，作为一个 `key_type` 
 
 ```cpp
 // AES-128-CBC: key(16) + iv(16) = 32 字节
-std::bytearray key(static_cast<size_t>(16), std::byte{0x2b});       // 密钥
-std::bytearray iv(static_cast<size_t>(16), std::byte{0x00});        // 初始向量
+scl2::bytearray key(static_cast<size_t>(16), std::byte{0x2b});       // 密钥
+scl2::bytearray iv(static_cast<size_t>(16), std::byte{0x00});        // 初始向量
 
 // 拼接为一个 key_type
-std::bytearray keyiv = key;
+scl2::bytearray keyiv = key;
 keyiv.append(iv);
 
 auto ct = scl2::aes_cbc_128::encrypt(pt, keyiv);
@@ -68,16 +68,16 @@ auto dec = scl2::aes_cbc_128::decrypt(ct, keyiv);
 >
 > ```cpp
 > // 加密
-> std::bytearray iv = /* 16 字节随机数 */;
-> std::bytearray keyiv = key;
+> scl2::bytearray iv = /* 16 字节随机数 */;
+> scl2::bytearray keyiv = key;
 > keyiv.append(iv);
 > auto ct = aes_cbc_128::encrypt(data, keyiv);
 > // 存储或传输: iv + ct
 >
 > // 解密
-> std::bytearray iv2 = received.subarr(0, 16);   // 提取 IV
-> std::bytearray ct2 = received.subarr(16);       // 提取密文
-> std::bytearray keyiv2 = key;
+> scl2::bytearray iv2 = received.subarr(0, 16);   // 提取 IV
+> scl2::bytearray ct2 = received.subarr(16);       // 提取密文
+> scl2::bytearray keyiv2 = key;
 > keyiv2.append(iv2);
 > auto pt = aes_cbc_128::decrypt(ct2, keyiv2);
 > ```
@@ -124,8 +124,8 @@ static constexpr size_t round_count; // 10、12 或 14
 ### 静态 API
 
 ```cpp
-static std::bytearray encrypt(const std::bytearray& data, const std::bytearray& key);
-static std::bytearray decrypt(const std::bytearray& data, const std::bytearray& key);
+static scl2::bytearray encrypt(const scl2::bytearray& data, const scl2::bytearray& key);
+static scl2::bytearray decrypt(const scl2::bytearray& data, const scl2::bytearray& key);
 ```
 
 ECB：`key` 必须恰好为 `key_size` 字节。
@@ -134,9 +134,9 @@ CBC：`key` 必须为 `key_size + 16` 字节（密钥 + IV 拼接）。
 ### 实例 API
 
 ```cpp
-explicit aes_ecb_128(const std::bytearray& key);
-std::bytearray encrypt(const std::bytearray& data) const;
-std::bytearray decrypt(const std::bytearray& data) const;
+explicit aes_ecb_128(const scl2::bytearray& key);
+scl2::bytearray encrypt(const scl2::bytearray& data) const;
+scl2::bytearray decrypt(const scl2::bytearray& data) const;
 ```
 
 用密钥构造加密器，然后调用 `encrypt`/`decrypt` 时无需再次传入密钥。

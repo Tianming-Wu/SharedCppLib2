@@ -35,7 +35,7 @@ Other languages: [English](README.md)
 - **[`color`](doc/zh_CN/color.md)** - 颜色类型、常量和转换
 - **[`stringlist`](doc/zh_CN/stringlist.md)** - 增强型字符串操作，提供类似 Qt 的 API
 - **[`aes`](doc/zh_CN/aes.md)** - AES 加密（128/192/256-bit，ECB/CBC）
-- **`Base64`** - Base64 编码和解码工具
+- **`base64`** - Base64 编码和解码工具
 - **[`bytearray`](doc/zh_CN/bytearray.md)** - 二进制数据管理和序列化
 - **[`sha256`](doc/zh_CN/sha256.md)** - SHA-256 加密哈希实现
 - **[`crc32`](doc/zh_CN/crc32.md)** - CRC-32 校验和实现
@@ -52,11 +52,6 @@ Other languages: [English](README.md)
 - **`platform`** - 跨平台工具和抽象层
 - **`xml`** - XML 解析和序列化库（开发中）（警告：虽然模块基本功能正常，但某些函数尚不安全，可能导致崩溃。）
 - **`html`** - HTML 解析和操作库（开发中）
-
-## 遗留模块（不推荐使用）
-
-- `logd` - 简单控制台日志记录器（已弃用）（改为使用 logt）
-- `logf` - 简单文件日志记录器（已弃用）（改为使用 logt）
 
 ## 已弃用模块
 
@@ -101,7 +96,7 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(您的目标 SharedCppLib2::basic)
 ```
 
-**可用目标：** `variant`, `logd`, `logf`, `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
+**可用目标：** `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
 
 上述列表可能不完整，以顶部列表为准。
 
@@ -110,7 +105,7 @@ target_link_libraries(您的目标 SharedCppLib2::basic)
 #include <SharedCppLib2/stringlist.hpp>
 
 int main(int argc, char** argv) {
-    std::stringlist args(argc, argv);
+    scl2::stringlist args(argc, argv);
     // 处理命令行参数
     return 0;
 }
@@ -124,10 +119,10 @@ int main(int argc, char** argv) {
 #include <SharedCppLib2/hmac.hpp>
 #include <SharedCppLib2/sha256.hpp>
 
-std::bytearray key(std::string("secret-key"));
-std::bytearray payload(std::string("binary-message"));
+scl2::bytearray key(std::string("secret-key"));
+scl2::bytearray payload(std::string("binary-message"));
 
-std::bytearray tag = scl2::hmac<scl2::sha256>::compute(payload, key);
+scl2::bytearray tag = scl2::hmac<scl2::sha256>::compute(payload, key);
 ```
 
 关于验签时的常量时间比较，请参考：

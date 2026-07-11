@@ -14,7 +14,7 @@
 
     Supported types:
         std::string (const char*), integral types, floating-point types, bool,
-        std::stringlist, std::bytearray
+        scl2::stringlist, scl2::bytearray
 
     Note: Section and Key names are case-sensitive.
     
@@ -40,7 +40,7 @@
 
 // forward declaration
 // if you need to use these features, include their specific headers.
-namespace std {
+namespace scl2 {
     template<typename CharT> class basic_stringlist;
     using stringlist = basic_stringlist<char>; using wstringlist = basic_stringlist<wchar_t>;
     class bytearray;
@@ -106,17 +106,17 @@ public:
     bool getValueAsBool(const std::string& section, const std::string& key, bool default_value = false) const;
     void setValue(const std::string& section, const std::string& key, bool value);
 
-    // special support for std::stringlist
-    std::stringlist getValueAsStringList(const std::string& section, const std::string& key) const;
-    std::stringlist getValueAsStringList(const std::string& section, const std::string& key, const std::stringlist& default_value) const;
-    void setValue(const std::string& section, const std::string& key, const std::stringlist& value);
+    // special support for scl2::stringlist
+    scl2::stringlist getValueAsStringList(const std::string& section, const std::string& key) const;
+    scl2::stringlist getValueAsStringList(const std::string& section, const std::string& key, const scl2::stringlist& default_value) const;
+    void setValue(const std::string& section, const std::string& key, const scl2::stringlist& value);
 
     // no, wstringlist is not supported
 
-    // special support for std::bytearray
-    std::bytearray getValueAsByteArray(const std::string& section, const std::string& key) const;
-    std::bytearray getValueAsByteArray(const std::string& section, const std::string& key, const std::bytearray& default_value) const;
-    void setValue(const std::string& section, const std::string& key, const std::bytearray& value);
+    // special support for scl2::bytearray
+    scl2::bytearray getValueAsByteArray(const std::string& section, const std::string& key) const;
+    scl2::bytearray getValueAsByteArray(const std::string& section, const std::string& key, const scl2::bytearray& default_value) const;
+    void setValue(const std::string& section, const std::string& key, const scl2::bytearray& value);
 
     // template function for api-supported types. You need to inclulde api.hpp for this to work.
     #ifdef SHAREDCPPLIB2_API_SUPPORT
@@ -174,8 +174,8 @@ public:
     }
 
     std::optional<bool> getValueAsBoolOptional(const std::string& section, const std::string& key) const;
-    std::optional<std::stringlist> getValueAsStringListOptional(const std::string& section, const std::string& key) const;
-    std::optional<std::bytearray> getValueAsByteArrayOptional(const std::string& section, const std::string& key) const;
+    std::optional<scl2::stringlist> getValueAsStringListOptional(const std::string& section, const std::string& key) const;
+    std::optional<scl2::bytearray> getValueAsByteArrayOptional(const std::string& section, const std::string& key) const;
 
     bool hasSection(const std::string& section) const;
     bool hasKey(const std::string& section, const std::string& key) const;

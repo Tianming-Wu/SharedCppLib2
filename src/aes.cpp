@@ -180,15 +180,15 @@ static void aes_decrypt_blk(const std::byte ct[16], std::byte pt[16],
 }
 
 // ─── PKCS7 padding ──────────────────────────────────────────────────────
-static std::bytearray pad16(const std::bytearray& data) {
+static scl2::bytearray pad16(const scl2::bytearray& data) {
     uint8_t pad_len = static_cast<uint8_t>(16 - (data.size() % 16));
-    std::bytearray result = data;
+    scl2::bytearray result = data;
     for (uint8_t i = 0; i < pad_len; ++i)
         result.push_back(std::byte{pad_len});
     return result;
 }
 
-static std::bytearray unpad16(const std::bytearray& data) {
+static scl2::bytearray unpad16(const scl2::bytearray& data) {
     if (data.empty() || data.size() % 16 != 0)
         throw std::invalid_argument("aes: invalid ciphertext length");
     uint8_t pad_len = static_cast<uint8_t>(data.back());
@@ -205,15 +205,15 @@ static std::bytearray unpad16(const std::bytearray& data) {
 // ═══════════════════════════════════════════════════════════════════════
 
 template<size_t K>
-std::bytearray aes_ecb<K>::encrypt(const std::bytearray& data, const std::bytearray& key) {
+scl2::bytearray aes_ecb<K>::encrypt(const scl2::bytearray& data, const scl2::bytearray& key) {
     if (key.size() != key_size)
         throw std::invalid_argument("aes_ecb::encrypt: key must be " + std::to_string(key_size) + " bytes");
 
     std::byte rk[rk_count];
     aes_key_expand(key.data(), rk, key_size, round_count);
 
-    std::bytearray padded = pad16(data);
-    std::bytearray result{static_cast<size_t>(padded.size()), std::byte{0}};
+    scl2::bytearray padded = pad16(data);
+    scl2::bytearray result{static_cast<size_t>(padded.size()), std::byte{0}};
 
     for (size_t i = 0; i < padded.size(); i += 16)
         aes_encrypt_blk(padded.data() + i, result.data() + i, rk, round_count);
@@ -222,7 +222,7 @@ std::bytearray aes_ecb<K>::encrypt(const std::bytearray& data, const std::bytear
 }
 
 template<size_t K>
-std::bytearray aes_ecb<K>::decrypt(const std::bytearray& data, const std::bytearray& key) {
+scl2::bytearray aes_ecb<K>::decrypt(const scl2::bytearray& data, const scl2::bytearray& key) {
     if (key.size() != key_size)
         throw std::invalid_argument("aes_ecb::decrypt: key must be " + std::to_string(key_size) + " bytes");
     if (data.empty() || data.size() % 16 != 0)
@@ -231,7 +231,7 @@ std::bytearray aes_ecb<K>::decrypt(const std::bytearray& data, const std::bytear
     std::byte rk[rk_count];
     aes_key_expand(key.data(), rk, key_size, round_count);
 
-    std::bytearray dec{static_cast<size_t>(data.size()), std::byte{0}};
+    scl2::bytearray dec{static_cast<size_t>(data.size()), std::byte{0}};
     for (size_t i = 0; i < data.size(); i += 16)
         aes_decrypt_blk(data.data() + i, dec.data() + i, rk, round_count);
 
@@ -239,15 +239,15 @@ std::bytearray aes_ecb<K>::decrypt(const std::bytearray& data, const std::bytear
 }
 
 template<size_t K>
-std::bytearray aes_cbc<K>::encrypt(const std::bytearray& data, const std::bytearray& key) {
+scl2::bytearray aes_cbc<K>::encrypt(const scl2::bytearray& data, const scl2::bytearray& key) {
     if (key.size() != key_size + 16)
         throw std::invalid_argument("aes_cbc::encrypt: key must be " + std::to_string(key_size + 16) + " bytes (key+IV)");
 
     std::byte rk[rk_count];
     aes_key_expand(key.data(), rk, key_size, round_count);
 
-    std::bytearray padded = pad16(data);
-    std::bytearray result{static_cast<size_t>(padded.size()), std::byte{0}};
+    scl2::bytearray padded = pad16(data);
+    scl2::bytearray result{static_cast<size_t>(padded.size()), std::byte{0}};
 
     std::byte prev[16];
     std::memcpy(prev, key.data() + key_size, 16);
@@ -262,7 +262,7 @@ std::bytearray aes_cbc<K>::encrypt(const std::bytearray& data, const std::bytear
 }
 
 template<size_t K>
-std::bytearray aes_cbc<K>::decrypt(const std::bytearray& data, const std::bytearray& key) {
+scl2::bytearray aes_cbc<K>::decrypt(const scl2::bytearray& data, const scl2::bytearray& key) {
     if (key.size() != key_size + 16)
         throw std::invalid_argument("aes_cbc::decrypt: key must be " + std::to_string(key_size + 16) + " bytes (key+IV)");
     if (data.empty() || data.size() % 16 != 0)
@@ -271,7 +271,7 @@ std::bytearray aes_cbc<K>::decrypt(const std::bytearray& data, const std::bytear
     std::byte rk[rk_count];
     aes_key_expand(key.data(), rk, key_size, round_count);
 
-    std::bytearray dec{static_cast<size_t>(data.size()), std::byte{0}};
+    scl2::bytearray dec{static_cast<size_t>(data.size()), std::byte{0}};
 
     std::byte prev[16];
     std::memcpy(prev, key.data() + key_size, 16);
@@ -291,7 +291,7 @@ std::bytearray aes_cbc<K>::decrypt(const std::bytearray& data, const std::bytear
 // ═══════════════════════════════════════════════════════════════════════
 
 template<size_t K>
-aes_ecb<K>::stream_type::stream_type(const std::bytearray& key, cipher_dir dir)
+aes_ecb<K>::stream_type::stream_type(const scl2::bytearray& key, cipher_dir dir)
     : key_(key), dir_(dir) {
     if (key.size() != key_size)
         throw std::invalid_argument("aes_ecb::stream_type: key must be " + std::to_string(key_size) + " bytes");
@@ -299,7 +299,7 @@ aes_ecb<K>::stream_type::stream_type(const std::bytearray& key, cipher_dir dir)
 }
 
 template<size_t K>
-std::bytearray aes_ecb<K>::stream_type::update(const std::bytearray& chunk) {
+scl2::bytearray aes_ecb<K>::stream_type::update(const scl2::bytearray& chunk) {
     // Flush buffer first
     if (!buf_.empty()) {
         size_t need = block_size - buf_.size();
@@ -309,7 +309,7 @@ std::bytearray aes_ecb<K>::stream_type::update(const std::bytearray& chunk) {
         // Buffer is full, process it below as the first block
     }
 
-    std::bytearray result;
+    scl2::bytearray result;
     std::byte rk[rk_count];
     aes_key_expand(key_.data(), rk, key_size, round_count);
 
@@ -317,7 +317,7 @@ std::bytearray aes_ecb<K>::stream_type::update(const std::bytearray& chunk) {
 
     // Process the buffered block first if we just filled it
     if (!buf_.empty()) {
-        result.append(std::bytearray(block_size, std::byte{0}));
+        result.append(scl2::bytearray(block_size, std::byte{0}));
         if (dir_ == cipher_dir::Encrypt)
             aes_encrypt_blk(buf_.data(), result.data(), rk, round_count);
         else
@@ -347,13 +347,13 @@ std::bytearray aes_ecb<K>::stream_type::update(const std::bytearray& chunk) {
 }
 
 template<size_t K>
-std::bytearray aes_ecb<K>::stream_type::end() {
+scl2::bytearray aes_ecb<K>::stream_type::end() {
     // PKCS7 padding on remaining buffer
     uint8_t pad_len = static_cast<uint8_t>(block_size - buf_.size());
     for (uint8_t i = 0; i < pad_len; ++i)
         buf_.push_back(std::byte{pad_len});
 
-    std::bytearray result(block_size, std::byte{0});
+    scl2::bytearray result(block_size, std::byte{0});
     std::byte rk[rk_count];
     aes_key_expand(key_.data(), rk, key_size, round_count);
     aes_encrypt_blk(buf_.data(), result.data(), rk, round_count);
@@ -366,7 +366,7 @@ std::bytearray aes_ecb<K>::stream_type::end() {
 // ═══════════════════════════════════════════════════════════════════════
 
 template<size_t K>
-aes_cbc<K>::stream_type::stream_type(const std::bytearray& key, cipher_dir dir)
+aes_cbc<K>::stream_type::stream_type(const scl2::bytearray& key, cipher_dir dir)
     : key_(key), dir_(dir) {
     if (key.size() != key_size + 16)
         throw std::invalid_argument("aes_cbc::stream_type: key must be " + std::to_string(key_size + 16) + " bytes");
@@ -374,8 +374,8 @@ aes_cbc<K>::stream_type::stream_type(const std::bytearray& key, cipher_dir dir)
 }
 
 template<size_t K>
-std::bytearray aes_cbc<K>::stream_type::update(const std::bytearray& chunk) {
-    std::bytearray result;
+scl2::bytearray aes_cbc<K>::stream_type::update(const scl2::bytearray& chunk) {
+    scl2::bytearray result;
     std::byte rk[rk_count];
     aes_key_expand(key_.data(), rk, key_size, round_count);
 
@@ -392,7 +392,7 @@ std::bytearray aes_cbc<K>::stream_type::update(const std::bytearray& chunk) {
 
     // Process full blocks from buffer + chunk
     // We need to work with the combined data
-    std::bytearray combined;
+    scl2::bytearray combined;
     if (!buf_.empty()) {
         if (buf_.size() < block_size) return {}; // still not full
         combined = buf_;  // copy the full buffer
@@ -406,7 +406,7 @@ std::bytearray aes_cbc<K>::stream_type::update(const std::bytearray& chunk) {
     }
 
     // Build processing buffer: combined (if any) + rest of chunk
-    std::bytearray proc;
+    scl2::bytearray proc;
     if (!combined.empty()) proc = combined;
     proc.append(chunk.subarr(proc.empty() ? 0 : block_size - (combined.size() - buf_.size())));
 
@@ -437,7 +437,7 @@ std::bytearray aes_cbc<K>::stream_type::update(const std::bytearray& chunk) {
 }
 
 template<size_t K>
-std::bytearray aes_cbc<K>::stream_type::end() {
+scl2::bytearray aes_cbc<K>::stream_type::end() {
     uint8_t pad_len = static_cast<uint8_t>(block_size - buf_.size());
     for (uint8_t i = 0; i < pad_len; ++i)
         buf_.push_back(std::byte{pad_len});
@@ -449,7 +449,7 @@ std::bytearray aes_cbc<K>::stream_type::end() {
     std::byte chain[16];
     std::memcpy(chain, key_.data() + key_size, 16);
 
-    std::bytearray result(block_size, std::byte{0});
+    scl2::bytearray result(block_size, std::byte{0});
     std::byte xored[16];
     for (int j = 0; j < 16; ++j) xored[j] = buf_.data()[j] ^ chain[j];
     aes_encrypt_blk(xored, result.data(), rk, round_count);

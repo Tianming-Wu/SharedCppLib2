@@ -22,14 +22,14 @@ using __get_key_type = typename T::key_type;
 template<typename T, typename key_type = __get_key_type<T>>
 concept has_static_encryption = requires {
     requires std::is_class_v<T> && requires {
-        { T::encrypt(std::declval<const std::bytearray&>(), std::declval<const key_type&>()) } -> std::same_as<std::bytearray>;
+        { T::encrypt(std::declval<const scl2::bytearray&>(), std::declval<const key_type&>()) } -> std::same_as<scl2::bytearray>;
     };
 };
 
 template<typename T, typename key_type = __get_key_type<T>>
 concept has_static_decryption = requires {
     requires std::is_class_v<T> && requires {
-        { T::decrypt(std::declval<const std::bytearray&>(), std::declval<const key_type&>()) } -> std::same_as<std::bytearray>;
+        { T::decrypt(std::declval<const scl2::bytearray&>(), std::declval<const key_type&>()) } -> std::same_as<scl2::bytearray>;
     };
 };
 
@@ -37,14 +37,14 @@ concept has_static_decryption = requires {
 template<typename T, typename key_type = __get_key_type<T>>
 concept has_instance_encryption = requires {
     requires std::is_class_v<T> && requires {
-        { std::declval<const T>().encrypt(std::declval<const std::bytearray&>()) } -> std::same_as<std::bytearray>;
+        { std::declval<const T>().encrypt(std::declval<const scl2::bytearray&>()) } -> std::same_as<scl2::bytearray>;
     };
 };
 
 template<typename T, typename key_type = __get_key_type<T>>
 concept has_instance_decryption = requires {
     requires std::is_class_v<T> && requires {
-        { std::declval<const T>().decrypt(std::declval<const std::bytearray&>()) } -> std::same_as<std::bytearray>;
+        { std::declval<const T>().decrypt(std::declval<const scl2::bytearray&>()) } -> std::same_as<scl2::bytearray>;
     };
 };
 
@@ -77,7 +77,7 @@ constexpr size_t generic_key_size() {
 
 template<typename T, typename key_type = __get_key_type<T>>
 requires has_encryption_support<T>
-std::bytearray generic_encrypt(const std::bytearray& data, const key_type& key) {
+scl2::bytearray generic_encrypt(const scl2::bytearray& data, const key_type& key) {
     if constexpr (has_static_encryption<T>) {
         return T::encrypt(data, key);
     } else {
@@ -87,7 +87,7 @@ std::bytearray generic_encrypt(const std::bytearray& data, const key_type& key) 
 
 template<typename T, typename key_type = __get_key_type<T>>
 requires has_decryption_support<T>
-std::bytearray generic_decrypt(const std::bytearray& data, const key_type& key) {
+scl2::bytearray generic_decrypt(const scl2::bytearray& data, const key_type& key) {
     if constexpr (has_static_decryption<T>) {
         return T::decrypt(data, key);
     } else {
@@ -113,8 +113,8 @@ concept has_streamed_encryption = requires {
         requires std::is_class_v<typename T::stream_type>
         && requires(typename T::stream_type h) {
             { typename T::stream_type(std::declval<const typename T::key_type&>(), cipher_dir::Encrypt) };
-            h.update(std::declval<const std::bytearray&>());
-            { h.end() } -> std::same_as<std::bytearray>;
+            h.update(std::declval<const scl2::bytearray&>());
+            { h.end() } -> std::same_as<scl2::bytearray>;
         };
     };
 };
@@ -129,7 +129,7 @@ void encrypt_stream(std::istream& input, std::ostream& output,
                     const typename T::key_type& key) {
     constexpr size_t bufsz = generic_buffer_size<T>();
     typename T::stream_type cipher(key, cipher_dir::Encrypt);
-    std::bytearray buffer(bufsz);
+    scl2::bytearray buffer(bufsz);
 
     while (input) {
         buffer.resize(bufsz);
@@ -150,7 +150,7 @@ void decrypt_stream(std::istream& input, std::ostream& output,
                     const typename T::key_type& key) {
     constexpr size_t bufsz = generic_buffer_size<T>();
     typename T::stream_type cipher(key, cipher_dir::Decrypt);
-    std::bytearray buffer(bufsz);
+    scl2::bytearray buffer(bufsz);
 
     while (input) {
         buffer.resize(bufsz);

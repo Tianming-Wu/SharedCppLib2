@@ -2,10 +2,7 @@
 
 #include <stack>
 
-namespace std {
-
-template class basic_stringlist<char>;
-template class basic_stringlist<wchar_t>;
+namespace scl2 {
 
 template<typename CharT>
 basic_stringlist<CharT>::string_type basic_stringlist<CharT>::join(const string_type &i) const {
@@ -75,8 +72,8 @@ void basic_stringlist<CharT>::append(const basic_stringlist<CharT>::string_type 
 }
 
 template<typename CharT>
-std::basic_stringlist<CharT> basic_stringlist<CharT>::subarr(size_t pos, size_t len) const {
-    std::basic_stringlist<CharT> result;
+scl2::basic_stringlist<CharT> basic_stringlist<CharT>::subarr(size_t pos, size_t len) const {
+    scl2::basic_stringlist<CharT> result;
     if(len == 0) len = max_size();
     size_t end = std::min(size(), pos+len);
     for(size_t p = pos; p < end; p++) {
@@ -159,7 +156,7 @@ bool basic_stringlist<CharT>::contains(const basic_stringlist<CharT>::string_typ
 }
 
 template<typename CharT>
-void basic_stringlist<CharT>::exec_foreach(function<void(size_t,string_type&)> f) {
+void basic_stringlist<CharT>::exec_foreach(std::function<void(size_t,string_type&)> f) {
     size_t i = 0;
     for(string_type& s : *this) {
         f(i++, s);
@@ -167,7 +164,7 @@ void basic_stringlist<CharT>::exec_foreach(function<void(size_t,string_type&)> f
 }
 
 template<typename CharT>
-basic_stringlist<CharT> basic_stringlist<CharT>::from_initializer(initializer_list<string_type> build) {
+basic_stringlist<CharT> basic_stringlist<CharT>::from_initializer(std::initializer_list<string_type> build) {
     basic_stringlist<CharT> l;
     for (const string_type& s : build)
         l.push_back(s);
@@ -261,23 +258,23 @@ basic_stringlist<CharT> basic_stringlist<CharT>::exsplit(const basic_stringlist<
 
     basic_stringlist<CharT> result;
     /*stack<size_t> bind_id;*/ size_t tpbind_id;
-    vector<size_t> bind_id;
+    std::vector<size_t> bind_id;
 
     int depth = 0;
     basic_stringlist<CharT>::string_type buffer;
     size_t idx = 0;
     for(; idx < s.length(); ) {
-        if((tpbind_id = begin_bind.find(s[idx])) != string_type::npos) {
-            // bind_id.push(tpbind_id);
-            bind_id.push_back(tpbind_id);
-            depth++;
-            if(!remove_binding) buffer += s[idx++];
-        // } else if(depth != 0 && s[idx] == end_bind[bind_id.top()]) {
-        } else if(depth != 0 && s[idx] == end_bind[bind_id.back()]) {
-            // bind_id.pop();
+        // Check closing bind first when nested (fixes same-char open/close pairs)
+        if(depth != 0 && s[idx] == end_bind[bind_id.back()]) {
             bind_id.pop_back();
             depth--;
-            if(!remove_binding) buffer += s[idx++];
+            if(!remove_binding) buffer += s[idx];
+            ++idx;  // always advance (fixes remove_binding infinite loop)
+        } else if((tpbind_id = begin_bind.find(s[idx])) != string_type::npos) {
+            bind_id.push_back(tpbind_id);
+            depth++;
+            if(!remove_binding) buffer += s[idx];
+            ++idx;  // always advance
         } else if(depth == 0 && s.substr(idx, delim.length()) == delim) {
             result.push_back(buffer);
             buffer.clear();
@@ -302,41 +299,41 @@ basic_stringlist<CharT> basic_stringlist<CharT>::unpack(const basic_stringlist<C
 
 template<typename CharT>
 basic_stringlist<CharT>& basic_stringlist<CharT>::operator=(const basic_stringlist<CharT>& l) {
-    vector<string_type>::operator=(l);
+    std::vector<string_type>::operator=(l);
     return *this;
 }
 
 // template<typename CharT>
-// basic_stringlist<CharT>::basic_stringlist() : vector<string_type>()
+// basic_stringlist<CharT>::basic_stringlist() : std::vector<string_type>()
 // {}
 
 template<typename CharT>
 basic_stringlist<CharT>::basic_stringlist(int size, CharT** content, int begin, int end)
-    : vector<string_type>()
+    : std::vector<string_type>()
 {
     from(size, content, begin, end);
 }
 
 template<typename CharT>
-basic_stringlist<CharT>::basic_stringlist(initializer_list<string_type> build) {
+basic_stringlist<CharT>::basic_stringlist(std::initializer_list<string_type> build) {
     for (const string_type& s : build)
         push_back(s);
 }
 
 template<typename CharT>
-basic_stringlist<CharT>::basic_stringlist(const basic_stringlist<CharT>& l) : vector<string_type>(l)
+basic_stringlist<CharT>::basic_stringlist(const basic_stringlist<CharT>& l) : std::vector<string_type>(l)
 {}
 
 template<typename CharT>
 basic_stringlist<CharT>::basic_stringlist(const string_type& s)
-    : vector<string_type>()
+    : std::vector<string_type>()
 {
     push_back(s);
 }
 
 template<typename CharT>
 basic_stringlist<CharT>::basic_stringlist(CharT s)
-    : vector<string_type>()
+    : std::vector<string_type>()
 {
     basic_stringlist<CharT>::string_type str;
     str[0] = s;
@@ -345,28 +342,28 @@ basic_stringlist<CharT>::basic_stringlist(CharT s)
 
 template<typename CharT>
 basic_stringlist<CharT>::basic_stringlist(const CharT* s)
-    : vector<string_type>()
+    : std::vector<string_type>()
 {
     *this = split(string_type(s), string_type(1, ' '));
 }
 
 template<typename CharT>
 basic_stringlist<CharT>::basic_stringlist(const basic_stringlist<CharT>::string_type &s, const basic_stringlist<CharT>::string_type &delim)
-    : vector<string_type>()
+    : std::vector<string_type>()
 {
     *this = split(s, delim);
 }
 
 template<typename CharT>
 basic_stringlist<CharT>::basic_stringlist(const basic_stringlist<CharT>::string_type &s, const basic_stringlist<CharT> &delim)
-    : vector<string_type>()
+    : std::vector<string_type>()
 {
     *this = split(s, delim);
 }
 
 template<typename CharT>
-basic_stringlist<CharT>::basic_stringlist(const vector<basic_stringlist<CharT>::string_type>& v)
-    : vector<string_type>(v)
+basic_stringlist<CharT>::basic_stringlist(const std::vector<basic_stringlist<CharT>::string_type>& v)
+    : std::vector<string_type>(v)
 {}
 
 template<typename CharT>
@@ -378,4 +375,7 @@ size_t basic_stringlist<CharT>::all_size() {
     return result;
 }
 
-} // namespace std
+template class basic_stringlist<char>;
+template class basic_stringlist<wchar_t>;
+
+} // namespace scl2

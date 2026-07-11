@@ -9,8 +9,8 @@
 
 namespace scl2 {
 
-using std::stringlist;
-using std::wstringlist;
+using scl2::stringlist;
+using scl2::wstringlist;
 
 // split by regex_match as delimiter. matched values will be removed.
 stringlist regex_chop(const std::string& s, const std::regex& pattern);

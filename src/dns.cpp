@@ -5,6 +5,8 @@
 
 namespace network::dns {
 
+#ifdef OS_WINDOWS
+
 dns_query_result dns_query(const std::wstring &hostname)
 {
     dns_query_result result;
@@ -30,6 +32,18 @@ dns_query_result dns_query(const std::wstring &hostname)
     
     return result;
 }
+
+#else // !OS_WINDOWS
+
+dns_query_result dns_query(const std::wstring &hostname)
+{
+    dns_query_result result;
+    result.hostname = hostname;
+    // TODO: implement DNS resolution for non-Windows platforms
+    return result;
+}
+
+#endif // OS_WINDOWS
 
 bool setDNSServers(const std::vector<network_address> &servers)
 {

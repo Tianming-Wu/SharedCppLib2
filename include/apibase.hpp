@@ -18,7 +18,7 @@ constexpr size_t generic_buffer_size() {
 
 // Forward declaration
 // For api to work, actual header file must be included.
-namespace std {
+namespace scl2 {
     class bytearray;
     class bytearray_view;
 };

@@ -81,7 +81,7 @@ scl2::writeFile("condition.bin", expr);
 auto expr = scl2::readAndLoad<condition_expression>("condition.bin");
 
 // Although pretty unlikely to happen, you can encrypt your binary.
-std::bytearray enba = scl2::encrypt<scl2::aes128>(ba, key, iv);
+scl2::bytearray enba = scl2::encrypt<scl2::aes128>(ba, key, iv);
 
 ```
 

@@ -1,4 +1,5 @@
 #include "condition.hpp"
+#include "condition_parser.hpp"
 
 #include <algorithm>
 #include <stdexcept>
@@ -618,61 +619,6 @@ std::vector<std::string> condition_node::getFunctions_internal() const
     }
 }
 
-condition_node condition_node::load(const std::bytearray_view &data)
-{
-    condition_node node;
-
-    if(data.available(sizeof(Type))) {
-        node.type = data.read<Type>();
-
-        if(node.type == Type::Null) {
-            // no payload, nothing to read
-        } else if(node.type == Type::Endpoint) {
-            if(!data.available(sizeof(EndpointType))) {
-                throw std::runtime_error("Not enough data to load endpoint node");
-            }
-            EndpointType endpoint_type = data.read<EndpointType>();
-            node.endpoint = { endpoint_type };
-
-            if(endpoint_type == EndpointType::BoolValue) {
-                if(!data.available(sizeof(bool))) {
-                    throw std::runtime_error("Not enough data to load bool value endpoint");
-                }
-                node.endpoint_value = data.read<bool>();
-            } else if(endpoint_type == EndpointType::Function) {
-                // read the function id string.
-                // keep func empty for now. The value should be set later.
-                node.endpoint_func = { nullptr, data.readString() };
-            } else {
-                throw std::runtime_error("Unknown endpoint type in condition node");
-            }
-
-        } else if(node.type == Type::Logical) {
-            if(!data.available(sizeof(logical_operator))) {
-                throw std::runtime_error("Not enough data to load logical node operator");
-            }
-            logical_operator op = data.read<logical_operator>();
-
-            node.logical = std::make_unique<_logical>();
-            node.logical->op = op;
-
-            // Load left child node recursively
-            node.logical->left = std::make_unique<condition_node>(load(data));
-
-            // If this is not a NOT-only operator, we also need to load the right child node.
-            if(!__lo_is_not_only(op)) {
-                node.logical->right = std::make_unique<condition_node>(load(data));
-            }
-        } else {
-            throw std::runtime_error("Unknown node type in condition node");
-        }
-    } else {
-        throw std::runtime_error("Not enough data to load condition node");
-    }
-
-    return node;
-}
-
 condition_node condition_node::create_null()
 {
     return condition_node();
@@ -720,9 +666,64 @@ condition_node condition_node::create_unary(condition_node&& child, logical_oper
 }
 
 
-std::bytearray condition_node::dump(const condition_node &node)
+condition_node condition_node::load(scl2::bytearray& data)
 {
-    std::bytearray data;
+    condition_node node;
+
+    if(data.available<Type>()) {
+        node.type = data.read<Type>();
+
+        if(node.type == Type::Null) {
+            // no payload, nothing to read
+        } else if(node.type == Type::Endpoint) {
+            if(!data.available<EndpointType>()) {
+                throw std::runtime_error("Not enough data to load endpoint node");
+            }
+            EndpointType endpoint_type = data.read<EndpointType>();
+            node.endpoint = { endpoint_type };
+
+            if(endpoint_type == EndpointType::BoolValue) {
+                if(!data.available<bool>()) {
+                    throw std::runtime_error("Not enough data to load bool value endpoint");
+                }
+                node.endpoint_value = data.read<bool>();
+            } else if(endpoint_type == EndpointType::Function) {
+                // read the function id string.
+                // keep func empty for now. The value should be set later.
+                node.endpoint_func = { nullptr, data.readString() };
+            } else {
+                throw std::runtime_error("Unknown endpoint type in condition node");
+            }
+
+        } else if(node.type == Type::Logical) {
+            if(!data.available<logical_operator>()) {
+                throw std::runtime_error("Not enough data to load logical node operator");
+            }
+            logical_operator op = data.read<logical_operator>();
+
+            node.logical = std::make_unique<_logical>();
+            node.logical->op = op;
+
+            // Load left child node recursively
+            node.logical->left = std::make_unique<condition_node>(load(data));
+
+            // If this is not a NOT-only operator, we also need to load the right child node.
+            if(!__lo_is_not_only(op)) {
+                node.logical->right = std::make_unique<condition_node>(load(data));
+            }
+        } else {
+            throw std::runtime_error("Unknown node type in condition node");
+        }
+    } else {
+        throw std::runtime_error("Not enough data to load condition node");
+    }
+
+    return node;
+}
+
+scl2::bytearray condition_node::dump(const condition_node &node)
+{
+    scl2::bytearray data;
 
     if(!node.valid()) {
         throw std::runtime_error("Trying to dump an invalid condition node");
@@ -748,7 +749,7 @@ std::bytearray condition_node::dump(const condition_node &node)
             if(!node.endpoint_func.has_value()) {
                 throw std::runtime_error("Function endpoint missing function data");
             }
-            data.addString(node.endpoint_func->func_id);
+            data.append(node.endpoint_func->func_id);
         } else {
             throw std::runtime_error("Unknown endpoint type");
         }
@@ -771,87 +772,15 @@ std::bytearray condition_node::dump(const condition_node &node)
     return data;
 }
 
-// Tokenizer implementation for condition_expression parsing logic.
-// This is not a separate module since it is too specific, and will
-// be to costly to generalize.
-class Tokenizer {
-public:
-    enum class TokenType {
-        EndOfInput,
-        LeftParen, RightParen, // ( )
-        OperatorNot, // !
-        OperatorAnd, OperatorOr, OperatorXor, // & | ^
-        OperatorNand, OperatorNor, OperatorXnor, // !& !| !^
-        OperatorImplyLeft, OperatorImplyRight, // -> <-
-        Identifier, // [A-Za-z_0-9]+
-        BoolLiteral, // {true} {false}
-        Error
-    };
-
-    struct Token {
-        TokenType type;
-        std::string value;
-    };
-
-    explicit Tokenizer(const std::string& input) : source(input), pos(0) {}
-
-    Token nextToken();
-
-    inline std::generator<Token> tokenize() {
-        Token token;
-        while ((token = nextToken()).type != TokenType::EndOfInput) {
-            co_yield token;
-        }
-    }
-
-    static const std::map<TokenType, int> priority;
-
-private:
-    void skipWhitespace();
-    bool isAlphaNum(char c) const;
-
-private:
-    std::string source;
-    size_t pos;
-};
-
-
-// The second layer of the parser.
-class ConditionParser {
-public:
-    using TokenType = Tokenizer::TokenType;
-    using Token = Tokenizer::Token;
-
-    explicit ConditionParser(const std::string& input);
-
-    condition_node parse();
-
-private:
-    // Atomic / Parenthesized expressions -> NOT -> AND/NAND -> /OR/XOR/NOR/NXOR -> IMPLY
-    condition_node parsePrimary(); // parse basic units: identifiers, literals, parenthesized expressions
-    // Not is also parsed in parsePrimary.
-    condition_node parseAnd(); // parse AND/NAND operators
-    condition_node parseOrXor(); // parse OR, XOR, NOR, NXOR operators
-    condition_node parseImply(); // parse implication operators, which have the lowest precedence
-
-    // helper functions
-    logical_operator maptoLogicalOp(TokenType type) const;
-
-    inline bool isOrXor(TokenType type) const {
-        return type == TokenType::OperatorOr || type == TokenType::OperatorXor ||
-               type == TokenType::OperatorNor || type == TokenType::OperatorXnor;
-    }
-
-    void advance();
-
-private:
-    Tokenizer tokenizer;
-    Token currentToken;
-};
-
 condition_node condition_node::parse(const std::string &str)
 {
-    ConditionParser cp (str);
+    ConditionParser<DefaultTokenizer> cp(str);
+    return cp.parse();
+}
+
+condition_node condition_node::parseNormal(const std::string &str)
+{
+    ConditionParser<NormalTokenizer> cp(str);
     return cp.parse();
 }
 
@@ -897,190 +826,6 @@ std::string condition_node::to_string(const condition_node &node)
     return "{error}";
 }
 
-Tokenizer::Token Tokenizer::nextToken()
-{
-    skipWhitespace();
-
-    if(pos >= source.size()) {
-        return { TokenType::EndOfInput, {} };
-    }
-
-    char current = source[pos];
-
-    // handle parentheses
-    if(current == '(') { pos++; return { TokenType::LeftParen,  "(" }; }
-    if(current == ')') { pos++; return { TokenType::RightParen, ")" }; }
-
-    // handle constants
-    if(current == '{') {
-        size_t startp = ++pos;
-        while (pos < source.size() && source[pos] != '}') pos++;
-        std::string literal = source.substr(startp, pos - startp);
-        if (pos < source.size() && source[pos] == '}') {
-            pos++; // skip "}"
-            if (literal == "true" || literal == "false" || literal == "1" || literal == "0") {
-                return { TokenType::BoolLiteral, literal };
-            } else {
-                return { TokenType::Error, source.substr(startp - 1, pos - startp + 1) }; // include the braces in error
-            }
-        }
-    }
-
-    // handle not or not-like operators
-    if (current == '!') {
-        pos++;
-        if(pos < source.size()) {
-            if(source[pos] == '&') { pos++; return { TokenType::OperatorNand, "!&" }; }
-            if(source[pos] == '|') { pos++; return { TokenType::OperatorNor,  "!|" }; }
-            if(source[pos] == '^') { pos++; return { TokenType::OperatorXnor, "!^" }; }
-        }
-        return { TokenType::OperatorNot, "!" }; // otherwise, just a single not operator
-    }
-
-    // handle normal operators
-    if (current == '&') { pos++; return { TokenType::OperatorAnd, "&" }; }
-    if (current == '|') { pos++; return { TokenType::OperatorOr,  "|" }; }
-    if (current == '^') { pos++; return { TokenType::OperatorXor, "^" }; }
-
-    // handle imply operators
-    if (current == '-') {
-        pos++;
-        if(pos < source.size() && source[pos] == '>') {
-            pos++;
-            return { TokenType::OperatorImplyRight, "->" };
-        }
-        return { TokenType::Error, "-" };
-    }
-
-    if (current == '<') {
-        pos++;
-        if(pos < source.size() && source[pos] == '-') {
-            pos++;
-            return { TokenType::OperatorImplyLeft, "<-" };
-        }
-        return { TokenType::Error, "<" };
-    }
-
-    // Handle identifiers
-    if(isAlphaNum(current)) {
-        size_t startp = pos;
-        while (pos < source.size() && isAlphaNum(source[pos])) pos++;
-        return { TokenType::Identifier, source.substr(startp, pos - startp) };
-    }
-
-    return { TokenType::Error, source.substr(pos) };
-}
-
-void Tokenizer::skipWhitespace()
-{
-    while(pos < source.size() && std::isspace(static_cast<unsigned char>(source[pos]))) pos++;
-}
-
-bool Tokenizer::isAlphaNum(char c) const
-{
-    return std::isalnum(static_cast<unsigned char>(c)) || c == '_';
-}
-
-ConditionParser::ConditionParser(const std::string &input)
-    : tokenizer(input)
-{
-    advance(); // pre-read the first token
-}
-
-condition_node ConditionParser::parse()
-{
-    return parseImply(); // start from the lowest precedence operator
-}
-
-condition_node ConditionParser::parsePrimary()
-{
-    if(currentToken.type == TokenType::OperatorNot) {
-        advance();
-        auto child = parsePrimary(); // recursively handle !(!A)
-        return condition_node::create_unary(std::move(child), logical_operator::Not); // treat parentheses as a NOT operator with only one child, which will be simplified later.
-    }
-    if(currentToken.type == TokenType::LeftParen) {
-        advance();
-        auto node = parseImply(); // parse the expression inside the parentheses
-        if(currentToken.type != TokenType::RightParen) {
-            throw std::runtime_error("Expected ')' after expression in parentheses");
-        }
-        advance(); // consume the right parenthesis
-        return node;
-    }
-    if(currentToken.type == TokenType::Identifier) {
-        std::string func_id(currentToken.value);
-        advance();
-        return condition_node::create_function(func_id);
-    }
-    if(currentToken.type == TokenType::BoolLiteral) {
-        bool value = (currentToken.value == "true" || currentToken.value == "1");
-        advance();
-        return condition_node::create_bool(value);
-    } else {
-        throw std::runtime_error("Unexpected token: " + std::string(currentToken.value));
-    }
-}
-
-condition_node ConditionParser::parseAnd()
-{
-    auto left = parsePrimary();
-    while(currentToken.type == TokenType::OperatorAnd || currentToken.type == TokenType::OperatorNand) {
-        auto op = currentToken;
-        advance();
-        auto right = parsePrimary();
-        left = condition_node::create_logical(std::move(left), std::move(right), maptoLogicalOp(op.type));
-    }
-    return left;
-}
-
-condition_node ConditionParser::parseOrXor()
-{
-    auto left = parseAnd();
-    while(isOrXor(currentToken.type)) {
-        auto op = currentToken;
-        advance();
-        auto right = parseAnd();
-        left = condition_node::create_logical(std::move(left), std::move(right), maptoLogicalOp(op.type));
-    }
-    return left;
-}
-
-condition_node ConditionParser::parseImply()
-{
-    auto left = parseOrXor();
-    while(currentToken.type == Tokenizer::TokenType::OperatorImplyLeft || currentToken.type == Tokenizer::TokenType::OperatorImplyRight) {
-        auto op = currentToken;
-        advance();
-        auto right = parseOrXor();
-        left = condition_node::create_logical(std::move(left), std::move(right), maptoLogicalOp(op.type));
-    }
-
-    return left;
-}
-
-logical_operator ConditionParser::maptoLogicalOp(TokenType type) const
-{
-    switch(type) {
-        case TokenType::OperatorNot: return logical_operator::Not;
-        case TokenType::OperatorAnd: return logical_operator::And;
-        case TokenType::OperatorOr: return logical_operator::Or;
-        case TokenType::OperatorXor: return logical_operator::Xor;
-        case TokenType::OperatorNand: return logical_operator::Nand;
-        case TokenType::OperatorNor: return logical_operator::Nor;
-        case TokenType::OperatorXnor: return logical_operator::Xnor;
-        case TokenType::OperatorImplyLeft: return logical_operator::Imply_Left;
-        case TokenType::OperatorImplyRight: return logical_operator::Imply_Right;
-        default:
-            throw std::runtime_error("Invalid token type for logical operator");
-    }
-}
-
-void ConditionParser::advance()
-{
-    currentToken = tokenizer.nextToken();
-}
-
 void generate_truth_table(condition_node &root, bool colored)
 {
     // collect function endpoints
@@ -1119,11 +864,11 @@ void generate_truth_table(condition_node &root, bool colored)
     for(size_t i = 0; i < num_combinations; i++) {
         // print current combination of function values
         for(bool value : values) {
-            std::cout << std::coloredtext(value ? "1" : "0", value ? std::tGreen : std::tRed) << " | ";;
+            std::cout << scl2::conditionalText(value, value ? "1" : "0", scl2::colors::green, scl2::colors::red) << " | ";;
         }
         // print the result of evaluating the condition with the current function values
         bool eval = root.evaluate();
-        std::cout << std::coloredtext(eval ? "1" : "0", eval ? std::tGreen : std::tRed) << std::endl;
+        std::cout << scl2::conditionalText(eval, eval ? "1" : "0", scl2::colors::green, scl2::colors::red) << std::endl;
 
         advance(); // move to the next combination
     }

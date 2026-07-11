@@ -29,10 +29,10 @@ namespace scl2 { inline namespace crypto {
 
 class xor_op {
 public:
-    using key_type = std::bytearray;
+    using key_type = scl2::bytearray;
 
-    static std::bytearray encrypt(const std::bytearray& data, const std::bytearray& key);
-    static std::bytearray decrypt(const std::bytearray& data, const std::bytearray& key);
+    static scl2::bytearray encrypt(const scl2::bytearray& data, const scl2::bytearray& key);
+    static scl2::bytearray decrypt(const scl2::bytearray& data, const scl2::bytearray& key);
 
 }; // xor_op
 
@@ -44,10 +44,10 @@ scl2_check_decryption_support(xor_op);
 // and result, to make it less straightforward and more obfuscated. It is not intended
 // to be more secure, but just to be a little bit more difficult to analyze.
 class zxor_op {
-    using key_type = std::bytearray;
+    using key_type = scl2::bytearray;
 
-    static std::bytearray encrypt(const std::bytearray& data, const std::bytearray& key);
-    static std::bytearray decrypt(const std::bytearray& data, const std::bytearray& key);
+    static scl2::bytearray encrypt(const scl2::bytearray& data, const scl2::bytearray& key);
+    static scl2::bytearray decrypt(const scl2::bytearray& data, const scl2::bytearray& key);
     
 };
 

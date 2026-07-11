@@ -17,8 +17,6 @@
 [ ] ln()
 [ ] exp()
 
-## variant
-[ ] class
 
 
 ## regexfilter

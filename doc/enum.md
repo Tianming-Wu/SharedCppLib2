@@ -233,6 +233,7 @@ strenum(
 **Methods:**
 
 - `to_string(E value)` — Returns `std::optional<string_type>` with the mapped string, or fallback.
+- `from_string(const string_type& str)` — Returns `std::optional<E>` with the enum value matching `str` (exact, case-sensitive).
 
 **Fallback types (`strenum_fallback_type`):**
 
@@ -258,6 +259,11 @@ bitstrenum(
     bitstrenum_fallback_type fallback = bitstrenum_fallback_none
 );
 ```
+
+**Methods:**
+
+- `to_string(E value)` — Returns `std::optional<string_type>` with mapped flag names joined by `" | "`. Falls back according to `fallback_type` for unknown bits.
+- `from_string(const string_type& str)` — Parses `"FlagA | FlagB"` format back to an enum value. Returns `std::nullopt` if any token is unknown.
 
 **Fallback types (`bitstrenum_fallback_type`):**
 
@@ -285,6 +291,29 @@ Converts an enum value to its string representation using the registered `strenu
 
 ```cpp
 auto s = scl2::to_string(myValue).value_or("?");
+```
+
+#### from_string
+
+```cpp
+template<typename E, typename CharT = char>
+requires std::is_enum_v<E>
+inline std::optional<E> from_string(const std::basic_string<CharT>& str);
+
+template<typename E, typename CharT = char>
+requires std::is_enum_v<E>
+inline std::optional<E> from_string(const CharT* str);
+```
+
+Converts a string back to an enum value using the registered map.
+
+- For `strenum` maps: exact string match (case-sensitive).
+- For `bitstrenum` maps: parses `"FlagA | FlagB"` format, splitting by `" | "` and OR-ing each flag. Returns `std::nullopt` if any token is unknown.
+
+```cpp
+auto c = scl2::from_string<Color>("Red");   // Color::Red
+auto p = scl2::from_string<Perm>("Read | Write");  // Perm::Read | Perm::Write
+auto x = scl2::from_string<Color>("Purple");  // std::nullopt
 ```
 
 ### Enum converter

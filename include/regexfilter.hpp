@@ -6,15 +6,15 @@ namespace rf {
 
 class base_list {
 public:
-    base_list(const std::stringlist& patterns = std::stringlist());
+    base_list(const scl2::stringlist& patterns = scl2::stringlist());
 
     bool filtered(const std::string& s) const;
-    int apply(std::stringlist& list, bool reverse) const;
+    int apply(scl2::stringlist& list, bool reverse) const;
 
     void addPattern(const std::string& pattern);
-    void addPatterns(const std::stringlist& patterns);
+    void addPatterns(const scl2::stringlist& patterns);
     void clearPatterns();
-    void setPatterns(const std::stringlist& patterns);
+    void setPatterns(const scl2::stringlist& patterns);
 
 private:
     std::vector<std::regex> m_patterns;
@@ -27,7 +27,7 @@ public:
     inline bool filtered(const std::string& s) const {
         return base_list::filtered(s);
     }
-    inline bool apply(std::stringlist& list) const {
+    inline bool apply(scl2::stringlist& list) const {
         return base_list::apply(list, false);
     }
 };
@@ -39,7 +39,7 @@ public:
     inline bool filtered(const std::string& s) const {
         return !base_list::filtered(s);
     }
-    inline bool apply(std::stringlist& list) const {
+    inline bool apply(scl2::stringlist& list) const {
         return base_list::apply(list, true);
     }
 };

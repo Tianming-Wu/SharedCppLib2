@@ -136,9 +136,9 @@ scl::protect_t scl::RestorePermission(ptr_t address, size_t size, protect_t oldP
     return protect_t();
 }
 
-std::bytearray scl::CopyMemory(MemoryRegion mrgn)
+scl2::bytearray scl::CopyMemory(MemoryRegion mrgn)
 {
-    std::bytearray data;
+    scl2::bytearray data;
     for(size_t i = 0; i < mrgn.size; i++) {
         // what the hell is this? And amazingly useful anyway
         data.push_back(static_cast<std::byte>(*(reinterpret_cast<pbyte_t>(mrgn.base) + i)));
@@ -146,7 +146,7 @@ std::bytearray scl::CopyMemory(MemoryRegion mrgn)
     return data;
 }
 
-void scl::ApplyMemory(MemoryRegion mrgn, std::bytearray data)
+void scl::ApplyMemory(MemoryRegion mrgn, scl2::bytearray data)
 {
     if(mrgn.size != data.size()) {
         throw std::runtime_error("scl::ApplyMemory: data size does not match memory region size");
@@ -160,9 +160,9 @@ void scl::ApplyMemory(MemoryRegion mrgn, std::bytearray data)
     }
 }
 
-std::bytearray scl::ReplaceMemory(MemoryRegion mrgn, std::bytearray data)
+scl2::bytearray scl::ReplaceMemory(MemoryRegion mrgn, scl2::bytearray data)
 {
-    std::bytearray oldData = CopyMemory(mrgn);
+    scl2::bytearray oldData = CopyMemory(mrgn);
     ApplyMemory(mrgn, data);
     return oldData;
 }

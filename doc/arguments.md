@@ -470,7 +470,7 @@ std::arguments args(argc, argv, strict_policy);
 - Zero runtime overhead for type checking (concepts + `if constexpr`)
 - Template functions are header-only
 - Supports both US (`deserialize`) and UK (`deserialise`) spelling
-- Built on `std::basic_stringlist<CharT>` for efficient string handling
+- Built on `scl2::basic_stringlist<CharT>` for efficient string handling
 
 ## See Also
 

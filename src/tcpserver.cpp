@@ -56,10 +56,10 @@ size_t server_client_handler::available()
 #endif
 }
 
-std::bytearray server_client_handler::read(size_t bytes)
+scl2::bytearray server_client_handler::read(size_t bytes)
 {
     if (m_client_info.socket == invalid_socket || bytes == 0) {
-        return std::bytearray();
+        return scl2::bytearray();
     }
 
     std::vector<std::byte> buffer(bytes);
@@ -70,21 +70,21 @@ std::bytearray server_client_handler::read(size_t bytes)
         0
     );
     if (received <= 0) {
-        return std::bytearray();
+        return scl2::bytearray();
     }
-    return std::bytearray(buffer.data(), static_cast<size_t>(received));
+    return scl2::bytearray(buffer.data(), static_cast<size_t>(received));
 }
 
-std::bytearray server_client_handler::readAll()
+scl2::bytearray server_client_handler::readAll()
 {
     size_t bytes = available();
     if (bytes == 0) {
-        return std::bytearray();
+        return scl2::bytearray();
     }
     return read(bytes);
 }
 
-size_t server_client_handler::write(const std::bytearray &data)
+size_t server_client_handler::write(const scl2::bytearray &data)
 {
     if (m_client_info.socket == invalid_socket || data.empty()) {
         return 0;

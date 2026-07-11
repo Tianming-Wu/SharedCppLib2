@@ -41,12 +41,12 @@ public:
     bool readyRead() override final;
     size_t available() override final;
 
-    std::bytearray read(size_t bytes) override final;
-    std::bytearray readAll() override final;
+    scl2::bytearray read(size_t bytes) override final;
+    scl2::bytearray readAll() override final;
 
-    size_t write(const std::bytearray& data);
+    size_t write(const scl2::bytearray& data) override final;
 
-    bool valid();
+    bool valid() override final;
 
     auto lock() -> std::unique_lock<std::mutex>;
 

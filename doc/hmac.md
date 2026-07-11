@@ -29,7 +29,7 @@ target_link_libraries(target SharedCppLib2::hmac SharedCppLib2::sha256)
 It works with any hash provider class that satisfies SharedCppLib2 hashing API:
 
 ```cpp
-static std::bytearray hash(const std::bytearray& data);
+static scl2::bytearray hash(const scl2::bytearray& data);
 ```
 
 Optional provider metadata:
@@ -54,10 +54,10 @@ You provide the hash provider class as template argument.
 #include <SharedCppLib2/hmac.hpp>
 #include <SharedCppLib2/sha256.hpp>
 
-std::bytearray key(std::string("secret-key"));
-std::bytearray message(std::string("hello"));
+scl2::bytearray key(std::string("secret-key"));
+scl2::bytearray message(std::string("hello"));
 
-std::bytearray tag = scl2::hmac<scl2::sha256>::compute(message, key);
+scl2::bytearray tag = scl2::hmac<scl2::sha256>::compute(message, key);
 std::cout << "HMAC-SHA256: " << tag.toHex() << std::endl;
 ```
 
@@ -72,7 +72,7 @@ class hmac;
 
 ### compute
 ```cpp
-static std::bytearray compute(const std::bytearray& message, const std::bytearray& key);
+static scl2::bytearray compute(const scl2::bytearray& message, const scl2::bytearray& key);
 ```
 
 Computes HMAC tag for binary message data.
@@ -98,7 +98,7 @@ Computes HMAC tag for binary message data.
 
 ### Sender
 
-- Build canonical binary payload (`std::bytearray`) with fixed field order.
+- Build canonical binary payload (`scl2::bytearray`) with fixed field order.
 - Compute `tag = hmac<Provider>::compute(payload, key)`.
 - Send `payload + tag` (or place tag in metadata/header).
 

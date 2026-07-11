@@ -2,7 +2,7 @@
 
 namespace rf {
 
-base_list::base_list(const std::stringlist &patterns)
+base_list::base_list(const scl2::stringlist &patterns)
 {
     for(const std::string &p : patterns) {
         try {
@@ -23,7 +23,7 @@ bool base_list::filtered(const std::string &s) const
     return false;
 }
 
-int base_list::apply(std::stringlist &list, bool reverse) const
+int base_list::apply(scl2::stringlist &list, bool reverse) const
 {
     int count = 0;
     for (auto it = list.begin(); it != list.end(); ) {
@@ -47,7 +47,7 @@ void base_list::addPattern(const std::string& pattern)
     }
 }
 
-void base_list::addPatterns(const std::stringlist& patterns)
+void base_list::addPatterns(const scl2::stringlist& patterns)
 {
     for(const std::string &p : patterns) {
         addPattern(p);
@@ -59,7 +59,7 @@ void base_list::clearPatterns()
     m_patterns.clear();
 }
 
-void base_list::setPatterns(const std::stringlist& patterns)
+void base_list::setPatterns(const scl2::stringlist& patterns)
 {
     clearPatterns();
     addPatterns(patterns);

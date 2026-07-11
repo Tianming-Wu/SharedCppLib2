@@ -38,13 +38,13 @@ fileio::fileio(const std::string &path, file_mode_flag mode)
     : fileStream(path, translate_open_mode(mode))
 {}
 
-size_t fileio::write(const std::bytearray &data)
+size_t fileio::write(const scl2::bytearray &data)
 {
     data.writeRaw(fileStream);
     return data.size();
 }
 
-size_t fileio::write(const std::bytearray &data, size_t count)
+size_t fileio::write(const scl2::bytearray &data, size_t count)
 {
     data.subarr(0, count).writeRaw(fileStream);
     return count;
@@ -62,7 +62,7 @@ void fileio::close()
 
 
 
-size_t writeFile(const fs::path& path, const std::bytearray& data) {
+size_t writeFile(const fs::path& path, const scl2::bytearray& data) {
     std::ofstream ofs(path, std::ios::binary);
     if(!ofs) {
         throw std::runtime_error("Failed to open file for writing: " + path.string());
@@ -71,18 +71,18 @@ size_t writeFile(const fs::path& path, const std::bytearray& data) {
     return data.size();
 }
 
-std::bytearray readFile(const fs::path &path)
+scl2::bytearray readFile(const fs::path &path)
 {
     std::ifstream ifs(path, std::ios::binary);
     if(!ifs) {
         throw std::runtime_error("Failed to open file for reading: " + path.string());
     }
-    std::bytearray ba;
+    scl2::bytearray ba;
     ba.readAllFromStream(ifs);
     return ba;
 }
 
-unsigned int foreachLine(const fs::path &path, const std::function<void(unsigned int, const std::string &)> &func)
+unsigned int foreachLine(const fs::path &path, const std::function<bool(unsigned int, const std::string &)> &func)
 {
     std::ifstream ifs(path);
 
@@ -93,11 +93,22 @@ unsigned int foreachLine(const fs::path &path, const std::function<void(unsigned
     std::string line;
     unsigned int line_number = 0;
     while (std::getline(ifs, line)) {
-        func(line_number, line);
+        if (!func(line_number, line)) break;
         ++line_number;
     }
 
     return line_number;
+}
+
+scl2::stringlist readAllLines(const fs::path &path)
+{
+    scl2::stringlist lines;
+    foreachLine(path, [&](unsigned int, const std::string &line) {
+        lines.push_back(line);
+        return true; // continue reading
+    });
+
+    return lines;
 }
 
 // Helper function for sync.

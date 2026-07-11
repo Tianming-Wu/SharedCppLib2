@@ -12,11 +12,11 @@ struct filepack_metadata {
 
     std::vector<std::pair<std::string, uint64_t>> entries; // filename and file size
 
-    static filepack_metadata load(const std::bytearray_view& data);
-    static std::bytearray dump(const filepack_metadata& metadata);
+    static filepack_metadata load(scl2::bytearray& data);
+    static scl2::bytearray dump(const filepack_metadata& metadata);
 };
 
-filepack_metadata filepack_metadata::load(const std::bytearray_view &data)
+filepack_metadata filepack_metadata::load(scl2::bytearray& data)
 {
     filepack_metadata metadata;
     metadata.file_count = data.read<uint64_t>(); // file count
@@ -29,9 +29,9 @@ filepack_metadata filepack_metadata::load(const std::bytearray_view &data)
     return metadata;
 }
 
-std::bytearray filepack_metadata::dump(const filepack_metadata &metadata)
+scl2::bytearray filepack_metadata::dump(const filepack_metadata &metadata)
 {
-    std::bytearray data;
+    scl2::bytearray data;
     data.append(metadata.file_count); // file count
 
     if(metadata.file_count != metadata.entries.size()) {
@@ -39,7 +39,7 @@ std::bytearray filepack_metadata::dump(const filepack_metadata &metadata)
     }
 
     for(const auto& [filename, filesize] : metadata.entries) {
-        data.addString(filename); // filename
+        data.append(filename); // filename
         data.append(filesize); // file size
     }
     return data;
@@ -50,7 +50,7 @@ filepack::filepack()
 {
 }
 
-void filepack::addFile(const std::string &filename, const std::bytearray &data)
+void filepack::addFile(const std::string &filename, const scl2::bytearray &data)
 {
     entries.push_back({filename, data});
 }
@@ -93,7 +93,7 @@ void filepack::sortFiles(SortMethod method, SortOrder order)
     std::sort(entries.begin(), entries.end(), comparator);
 }
 
-filepack filepack::load(const std::bytearray_view &data)
+filepack filepack::load(scl2::bytearray& data)
 {
     // bytearray_view passing support serialized parsing.
     filepack_metadata metadata = filepack_metadata::load(data);
@@ -101,15 +101,15 @@ filepack filepack::load(const std::bytearray_view &data)
     // We can then parse the rest of the data according to the metadata.
     filepack pack;
     for(const auto& [filename, filesize] : metadata.entries) {
-        std::bytearray filedata = data.readBytes(filesize);
+        scl2::bytearray filedata = data.readBytes(filesize);
         pack.entries.push_back({filename, std::move(filedata)});
     }
     return pack;
 }
 
-std::bytearray filepack::dump(const filepack &pack)
+scl2::bytearray filepack::dump(const filepack &pack)
 {
-    std::bytearray data;
+    scl2::bytearray data;
 
     // make a metadata object first
     filepack_metadata metadata;

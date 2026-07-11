@@ -46,14 +46,14 @@ inline uint32_t small_sigma1(uint32_t x) { return (x >> 17 | x << 15) ^ (x >> 19
 附加长度值: 用一个64位的数据来表示原始消息（填充前的消息）的长度，并将其补到已经进行了填充操作的消息后面。
 @param[in][out] _message: 待处理的信息
 */
-void preprocessing(std::bytearray* _message);
+void preprocessing(scl2::bytearray* _message);
 
 /** @brief: 将信息分解成连续的64Byte大小的数据块
 @param[in] message: 输入信息，长度为64Byte的倍数
 @param[out] _chunks: 输出数据块
 */
-void breakTextInto64ByteChunks(const std::bytearray& message, 
-                                std::vector<std::bytearray >* _chunks);
+void breakTextInto64ByteChunks(const scl2::bytearray& message, 
+                                std::vector<scl2::bytearray >* _chunks);
 
 /** @brief: 由64Byte大小的数据块，构造出64个4Byte大小的字。
 构造算法：前16个字直接由数据块分解得到，其余的字由如下迭代公式得到：
@@ -61,7 +61,7 @@ void breakTextInto64ByteChunks(const std::bytearray& message,
 @param[in] chunk: 输入数据块，大小为64Byte
 @param[out] _words: 输出字
 */
-void structureWords(const std::bytearray& chunk, 
+void structureWords(const scl2::bytearray& chunk, 
             std::vector<uint32_t>* _words);
 
 /** @breif: 基于64个4Byte大小的字，进行64次循环加密
@@ -75,17 +75,17 @@ void transform(const std::vector<uint32_t>& words,
 @param[in] input: 步长为32bit的哈希值
 @return: 步长为8bit的哈希值
 */
-std::bytearray produceFinalHashValue(const std::vector<uint32_t>& input);
+scl2::bytearray produceFinalHashValue(const std::vector<uint32_t>& input);
 
 
-std::bytearray sha256::hash(const std::bytearray& input_message)
+scl2::bytearray sha256::hash(const scl2::bytearray& input_message)
 {
     // 预处理
-    std::bytearray message = input_message;
+    scl2::bytearray message = input_message;
     preprocessing(&message);
 
     // 将数据分解成 64Byte 大小的数据块
-    std::vector<std::bytearray> chunks;
+    std::vector<scl2::bytearray> chunks;
     breakTextInto64ByteChunks(message, &chunks);
 
     // 64Byte数据块构造64个4Byte字
@@ -103,8 +103,8 @@ std::bytearray sha256::hash(const std::bytearray& input_message)
 
 std::string sha256::getHexMessageDigest(const std::string& message)
 {
-    std::bytearray message_bytes(message);
-    std::bytearray digest = hash(message_bytes);
+    scl2::bytearray message_bytes(message);
+    scl2::bytearray digest = hash(message_bytes);
 
     std::ostringstream o_s;
     o_s << std::hex << std::setiosflags(std::ios::uppercase);
@@ -117,11 +117,11 @@ std::string sha256::getHexMessageDigest(const std::string& message)
     return o_s.str();
 }
 
-std::bytearray sha256::getMessageDigest(const std::bytearray& message) {
+scl2::bytearray sha256::getMessageDigest(const scl2::bytearray& message) {
     return hash(message);
 }
 
-void preprocessing(std::bytearray* _message)
+void preprocessing(scl2::bytearray* _message)
 {
     if (!_message)
     {
@@ -163,8 +163,8 @@ void preprocessing(std::bytearray* _message)
     }
 }
 
-void breakTextInto64ByteChunks(const std::bytearray& message, 
-                                       std::vector<std::bytearray>* _chunks)
+void breakTextInto64ByteChunks(const scl2::bytearray& message, 
+                                       std::vector<scl2::bytearray>* _chunks)
 {
     if (!_chunks)
     {
@@ -180,12 +180,12 @@ void breakTextInto64ByteChunks(const std::bytearray& message,
     size_t quotient = message.size() / 64;
     for (size_t i = 0; i < quotient; ++i)
     {
-        std::bytearray temp = message.subarr(i * 64, 64);
+        scl2::bytearray temp = message.subarr(i * 64, 64);
         _chunks->push_back(temp);
     }
 }
 
-void structureWords(const std::bytearray& chunk, 
+void structureWords(const scl2::bytearray& chunk, 
                             std::vector<uint32_t>* _words)
 {
     if (!_words)
@@ -255,14 +255,14 @@ void transform(const std::vector<uint32_t>& words,
     }
 }
 
-std::bytearray produceFinalHashValue(const std::vector<uint32_t>& input)
+scl2::bytearray produceFinalHashValue(const std::vector<uint32_t>& input)
 {
     if (input.size() != 8)
     {
         throw std::runtime_error("sha256::produceFinalHashValue: input size must be 8");
     }
 
-    std::bytearray output;
+    scl2::bytearray output;
     output.reserve(32);
 
     for (auto it = input.begin(); it != input.end(); ++it)
@@ -316,7 +316,7 @@ void sha256::stream_type::process_block(const uint8_t block[64]) {
     for (int i = 0; i < 8; ++i) state_[i] += d[i];
 }
 
-void sha256::stream_type::update(const std::bytearray& chunk) {
+void sha256::stream_type::update(const scl2::bytearray& chunk) {
     size_t offset = 0;
     size_t remaining = chunk.size();
 
@@ -346,7 +346,7 @@ void sha256::stream_type::update(const std::bytearray& chunk) {
     total_bits_ += chunk.size() * 8;
 }
 
-std::bytearray sha256::stream_type::end() {
+scl2::bytearray sha256::stream_type::end() {
     // Padding: append 0x80
     buffer_[buf_len_++] = 0x80;
 
@@ -368,7 +368,7 @@ std::bytearray sha256::stream_type::end() {
     process_block(buffer_);
 
     // Produce final digest
-    std::bytearray result;
+    scl2::bytearray result;
     result.reserve(32);
     for (int i = 0; i < 8; ++i) {
         result.append(static_cast<std::byte>(state_[i] >> 24));

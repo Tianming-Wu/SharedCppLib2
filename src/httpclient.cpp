@@ -58,7 +58,7 @@ response client::send_request(const request& req)
     
     // Serialize and send request
     std::string req_str = req.serialize();
-    std::bytearray req_data(req_str);
+    scl2::bytearray req_data(req_str);
     
     size_t sent = m_tcp_client.write(req_data);
     if (sent == 0) {

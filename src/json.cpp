@@ -1,12 +1,21 @@
 /*
     [SCL_STANDALONE_MODULE]
-    version: 1.6.1
+    version: 1.8.1
     cpp_generation: cxx17 - cxx23 
 */
 #include "json.hpp"
 
 #include <fstream>
 #include <sstream>
+
+#ifdef UNICODE
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#else
+#include <cstring>
+#include <clocale>
+#endif
+#endif
 
 namespace scl2 {
 
@@ -214,10 +223,10 @@ std::map<std::string, json_value>& json_value::as_object() {
 }
 
 #ifdef SCL2_JSON_ENABLE_EXTENSIONS
-    json_value::json_value(std::bytearray&& ba) : value(ba) {}
-    bool json_value::is_bytearray() const { return std::holds_alternative<std::bytearray>(value); }
-    const std::bytearray& json_value::as_bytearray() const { return std::get<std::bytearray>(value); }
-    std::bytearray& json_value::as_bytearray() { return std::get<std::bytearray>(value); }
+    json_value::json_value(scl2::bytearray&& ba) : value(ba) {}
+    bool json_value::is_bytearray() const { return std::holds_alternative<scl2::bytearray>(value); }
+    const scl2::bytearray& json_value::as_bytearray() const { return std::get<scl2::bytearray>(value); }
+    scl2::bytearray& json_value::as_bytearray() { return std::get<scl2::bytearray>(value); }
 
     json_value::json_value(const inline_data_uri &data_uri) : value(data_uri) {}
     bool json_value::is_data_uri() const { return std::holds_alternative<inline_data_uri>(value); }
@@ -282,6 +291,53 @@ void json_value::push_back(json_value&& v)
     as_array().push_back(std::move(v));
 }
 
+void json_value::erase(size_t index)
+{
+    auto& arr = as_array();
+    arr.erase(arr.begin() + static_cast<ptrdiff_t>(index));
+}
+
+bool json_value::empty_as_array() const
+{
+    if (!is_array()) throw std::runtime_error("json_value::empty_as_array: not an array");
+    return as_array().empty();
+}
+
+json_value &json_value::front()
+{
+    if (!is_array())
+        throw std::runtime_error("json_value::front: not an array");
+    return as_array().front();
+}
+
+json_value &json_value::back()
+{
+    if (!is_array())
+        throw std::runtime_error("json_value::back: not an array");
+    return as_array().back();
+}
+
+const json_value &json_value::front() const
+{
+    if (!is_array())
+        throw std::runtime_error("json_value::front: not an array");
+    return as_array().front();
+}
+
+const json_value &json_value::back() const
+{
+    if (!is_array())
+        throw std::runtime_error("json_value::back: not an array");
+    return as_array().back();
+}
+
+void json_value::pop_back()
+{
+    if (!is_array())
+        throw std::runtime_error("json_value::pop_back: not an array");
+    as_array().pop_back();
+}
+
 #ifdef __cpp_lib_generator
 std::generator<std::pair<const std::string &, const json_value &>> json_value::object_members() const
 {
@@ -335,6 +391,13 @@ size_t json_value::length() const
     return as_string().size();
 }
 
+bool json_value::empty_as_string() const
+{
+    if (!is_string())
+        throw std::runtime_error("json_value::empty_as_string: not a string");
+    return as_string().empty();
+}
+
 size_t json_value::size() const
 {
     if (is_array())
@@ -345,6 +408,20 @@ size_t json_value::size() const
         return length();
     else
         return 0;
+}
+
+bool json_value::empty() const
+{
+    if (is_null())
+        return true;
+    else if (is_array())
+        return as_array().empty();
+    else if (is_object())
+        return as_object().empty();
+    else if (is_string())
+        return as_string().empty();
+    else
+        return false; // For other types, we consider them as non-empty
 }
 
 void json_value::clear()
@@ -401,6 +478,12 @@ bool json_value::clear_as_object()
     return true;
 }
 
+bool json_value::empty_as_object() const
+{
+    if (!is_object()) throw std::runtime_error("json_value::empty_as_object: not an object");
+    return as_object().empty();
+}
+
 bool json_value::operator==(const json_value& other) const
 {
     if (value.index() != other.value.index()) return false;
@@ -422,11 +505,11 @@ json json::fromString(const std::string &str)
     return parser.getResult();
 }
 
-json json::fromFile(const std::string &filename)
+json json::fromFile(const std::filesystem::path& path)
 {
-    std::ifstream file(filename);
+    std::ifstream file(path);
     if (!file) {
-        throw std::runtime_error("Failed to open JSON file: " + filename);
+        throw std::runtime_error("Failed to open JSON file: " + path.string());
     }
     std::stringstream buffer;
     buffer << file.rdbuf();
@@ -446,14 +529,14 @@ std::string json::toCompatString() const
     return exporter.exportToString(*this);
 }
 
-std::string json::toFile(const std::string &filename) const
+std::string json::toFile(const std::filesystem::path& path) const
 {
-    std::ofstream file(filename);
+    std::ofstream file(path);
     if (!file) {
-        throw std::runtime_error("Failed to open file for writing: " + filename);
+        throw std::runtime_error("Failed to open file for writing: " + path.string());
     }
     file << toString();
-    return filename;
+    return path.string();
 }
 
 void json_parser::parseFromString(const std::string &str_input)
@@ -730,7 +813,7 @@ json_value json_parser::parseString()
             return json_value(inline_data_uri::from_string(str));
         } else if (str.starts_with("base64:")) {
             // base64 string, decode it to bytearray
-            return json_value(std::bytearray::fromBase64(str.substr(7)));
+            return json_value(scl2::bytearray::fromBase64(str.substr(7)));
         }
 #endif
 
@@ -1128,5 +1211,34 @@ std::string json_exporter::jquote(const std::string &str)
 {
     return std::string("\"" + escapeJsonString(str) + "\"");
 }
+
+#ifdef UNICODE
+std::string json_value::json_wtoa(const std::wstring& ws) {
+#if defined(_WIN32) || defined(_WIN64)
+    if (ws.empty()) return {};
+    int len = WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), static_cast<int>(ws.size()), nullptr, 0, nullptr, nullptr);
+    std::string s(len, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), static_cast<int>(ws.size()), &s[0], len, nullptr, nullptr);
+    return s;
+#else
+    std::string s;
+    s.reserve(ws.size());
+    for (wchar_t c : ws) s += static_cast<char>(c);
+    return s;
+#endif
+}
+
+std::wstring json_value::json_atow(const std::string& s) {
+#if defined(_WIN32) || defined(_WIN64)
+    if (s.empty()) return {};
+    int len = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()), nullptr, 0);
+    std::wstring ws(len, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()), &ws[0], len);
+    return ws;
+#else
+    return std::wstring(s.begin(), s.end());
+#endif
+}
+#endif
 
 } // namespace scl2

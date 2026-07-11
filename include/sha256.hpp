@@ -25,19 +25,19 @@ public:
     static constexpr size_t block_size = 64;
 
     /// @brief One-shot SHA-256 hash.
-    static std::bytearray hash(const std::bytearray& message);
+    static scl2::bytearray hash(const scl2::bytearray& message);
 
     static std::string getHexMessageDigest(const std::string& message);
-    static std::bytearray getMessageDigest(const std::bytearray& message);
+    static scl2::bytearray getMessageDigest(const scl2::bytearray& message);
 
     /// @brief Streaming SHA-256 hasher.
     class stream_type {
     public:
         stream_type();
         /// @brief Feed a data chunk.
-        void update(const std::bytearray& chunk);
+        void update(const scl2::bytearray& chunk);
         /// @brief Finalize and return the 32-byte digest.
-        std::bytearray end();
+        scl2::bytearray end();
     private:
         void process_block(const uint8_t block[64]);
 
