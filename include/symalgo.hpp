@@ -1,5 +1,5 @@
 /*
-    High Precision Algorithms (hpalgo)
+    Symbolic Math Algorithms (symalgo)
 
     namespace: none
     functions: pow, sqrt, log, exp, sin, cos, tan, asin, acos, atan

@@ -11,7 +11,7 @@
 [x] Colorize
 [ ] Customize color profile
 
-## hpalgo
+## symalgo
 [ ] class hpint
 [ ] class hpfloat
 [ ] ln()
