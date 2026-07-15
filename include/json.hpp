@@ -13,7 +13,7 @@
     Also check jbt if you want some even more compact storage of json data.
 
     [SCL_STANDALONE_MODULE]
-    version: 1.8.1
+    version: 1.8.2
     cpp_generation: cxx17 - cxx23
 */
 
@@ -54,6 +54,9 @@ class json_value;
 class json;
 class json_parser;
 class json_exporter;
+
+typedef std::vector<json_value> json_array;
+typedef std::map<std::string, json_value> json_object;
 
 enum class json_value_type : uint8_t {
     null = 0,

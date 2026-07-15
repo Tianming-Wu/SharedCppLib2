@@ -1,6 +1,6 @@
 /*
     [SCL_STANDALONE_MODULE]
-    version: 1.8.1
+    version: 1.8.2
     cpp_generation: cxx17 - cxx23 
 */
 #include "json.hpp"
