@@ -23,6 +23,10 @@ namespace fs = std::filesystem;
     #define OS_UNIX
     #include <unistd.h>
     #include <sys/wait.h>
+
+    #if defined(__ANDROID__)
+        #define OS_ANDROID
+    #endif
 #endif
 
 namespace platform {
