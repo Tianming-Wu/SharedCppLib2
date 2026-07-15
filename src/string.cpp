@@ -1,6 +1,7 @@
 #include "string.hpp"
 
 #include "stringlist_regex.hpp"
+#include "platform.hpp"
 
 namespace scl2 {
 
@@ -37,5 +38,77 @@ scl2::basic_stringlist<CharT> basic_string<CharT>::exsplit(const string_type &de
 
 template class basic_string<char>;
 template class basic_string<wchar_t>;
+
+// --- String conversion utilities ---
+
+std::wstring str_to_wstr(const std::string& str)
+{
+#ifdef OS_WINDOWS
+    if (str.empty()) return {};
+    int len = MultiByteToWideChar(CP_UTF8, 0, str.data(), (int)str.size(), nullptr, 0);
+    std::wstring result(len, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, str.data(), (int)str.size(), result.data(), len);
+    return result;
+#else
+    if (str.empty()) return {};
+    std::wstring result;
+    result.reserve(str.size());
+    const auto* p = reinterpret_cast<const uint8_t*>(str.data());
+    const auto* end = p + str.size();
+    while (p < end) {
+        wchar_t cp;
+        if (*p < 0x80) {
+            cp = *p++;
+        } else if (*p < 0xE0) {
+            cp = static_cast<wchar_t>(*p++ & 0x1F) << 6;
+            cp |= (*p++ & 0x3F);
+        } else if (*p < 0xF0) {
+            cp = static_cast<wchar_t>(*p++ & 0x0F) << 12;
+            cp |= static_cast<wchar_t>(*p++ & 0x3F) << 6;
+            cp |= (*p++ & 0x3F);
+        } else {
+            cp = static_cast<wchar_t>(*p++ & 0x07) << 18;
+            cp |= static_cast<wchar_t>(*p++ & 0x3F) << 12;
+            cp |= static_cast<wchar_t>(*p++ & 0x3F) << 6;
+            cp |= (*p++ & 0x3F);
+        }
+        result += cp;
+    }
+    return result;
+#endif
+}
+
+std::string wstr_to_str(const std::wstring& wstr)
+{
+#ifdef OS_WINDOWS
+    if (wstr.empty()) return {};
+    int len = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int)wstr.size(), nullptr, 0, nullptr, nullptr);
+    std::string result(len, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int)wstr.size(), result.data(), len, nullptr, nullptr);
+    return result;
+#else
+    if (wstr.empty()) return {};
+    std::string result;
+    result.reserve(wstr.size() * 3);
+    for (wchar_t cp : wstr) {
+        if (cp < 0x80) {
+            result += static_cast<char>(cp);
+        } else if (cp < 0x800) {
+            result += static_cast<char>(0xC0 | (cp >> 6));
+            result += static_cast<char>(0x80 | (cp & 0x3F));
+        } else if (cp < 0x10000) {
+            result += static_cast<char>(0xE0 | (cp >> 12));
+            result += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+            result += static_cast<char>(0x80 | (cp & 0x3F));
+        } else {
+            result += static_cast<char>(0xF0 | (cp >> 18));
+            result += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
+            result += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+            result += static_cast<char>(0x80 | (cp & 0x3F));
+        }
+    }
+    return result;
+#endif
+}
 
 } // namespace scl2

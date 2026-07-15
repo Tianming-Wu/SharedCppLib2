@@ -22,7 +22,8 @@
 #include "stringlist.hpp"
 #include "basics.hpp"
 #include "enum.hpp"
-#include "platform.hpp" // unluckily needed for string conversion helpers
+#include "platform.hpp"
+#include "string.hpp"
 
 #include <map>
 #include <stdexcept>
@@ -315,7 +316,7 @@ protected:
         if constexpr (std::is_same_v<CharT, char>) {
             return str;
         } else {
-            return platform::wstringToString(str);
+            return scl2::wstr_to_str(str);
         }
     }
 

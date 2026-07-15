@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <sstream>
+#include "string.hpp"
 
 #include <platform.hpp>
 
@@ -29,7 +30,7 @@ public:
         && !requires(std::stringstream& ss, const T& value) { ss << value; }
     )
     ods& operator<<(const T& value) {
-        ss << platform::wstringToString(value);
+        ss << scl2::wstr_to_str(value);
         return *this;
     }
 

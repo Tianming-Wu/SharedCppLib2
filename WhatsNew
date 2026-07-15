@@ -1,5 +1,13 @@
 # Changelog
 
+### v3.2.0
+- New: `xstring` — multi-type string variant with automatic conversion between ansi, wide, and UTF types. Passthrough operations (`substr`, `find`, `contains`, etc.) work regardless of stored type. Added to `basic`.
+- New: `scl2::str_to_wstr()` / `scl2::wstr_to_str()` — UTF-8 ↔ wide string conversion utilities in the `string` module.
+- New: Permission module (`perm`) — cross-platform privilege checking (`isElevated`, `isSystem`, `elevatable`) and elevation (`elevate`) for Windows, Linux, and Android.
+- Changed: Renamed `hpalgo` → `symalgo`, `hpint` → `symmath`.
+- Changed: `json` now uses `std::filesystem::path` for `fromFile`/`toFile`.
+- New: `json` wstring compatibility, plus `erase()`, `contains()`, `empty()`, `front()`, `back()`, `pop_back()`.
+
 ### v3.1.2
 - Fixed: Linux (GCC/Clang) cross-compilation compatibility — missing includes, template instantiation ordering, platform guards, `add_subdirectory` header propagation.
 - Fixed: `ipv6::valid()` implemented; `network_tcp` now links `stream` dependency; DNS/network init wrapped with `OS_WINDOWS` guards.

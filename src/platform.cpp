@@ -41,45 +41,6 @@ bool set_env(const std::string& name, const std::string& value) {
 #endif
 }
 
-std::string wstringToString(const std::wstring &wstr)
-{
-#ifdef OS_WINDOWS
-    if (wstr.empty()) {
-        return std::string();
-    }
-    int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], static_cast<int>(wstr.size()), nullptr, 0, nullptr, nullptr);
-    std::string strTo(size_needed, 0);
-    WideCharToMultiByte(CP_UTF8, 0, &wstr[0], static_cast<int>(wstr.size()), &strTo[0], size_needed, nullptr, nullptr);
-    return strTo;
-#else
-    // This method is deprecated in C++17 and removed in C++20, but for C++23 we can still use it.
-    if (wstr.empty()) {
-        return std::string();
-    }
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-    return converter.to_bytes(wstr);
-#endif
-}
-
-std::wstring stringToWstring(const std::string &str)
-{
-#ifdef OS_WINDOWS
-    if (str.empty()) {
-        return std::wstring();
-    }
-    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], static_cast<int>(str.size()), nullptr, 0);
-    std::wstring wstrTo(size_needed, 0);
-    MultiByteToWideChar(CP_UTF8, 0, &str[0], static_cast<int>(str.size()), &wstrTo[0], size_needed);
-    return wstrTo;
-#else
-    if (str.empty()) {
-        return std::wstring();
-    }
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-    return converter.from_bytes(str);
-#endif
-}
-
 fs::path findExecutableInPath(const std::string &name)
 {
     std::string fullPath;

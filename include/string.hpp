@@ -54,4 +54,12 @@ extern template class basic_string<wchar_t>;
 using string = basic_string<char>;
 using wstring = basic_string<wchar_t>;
 
+// --- String conversion utilities ---
+
+/// @brief Convert UTF-8 string to wide string.
+std::wstring str_to_wstr(const std::string& str);
+
+/// @brief Convert wide string to UTF-8 string.
+std::string wstr_to_str(const std::wstring& wstr);
+
 } // namespace scl2
