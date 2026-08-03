@@ -1,6 +1,6 @@
 /*
     [SCL_STANDALONE_MODULE]
-    version: 1.8.2
+    version: 1.9.0
     cpp_generation: cxx17 - cxx23 
 */
 #include "json.hpp"
@@ -8,13 +8,10 @@
 #include <fstream>
 #include <sstream>
 
-#ifdef UNICODE
 #if defined(_WIN32) || defined(_WIN64)
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#else
-#include <cstring>
-#include <clocale>
-#endif
+#undef WIN32_LEAN_AND_MEAN // remove in case user needs it later
 #endif
 
 namespace scl2 {
@@ -1212,7 +1209,6 @@ std::string json_exporter::jquote(const std::string &str)
     return std::string("\"" + escapeJsonString(str) + "\"");
 }
 
-#ifdef UNICODE
 std::string json_value::json_wtoa(const std::wstring& ws) {
 #if defined(_WIN32) || defined(_WIN64)
     if (ws.empty()) return {};
@@ -1239,6 +1235,5 @@ std::wstring json_value::json_atow(const std::string& s) {
     return std::wstring(s.begin(), s.end());
 #endif
 }
-#endif
 
 } // namespace scl2

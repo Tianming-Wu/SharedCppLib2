@@ -26,6 +26,8 @@ public:
     basic_string(const string_type& s) : string_type(s) {}
     basic_string(string_type&& s) noexcept : string_type(std::move(s)) {}
 
+    // stringlist-related methods
+
     scl2::basic_stringlist<CharT> split(CharT delim) const;
     scl2::basic_stringlist<CharT> split(const string_type &delim) const;
     scl2::basic_stringlist<CharT> split(const scl2::basic_stringlist<CharT> &delims) const;
@@ -46,6 +48,11 @@ public:
     /// @brief Extract substrings from the string that match the given regex pattern.
     /// @param pattern
     // scl2::basic_stringlist<CharT> extract(const std::regex& pattern) const;
+
+    // utility methods
+
+    /// @brief Remove whitespace from the beginning and end of the string.
+    scl2::basic_string<CharT> trim();
 };
 
 extern template class basic_string<char>;

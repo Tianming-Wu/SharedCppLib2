@@ -46,6 +46,12 @@ public:
     xstring(const std::u16string& s) : value(s) {}
     xstring(const std::u32string& s) : value(s) {}
 
+    xstring(const char* s)     : value(scl2::string(s)) {}
+    xstring(const wchar_t* s)  : value(scl2::wstring(s)) {}
+    xstring(const char8_t* s)  : value(std::u8string(s)) {}
+    xstring(const char16_t* s) : value(std::u16string(s)) {}
+    xstring(const char32_t* s) : value(std::u32string(s)) {}
+
     // --- type queries ---
 
     stype type() const;

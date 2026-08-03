@@ -25,6 +25,28 @@ template <typename CharT>
 scl2::basic_stringlist<CharT> basic_string<CharT>::exsplit(const string_type &delim, const string_type &begin_bind, string_type end_bind, bool remove_binding, bool strict) const
 { return scl2::basic_stringlist<CharT>::exsplit(*this, delim, begin_bind, end_bind, remove_binding, strict); }
 
+template <typename CharT>
+constexpr const CharT* whitespace_charset() {
+    if constexpr (std::is_same_v<CharT, char>)
+        return " \t\n\r\f\v";
+    else
+        return L" \t\n\r\f\v";
+}
+
+template <typename CharT>
+scl2::basic_string<CharT> basic_string<CharT>::trim()
+{
+    string_type result = *this;
+    auto start = result.find_first_not_of(whitespace_charset<CharT>());
+    if (start == string_type::npos) {
+        result.clear();
+        return result;
+    }
+    auto end = result.find_last_not_of(whitespace_charset<CharT>());
+    result = result.substr(start, end - start + 1);
+    return result;
+}
+
 // Regex-based methods commented out: regex_chop/extract are char-only,
 // but templates must compile for both char and wchar_t.
 

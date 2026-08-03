@@ -101,6 +101,7 @@ add_library(condition STATIC src/condition.cpp src/condition_parser.cpp)
 add_library(filesystem STATIC src/filesystem.cpp)
 add_library(datauri STATIC src/datauri.cpp)
 add_library(json STATIC src/json.cpp)
+add_library(i18n STATIC src/i18n.cpp)
 add_library(yaml STATIC src/yaml.cpp)
 
 add_library(fileio STATIC src/fileio.cpp)
@@ -148,7 +149,7 @@ target_link_libraries(datauri PUBLIC basic)
 target_link_libraries(network_tcp PUBLIC stream)
 
 # basic 库依赖关系
-foreach(target regexfilter logc sha256 crc32 arguments ini abstract xml keydb condition datauri json yaml aes fileio file filepack uri)
+foreach(target regexfilter logc sha256 crc32 arguments ini abstract xml keydb condition datauri json i18n yaml aes fileio file filepack uri)
     target_link_libraries(${target} PUBLIC basic)
 endforeach()
 
@@ -157,6 +158,9 @@ target_link_libraries(file PUBLIC fileio)
 
 # json 额外依赖
 target_link_libraries(json PUBLIC datauri)
+
+# i18n 依赖
+target_link_libraries(i18n PUBLIC json)
 
 # JSON 扩展功能开关 (默认启用)
 option(SCL2_JSON_ENABLE_EXTENSIONS "Enable JSON extensions (data URI, base64 bytearray)" ON)
@@ -168,7 +172,7 @@ target_compile_definitions(json PUBLIC
 set(TARGET_LIST
     sha256 crc32 basic indexer regexfilter
     logt logc platform arguments ini abstract xml debug stream
-    console aes keydb types condition filesystem datauri json yaml
+    console aes keydb types condition filesystem datauri json i18n yaml
     fileio file filepack uri
     network_core network_dns network_tcp network_udp network_http
 )
