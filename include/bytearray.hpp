@@ -232,7 +232,7 @@ public:
         return str;
     }
 
-    std::string readRawString(size_t const charCount) {
+    std::string readRawString(size_t const charCount) const {
         if (charCount == 0) return {};
         if (!bytesAvailable(charCount)) throw std::out_of_range("bytearray::readRawString: not enough data");
         std::string str(charCount, '\0');
@@ -241,7 +241,7 @@ public:
         return str;
     }
 
-    std::wstring readRawWString(size_t const charCount) {
+    std::wstring readRawWString(size_t const charCount) const {
         if (charCount == 0) return {};
         if (!bytesAvailable(charCount * sizeof(wchar_t))) throw std::out_of_range("bytearray::readRawWString: not enough data");
         std::wstring str(charCount, L'\0');
@@ -250,7 +250,7 @@ public:
         return str;
     }
 
-    bytearray readBytes(size_t const length) {
+    bytearray readBytes(size_t const length) const {
         if (!bytesAvailable(length)) throw std::out_of_range("bytearray::readBytes: not enough data");
         bytearray result(reinterpret_cast<const std::byte*>(this->data() + read_pointer), length);
         read_pointer += length;
