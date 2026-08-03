@@ -504,6 +504,10 @@ error_code database::walwrite(const kvpair &kv)
 
     std::ofstream wal_file(m_wal_path, std::ios::out | std::ios::binary | std::ios::app);
     if(!wal_file.is_open()) return error_code::Inaccessible;
+
+    ///TODO: Write a "put" entry to the wal file, so that it can be applied later.
+
+    return error_code::Success;
 }
 
 error_code database::waldel(const kvpair &kv)
@@ -514,7 +518,9 @@ error_code database::waldel(const kvpair &kv)
 
     std::ofstream wal_file(m_wal_path, std::ios::out | std::ios::binary | std::ios::app);
 
+    ///TODO: Write a "delete" entry to the wal file, so that it can be applied later.
 
+    return error_code::Success;
 }
 
 error_code database::walclear()
@@ -546,7 +552,9 @@ error_code database::walapply()
     if(m_path.empty()) return error_code::FileNotFound;
     else if (m_wal_path.empty()) m_wal_path = m_path.string() + ".wal";
 
+    ///TODO: Read the wal file and apply the changes to the database file, then clear the wal file.
 
+    return error_code::Success;
 }
 
 bool database::canRead() const
