@@ -164,6 +164,11 @@ void basic_stringlist<CharT>::exec_foreach(std::function<void(size_t,string_type
 }
 
 template<typename CharT>
+void basic_stringlist<CharT>::exec_foreach(std::function<void(string_type&)> f) {
+    for(string_type& s : *this) f(s);
+}
+
+template<typename CharT>
 basic_stringlist<CharT> basic_stringlist<CharT>::from_initializer(std::initializer_list<string_type> build) {
     basic_stringlist<CharT> l;
     for (const string_type& s : build)
@@ -367,7 +372,7 @@ basic_stringlist<CharT>::basic_stringlist(const std::vector<basic_stringlist<Cha
 {}
 
 template<typename CharT>
-size_t basic_stringlist<CharT>::all_size() {
+size_t basic_stringlist<CharT>::total_size() {
     size_t result = 0;
     for(const basic_stringlist<CharT>::string_type &s : *this) {
         result += s.size();
