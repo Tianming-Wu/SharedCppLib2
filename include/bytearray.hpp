@@ -421,6 +421,8 @@ public:
     // ── Operators ────────────────────────────────────────────────────
     bool operator==(const bytearray& other) const;
     bool operator!=(const bytearray& other) const { return !(*this == other); }
+    /// @brief Lexicographic comparison (for std::map/set ordering only). No numeric meaning.
+    bool operator<(const bytearray& other) const;
     bytearray operator+(const bytearray& other) const;
 
     // ── Stream I/O ───────────────────────────────────────────────────

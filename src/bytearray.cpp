@@ -166,6 +166,11 @@ bytearray bytearray::rotateLeft(size_t o) const { if(empty()||o==0)return *this;
 bytearray bytearray::rotateRight(size_t o) const { if(empty()||o==0)return *this; return rotateLeft(size()-o%size()); }
 
 bool bytearray::operator==(const bytearray& o) const { return size()==o.size()&&(empty()||std::memcmp(data(),o.data(),size())==0); }
+bool bytearray::operator<(const bytearray& o) const {
+    size_t minLen = std::min(size(), o.size());
+    if (minLen > 0) { int c = std::memcmp(data(), o.data(), minLen); if (c != 0) return c < 0; }
+    return size() < o.size();
+}
 bytearray bytearray::operator+(const bytearray& o) const { bytearray r=*this; r.append(o); return r; }
 
 bool bytearray::readFromStream(std::istream& is, size_t n){ clear(); base_type::resize(n); is.read(reinterpret_cast<char*>(data()),std::streamsize(n)); return is.good()||is.eof(); }
