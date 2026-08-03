@@ -43,7 +43,7 @@ template<typename CharT>
 class basic_arguments : protected scl2::basic_stringlist<CharT>
 {
 public:
-    typedef std::basic_string<CharT> string_type;
+    typedef scl2::basic_string<CharT> string_type;
     typedef scl2::basic_stringlist<CharT> stringlist_type;
 
     // allow unscoped usage to simply, since user will need to combine multiple flags.

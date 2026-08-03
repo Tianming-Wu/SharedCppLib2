@@ -11,11 +11,12 @@
 #include <vector>
 #include <initializer_list>
 #include <functional>
-#include <unordered_set>
+#include <string>
 
 #include "basics.hpp"
 // #include "stream.hpp"
 #include "bytearray.hpp"
+#include "string.hpp"
 
 /*
     Future Dev Plan:
@@ -27,10 +28,10 @@
 namespace scl2 {
 
 template<typename CharT>
-class basic_stringlist : public std::vector<std::basic_string<CharT>>
+class basic_stringlist : public std::vector<scl2::basic_string<CharT>>
 {
 public:
-    typedef std::basic_string<CharT> string_type;
+    typedef scl2::basic_string<CharT> string_type;
     typedef string_type value_type; // For STL compatibility
 
     // linking to default std::vector methods

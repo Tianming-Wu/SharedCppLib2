@@ -64,7 +64,7 @@ bool basic_arguments<CharT>::addParameter(const string_type &name, string_type &
 }
 
 template <typename CharT>
-std::basic_string<CharT> basic_arguments<CharT>::name() const {
+basic_arguments<CharT>::string_type basic_arguments<CharT>::name() const {
     return this->size() > 0 ? this->at(0) : string_type();
 }
 

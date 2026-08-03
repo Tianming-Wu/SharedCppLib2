@@ -7,12 +7,12 @@
 
 #pragma once
 
-#include "stringlist.hpp"
-
 #include <string>
 #include <regex>
 
 namespace scl2 {
+
+template<typename CharT> class basic_stringlist; // forward — defined in stringlist.hpp
 
 template <typename CharT>
 class basic_string : public std::basic_string<CharT> {

@@ -1,6 +1,8 @@
 #include "stringlist.hpp"
+#include "string.hpp"
 
 #include <stack>
+#include <set>
 
 namespace scl2 {
 
@@ -127,7 +129,7 @@ size_t basic_stringlist<CharT>::find_last(const basic_stringlist<CharT>::string_
 
 template<typename CharT>
 basic_stringlist<CharT> basic_stringlist<CharT>::unique() {
-    std::unordered_set<string_type> seen;
+    std::set<string_type> seen;
     iterator it = begin();
     while (it != end()) {
         if (seen.find(*it) != seen.end()) {
