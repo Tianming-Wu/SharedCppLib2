@@ -71,6 +71,16 @@ size_t writeFile(const fs::path& path, const scl2::bytearray& data) {
     return data.size();
 }
 
+size_t writeFile(const fs::path &path, const std::string &data)
+{
+    std::ofstream ofs(path);
+    if (!ofs) {
+        throw std::runtime_error("Failed to open file for writing: " + path.string());
+    }
+    ofs << data;
+    return data.size();
+}
+
 scl2::bytearray readFile(const fs::path &path)
 {
     std::ifstream ifs(path, std::ios::binary);
@@ -80,6 +90,17 @@ scl2::bytearray readFile(const fs::path &path)
     scl2::bytearray ba;
     ba.readAllFromStream(ifs);
     return ba;
+}
+
+scl2::string readFileAsString(const fs::path &path)
+{
+    std::ifstream ifs(path);
+    if (!ifs) {
+        throw std::runtime_error("Failed to open file for reading: " + path.string());
+    }
+    std::stringstream buffer;
+    buffer << ifs.rdbuf();
+    return buffer.str();
 }
 
 unsigned int foreachLine(const fs::path &path, const std::function<bool(unsigned int, const std::string &)> &func)
