@@ -33,13 +33,6 @@ using wstringlist = basic_stringlist<wchar_t>;
 
 class bytearray;
 
-template<typename _T>
-concept _is_bytearray_constructable =
-    std::is_trivially_copyable_v<std::remove_cvref_t<_T>>
-    && !std::is_pointer_v<std::remove_cvref_t<_T>>
-    && !std::is_array_v<std::remove_cvref_t<_T>>
-    && !std::is_same_v<std::remove_cvref_t<_T>, bytearray>;
-
 // now using std::byte. I'm not really satisfied, because it it so EXPLICIT. There are no any implicit conversions at all.
 // Fine. I just need to warn the users to use append(std::byte{0x08}) instead of append(0x08), which is a fucking INTEGER.
 // #undef std::byte
@@ -83,14 +76,6 @@ public:
 
     template<typename InputIt>
     bytearray(InputIt first, InputIt last) : base_type(first, last) {}
-
-    template<typename _Any>
-    requires (_is_bytearray_constructable<_Any>)
-    explicit bytearray(const _Any& in) {
-        const std::byte* src = reinterpret_cast<const std::byte*>(&in);
-        base_type::assign(reinterpret_cast<const std::byte*>(src),
-                          reinterpret_cast<const std::byte*>(src) + sizeof(_Any));
-    }
 
     // ── Write: position-based ────────────────────────────────────────
     void insert(size_t pos, const bytearray& data) { base_type::insert(begin() + pos, data.begin(), data.end()); }
@@ -434,7 +419,8 @@ public:
     }
 
     // ── Static factories ─────────────────────────────────────────────
-    static bytearray fromTriviallyCopyable(const auto& data) { bytearray ba; ba.append(data); return ba; }
+    /// @brief Serialize a trivially-copyable type into a bytearray.
+    static bytearray fromTrivialType(const auto& data) { bytearray ba; ba.append(data); return ba; }
 
     static bytearray fromString(const std::string& str);       // length-prefixed
     static bytearray fromWString(const std::wstring& str);

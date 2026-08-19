@@ -5,6 +5,8 @@
     to the bytearray class in this library.
 
     This module is part of the SharedCppLib2 Crypto Intergration.
+
+    See doc/hash.md for the list of all available hash providers.
 */
 
 #pragma once

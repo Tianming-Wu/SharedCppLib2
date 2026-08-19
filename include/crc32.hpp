@@ -6,6 +6,8 @@
 
     This module implements the scl2 hash provider interface and can be used
     with the generic hashing API (hash_api.hpp).
+
+    See doc/hash.md for the list of all available hash providers.
 */
 
 #pragma once

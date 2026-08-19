@@ -78,6 +78,8 @@ target_include_directories(basic PUBLIC
 )
 
 add_library(sha256 STATIC src/sha256.cpp)
+add_library(sha512 STATIC src/sha512.cpp)
+add_library(sha1 STATIC src/sha1.cpp)
 add_library(crc32 STATIC src/crc32.cpp)
 add_library(indexer STATIC src/indexer.cpp)
 add_library(regexfilter STATIC src/regexfilter.cpp)
@@ -149,7 +151,7 @@ target_link_libraries(datauri PUBLIC basic)
 target_link_libraries(network_tcp PUBLIC stream)
 
 # basic 库依赖关系
-foreach(target regexfilter logc sha256 crc32 arguments ini abstract xml keydb condition datauri json i18n yaml aes fileio file filepack uri)
+foreach(target regexfilter logc sha256 sha512 sha1 crc32 arguments ini abstract xml keydb condition datauri json i18n yaml aes fileio file filepack uri)
     target_link_libraries(${target} PUBLIC basic)
 endforeach()
 
@@ -170,7 +172,7 @@ target_compile_definitions(json PUBLIC
 
 # 库列表
 set(TARGET_LIST
-    sha256 crc32 basic indexer regexfilter
+    sha256 sha512 sha1 crc32 basic indexer regexfilter
     logt logc platform arguments ini abstract xml debug stream
     console aes keydb types condition filesystem datauri json i18n yaml
     fileio file filepack uri
