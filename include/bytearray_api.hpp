@@ -23,7 +23,7 @@ T generic_load(scl2::bytearray& data) {
 
 template<typename T>
 requires (std::is_trivially_copyable_v<T> && !::scl2::has_generic_dump<T>)
-scl2::bytearray gdump(const T& value) { return scl2::bytearray(value); }
+scl2::bytearray gdump(const T& value) { return scl2::bytearray::fromTrivialType(value); }
 
 template<typename T>
 requires ::scl2::has_generic_dump<T>

@@ -1,6 +1,6 @@
 # SharedCppLib2 API Reference
 
-Document version: 0.2.0
+Document version: 0.3.0
 
 SharedCppLib2 is now building its own api (compatible layer). It provides a series of standard for you to use with your own implementation, which allows your code to directly interact with SharedCppLib2 with extremely low learning cost.
 
@@ -39,123 +39,83 @@ The `serialize` and `deserialize` layer is separated, meaning that you can imple
 
 ### Bytearray (dump/load) API layer
 
-This is the key part of the SharedCppLib2. This api layer allows you to convert almost anything to a byte array or convert it back.
+This is the key part of SharedCppLib2. This API layer allows you to convert almost anything to a byte array or convert it back.
 
-This is a powerful api set, since you can then use the byte array for files, internet, pipelines or anything else.
-
-Converting data packs have not been that easy before.
-
-This is an example for the bytearray (dump/load) api layer:
+Implement `dump()` and `load()` in your class to make it compatible with `gdump`/`gload`:
 
 ```cpp
 struct MyData {
     int d1;
     double d2;
-
     std::string d3;
     std::vector<int> d4;
 
-    scl2::bytearray dump(const MyData& data) const {
+    scl2::bytearray dump() const {
         scl2::bytearray ba;
 
-        // numeric types can be directly appended to the bytearray
-        ba.append(data.d1);
-        ba.append(data.d2);
+        // trivially copyable types can be directly appended
+        ba.append(d1);
+        ba.append(d2);
 
-        // for string, use addString().
-        ba.addString(data.d3);
+        // for strings, use append (length-prefixed automatically)
+        ba.append(d3);
 
-        // Note: for wstring, use addWString().
-
-        // for STL-compatible containers, use appendContainer().
-        // It will automatically handle all sizes and elements for you.
-        ba.appendContainer(data.d4);
+        // for STL-compatible containers, use appendContainer
+        ba.appendContainer(d4);
 
         return ba;
     }
 
-
-    // Use bytearray_view (must be a reference) for load.
-    // The bytearray_view handles all read stuff, and those
-    // does not exist in bytearray itself. 
-    MyData load(const scl2::bytearray_view& ba) const {
-        MyData data;
-
-        // numeric types can be directly read from the bytearray_view
-        data.d1 = ba.read<int>();
-        data.d2 = ba.read<double>();
-
-        // for string, use readString().
-        data.d3 = ba.readString();
-
-        // Note: for wstring, use readWString().
-
-        // for STL-compatible containers, use readContainer().
-        // It will automatically handle all sizes and elements for you.
-        data.d4 = ba.readContainer<std::vector<int>>();
-
-        return data;
+    void load(scl2::bytearray& ba) {
+        // read in the same order as written
+        d1 = ba.read<int>();
+        d2 = ba.read<double>();
+        d3 = ba.readString();
+        d4 = ba.readContainer<std::vector<int>>();
     }
 };
 
+// Verify compatibility at compile time
+scl2_check_generic_dump(MyData)
+scl2_check_generic_load(MyData)
 ```
 
-This is a simple example. For nested structures, you can recursively use dump/load as well:
+### Nested structures
+
+For nested types, call `gdump` / `gload` recursively:
 
 ```cpp
-
 class MyClass {
     int meta;
     std::vector<MyData> datal;
 
 public:
-    scl2::bytearray dump(const MyClass& data) const {
+    scl2::bytearray dump() const {
         scl2::bytearray ba;
+        ba.append(meta);
 
-        ba.append(data.meta);
-        
-        // Currently, containers of non-primitive types are not supported.
-        // However, handling them is still easy.
-
-        // first, write the size of the container.
-        // Make sure to use appendSize() to get the correct type even in the future.
-        // Trust me, you won't want to debug this.
-        ba.appendSize(data.datal.size());
-
-        for(const auto& item : data.datal) {
-            // then, write each element using its own dump function.
-            ba.append(MyData::dump(item));
-        }
+        // Write container size first, then each element
+        ba.append(static_cast<uint32_t>(datal.size()));
+        for (const auto& item : datal)
+            ba.append(scl2::gdump(item));
 
         return ba;
     }
 
-    MyClass load(const scl2::bytearray_view& ba) const {
-        MyClass data;
+    void load(scl2::bytearray& ba) {
+        meta = ba.read<int>();
 
-        data.meta = ba.read<int>();
-
-        // read the size of the container first.
-        size_t size = ba.readSize();
-        data.datal.reserve(size); // reserve space for the container
-        for(size_t i = 0; i < size; ++i) {
-            // then, read each element using its own load function.
-            data.datal.push_back(MyData::load(ba));
-        }
-
-        return data;
+        uint32_t size = ba.read<uint32_t>();
+        datal.reserve(size);
+        for (uint32_t i = 0; i < size; ++i)
+            datal.push_back(scl2::gload<MyData>(ba));
     }
 };
-
 ```
 
-The above example shows the full potential of the bytearray_view layer. You can call the load function in series from a single source array, and all data mappings are automatically handled.
+The built-in read cursor in `bytearray` advances automatically with each `read()` call. Just read in the same order you wrote — the cursor handles positions for you.
 
-You just need to read. Make sure the process at both sides are identical. You can apply basic-level compressions, like for a data pack with 3 different types, you don't need to write the data reserved for the other types.
-
-However, it is still your responsibility to make sure your code is robust enough. The above example does not contain any error handling, and will likely crash if something went wrong, like entered an invalid state or the data got truncated during transmission.
-
-For furthur details into error handling, refer to [Bytearray](bytearray.md).
+For further details into error handling and advanced features, refer to [Bytearray](bytearray.md).
 
 
 ### Encryption API layer

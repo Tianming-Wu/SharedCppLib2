@@ -7,12 +7,12 @@
 
 #pragma once
 
-#include "stringlist.hpp"
-
 #include <string>
 #include <regex>
 
 namespace scl2 {
+
+template<typename CharT> class basic_stringlist; // forward — defined in stringlist.hpp
 
 template <typename CharT>
 class basic_string : public std::basic_string<CharT> {
@@ -25,6 +25,8 @@ public:
     // MSVC sometimes fails to inherit conversion from base type
     basic_string(const string_type& s) : string_type(s) {}
     basic_string(string_type&& s) noexcept : string_type(std::move(s)) {}
+
+    // stringlist-related methods
 
     scl2::basic_stringlist<CharT> split(CharT delim) const;
     scl2::basic_stringlist<CharT> split(const string_type &delim) const;
@@ -46,6 +48,11 @@ public:
     /// @brief Extract substrings from the string that match the given regex pattern.
     /// @param pattern
     // scl2::basic_stringlist<CharT> extract(const std::regex& pattern) const;
+
+    // utility methods
+
+    /// @brief Remove whitespace from the beginning and end of the string.
+    scl2::basic_string<CharT> trim();
 };
 
 extern template class basic_string<char>;
@@ -53,5 +60,13 @@ extern template class basic_string<wchar_t>;
 
 using string = basic_string<char>;
 using wstring = basic_string<wchar_t>;
+
+// --- String conversion utilities ---
+
+/// @brief Convert UTF-8 string to wide string.
+std::wstring str_to_wstr(const std::string& str);
+
+/// @brief Convert wide string to UTF-8 string.
+std::string wstr_to_str(const std::wstring& wstr);
 
 } // namespace scl2

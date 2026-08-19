@@ -33,13 +33,6 @@ using wstringlist = basic_stringlist<wchar_t>;
 
 class bytearray;
 
-template<typename _T>
-concept _is_bytearray_constructable =
-    std::is_trivially_copyable_v<std::remove_cvref_t<_T>>
-    && !std::is_pointer_v<std::remove_cvref_t<_T>>
-    && !std::is_array_v<std::remove_cvref_t<_T>>
-    && !std::is_same_v<std::remove_cvref_t<_T>, bytearray>;
-
 // now using std::byte. I'm not really satisfied, because it it so EXPLICIT. There are no any implicit conversions at all.
 // Fine. I just need to warn the users to use append(std::byte{0x08}) instead of append(0x08), which is a fucking INTEGER.
 // #undef std::byte
@@ -83,14 +76,6 @@ public:
 
     template<typename InputIt>
     bytearray(InputIt first, InputIt last) : base_type(first, last) {}
-
-    template<typename _Any>
-    requires (_is_bytearray_constructable<_Any>)
-    explicit bytearray(const _Any& in) {
-        const std::byte* src = reinterpret_cast<const std::byte*>(&in);
-        base_type::assign(reinterpret_cast<const std::byte*>(src),
-                          reinterpret_cast<const std::byte*>(src) + sizeof(_Any));
-    }
 
     // ── Write: position-based ────────────────────────────────────────
     void insert(size_t pos, const bytearray& data) { base_type::insert(begin() + pos, data.begin(), data.end()); }
@@ -232,7 +217,7 @@ public:
         return str;
     }
 
-    std::string readRawString(size_t const charCount) {
+    std::string readRawString(size_t const charCount) const {
         if (charCount == 0) return {};
         if (!bytesAvailable(charCount)) throw std::out_of_range("bytearray::readRawString: not enough data");
         std::string str(charCount, '\0');
@@ -241,7 +226,7 @@ public:
         return str;
     }
 
-    std::wstring readRawWString(size_t const charCount) {
+    std::wstring readRawWString(size_t const charCount) const {
         if (charCount == 0) return {};
         if (!bytesAvailable(charCount * sizeof(wchar_t))) throw std::out_of_range("bytearray::readRawWString: not enough data");
         std::wstring str(charCount, L'\0');
@@ -250,7 +235,7 @@ public:
         return str;
     }
 
-    bytearray readBytes(size_t const length) {
+    bytearray readBytes(size_t const length) const {
         if (!bytesAvailable(length)) throw std::out_of_range("bytearray::readBytes: not enough data");
         bytearray result(reinterpret_cast<const std::byte*>(this->data() + read_pointer), length);
         read_pointer += length;
@@ -421,6 +406,8 @@ public:
     // ── Operators ────────────────────────────────────────────────────
     bool operator==(const bytearray& other) const;
     bool operator!=(const bytearray& other) const { return !(*this == other); }
+    /// @brief Lexicographic comparison (for std::map/set ordering only). No numeric meaning.
+    bool operator<(const bytearray& other) const;
     bytearray operator+(const bytearray& other) const;
 
     // ── Stream I/O ───────────────────────────────────────────────────
@@ -432,7 +419,8 @@ public:
     }
 
     // ── Static factories ─────────────────────────────────────────────
-    static bytearray fromTriviallyCopyable(const auto& data) { bytearray ba; ba.append(data); return ba; }
+    /// @brief Serialize a trivially-copyable type into a bytearray.
+    static bytearray fromTrivialType(const auto& data) { bytearray ba; ba.append(data); return ba; }
 
     static bytearray fromString(const std::string& str);       // length-prefixed
     static bytearray fromWString(const std::wstring& str);

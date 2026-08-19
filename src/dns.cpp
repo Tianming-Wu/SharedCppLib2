@@ -2,6 +2,7 @@
 
 #include "network_platform.hpp"
 #include "platform.hpp"
+#include "string.hpp"
 
 namespace network::dns {
 
@@ -24,7 +25,7 @@ dns_query_result dns_query(const std::wstring &hostname)
         }
         network_address addr;
 
-        addr.address = platform::wstringToString(std::wstring(ip));
+        addr.address = scl2::wstr_to_str(std::wstring(ip));
         addr.__ipv4 = ipv4::from_string(addr.address);
 
         result.addresses.push_back(addr);

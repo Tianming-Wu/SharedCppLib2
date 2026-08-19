@@ -23,6 +23,10 @@ namespace fs = std::filesystem;
     #define OS_UNIX
     #include <unistd.h>
     #include <sys/wait.h>
+
+    #if defined(__ANDROID__)
+        #define OS_ANDROID
+    #endif
 #endif
 
 namespace platform {
@@ -32,11 +36,6 @@ fs::path executable_dir();
 
 std::string get_env(const std::string& name);
 bool set_env(const std::string& name, const std::string& value);
-
-// Convert wide string to UTF-8 string
-std::string wstringToString(const std::wstring& wstr);
-// Convert UTF-8 string to wide string
-std::wstring stringToWstring(const std::string& str);
 
 /// @brief Find an executable in the system PATH
 /// @param name the name of the executable

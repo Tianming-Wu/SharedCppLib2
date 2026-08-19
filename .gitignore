@@ -35,13 +35,6 @@ Thumbs.db
 /.qmake.cache
 /.qmake.stash
 
-# qtcreator generated files
-*.pro.user*
-CMakeLists.txt.user*
-
-# xemacs temporary files
-*.flc
-
 # Vim temporary files
 .*.swp
 
@@ -81,3 +74,5 @@ build
 !cmake/
 !cmake/**
 
+# VSCode scope settings
+.vscode/*

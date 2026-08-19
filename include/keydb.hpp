@@ -156,7 +156,7 @@ scl2_enum_bitop(value_type) // to verify deleted mark.
 // class types.
 struct value_t {
     value_type type;
-    std::bytearray valueData; // for binary data or serialized data.
+    scl2::bytearray valueData; // for binary data or serialized data.
 
     size_t file_offset = 0; // To make DirectAccess faster.
 
@@ -170,12 +170,12 @@ struct value_t {
     value_t(const char* cstr, size_t file_offset = 0);
     value_t(const std::string& str, size_t file_offset = 0);
     value_t(const std::wstring& wstr, size_t file_offset = 0);
-    value_t(const std::bytearray& data, size_t file_offset = 0);
+    value_t(const scl2::bytearray& data, size_t file_offset = 0);
     value_t(const path& filepath, size_t file_offset = 0);
 
     std::string asString() const;
     std::wstring asWString() const;
-    std::bytearray asBinary() const;
+    scl2::bytearray asBinary() const;
     path asExternalFile() const;
 
     bool isNull() const;

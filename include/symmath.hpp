@@ -1,150 +1,232 @@
 /*
-    High precision integer (hpint)
+    Symbolic math (symmath)
 
-    namespace: none
-    classes: hpint, hpfloat, hpfrac*
+    namespace: scl2::sym
+    classes:        
+
 */
 
 #pragma once
-#include <stdint.h>
+#include <cstdint>
 #include <vector>
 #include <string>
 #include <algorithm>
 #include <stdexcept>
+#include <variant>
+#include <limits>
+#include <concepts>
+#include <type_traits>
+#include <cmath>
 
-namespace hpcalc {
-enum specialState {
-    None, Infinite, Nan
+#include "math.hpp"
+
+// currently for building arrays. May be excluded in the future
+// if we want to make this module standalone.
+#include "stringlist.hpp"
+
+namespace scl2::sym {
+
+// special values for symint and symfloat.
+// not symobject system's. use symspecial for that.
+enum special {
+    Null, Infinite, Nan
 };
-}
 
+// type of symbolic object
+enum class type {
+    none,
+    integer, floatpoint, fraction, complex,
+    matrix, vector, special,
+    add, subtract, multiply, divide,
+    power,
+};
 
-class hpislot {
+class symobject {
 public:
-    hpislot() : value(0) {}
-    hpislot(uint8_t v) : value(v) {}
 
-    uint8_t apply() { uint8_t t = value; value = 0; return t; }
-    uint8_t data() const { return value; }
+    type symtype() const { return m_type; }
 
-    hpislot& operator=(const hpislot& _comp) {
-        value = _comp.value;
-        return *this;
-    }
 
-    hpislot operator+(const hpislot& _comp) const {
-        uint8_t t = value + _comp.value;
-        if(t > 9) t = 0;
-        return hpislot(t);
-    }
+    
+protected:
+    symobject() : m_type(type::none) {}
 
-    hpislot operator-(const hpislot& _comp) const {
-        uint8_t t = value - _comp.value;
-        if(t < 0) t = 0;
-        return hpislot(t);
-    }
+    template<typename T>
+    requires std::is_integral_v<T>
+    symobject(T value) : m_type(type::integer), m_integer(static_cast<int64_t>(value)) {}
 
-    hpislot operator*(const hpislot& _comp) const {
-        uint8_t t = value * _comp.value;
-        if(t > 9) t = 0;
-        return hpislot(t);
-    }
+    template<typename T>
+    requires std::is_floating_point_v<T>
+    symobject(T value) : m_type(type::floatpoint), m_float(static_cast<double>(value)) {}
 
-    hpislot operator/(const hpislot& _comp) const {
-        if(_comp.value == 0) return hpislot(0);
-        uint8_t t = value / _comp.value;
-        return hpislot(t);
-    }
+    symobject operator+(const symobject& other) const;
+    symobject operator-(const symobject& other) const;
+    symobject operator*(const symobject& other) const;
+    symobject operator/(const symobject& other) const;
 
-    hpislot operator%(const hpislot& _comp) const {
-        if(_comp.value == 0) return hpislot(0);
-        uint8_t t = value % _comp.value;
-        return hpislot(t);
-    }
-
-    bool operator==(const hpislot& _comp) const { return value == _comp.value; }
-    bool operator!=(const hpislot& _comp) const { return value != _comp.value; }
-    bool operator>(const hpislot& _comp) const { return value > _comp.value; }
-    bool operator<(const hpislot& _comp) const { return value < _comp.value; }
 
 private:
-    uint8_t value;
+    type m_type;
+    std::variant<
+        std::monostate, // none
+        int64_t, double, // integer and floating point
+        std::unique_ptr<std::pair<symobject, symobject>>, // fraction, complex and power
+        std::vector<symobject> // vector, and add / substract / multiply / devide operands
+        /*, ::scl2::matrix<symobject> */ // matrix and
+    > m_value;
+
+    // note: matrix is currently disabled, since it requires the included type to support
+    // all required mathematical operations. This is not currently true for symobject,
+    // so until symobject is almost complete it will stay commented out.
+
 };
 
-class hpint {
+// Auto-spread invalid / infinite
+#define sreturn_if_both_infinite if (this->special == special::Infinite || other.special == special::Infinite) return
+#define sreturn_if_both_nan if (this->special == special::Nan || other.special == special::Nan) return
+#define sreturn_if_any_infinite if (this->special == special::Infinite || other.special == special::Infinite) return
+#define sreturn_if_any_nan if (this->special == special::Nan || other.special == special::Nan) return
+
+#define sreturn_if_both(spec) if (this->special == spec && other.special == spec) return
+#define sreturn_if_any(spec) if (this->special == spec || other.special == spec) return
+
+class intslot
+{
 public:
-    hpint() {}
-    hpint(int32_t integer) { make(std::to_string(integer)); }
-    hpint(uint32_t integer) { make(std::to_string(integer)); }
-    hpint(hpcalc::specialState state) : special(state), negative(false) {}
+    intslot() : v(0) {}
+    intslot(uint8_t value) : v(std::clamp(value, (uint8_t)0, (uint8_t)9)) {}
+    inline operator uint8_t() const { return v; }
+private:
+    uint8_t v;
+};
 
-    void make(std::string t) {
-        if(t.empty()) { slots.clear(); return; }
-        if(t.at(0) == '-') {
-            negative = true;
-            t.erase(0, 1);
-        } else negative = false;
-        if(t.at(0) == '+') t.erase(0, 1);
 
-        slots.reserve(t.length());
-        for(size_t i = t.length()-1; i >= 0; i--) {
-            hpislot slot = std::clamp(t[i]-'0', 0, 9);
-            if(slot != t[i]-'0') throw std::runtime_error("hpint::make: invalid character");
-            slots.push_back(slot);
-        }
+// we cannot construct from symobject here since symobject will
+// be based on this. We allow this to convert into a symobject though.
+class symint 
+{
+public:
+    symint() {}
+    symint(scl2::sym::special state)
+        : special(state)
+    {
+        // does not allow user to construct special value using null.
+        // in that case, the default constructor should be used instead.
+        if (state == special::Null)
+            throw std::runtime_error("symint: manual construction of Null type is not allowed.");
     }
 
-    inline size_t length() const { return slots.size(); }
-    inline hpislot at(size_t i) const { return slots.at(i); }
-    inline hpislot& operator[](size_t i) { return slots[i]; }
+    template<typename T>
+    requires std::is_integral_v<T>
+    symint(T value) {
+        // this is much more simple, and not that much slower than the manual implementation.
+        // since the compiler will probably optimize this to move, with almost no overhead.
+        *this = from_string(std::to_string(value));
+    }
 
-    bool operator==(const hpint& _comp) const {
-        return (length()==_comp.length()) && [&] {
-            for(size_t i = 0; i < length(); i++) { if(slots[i] != _comp.at(i)) return false; } return true;
+    // factory method to create a symint from a string
+    // this is possibly the only way to create a symint that is
+    // larger than that normal integer types can hold.
+    static symint from_string(std::string str) {
+        symint result;
+        if(str.empty()) return result;
+
+        if(str == "inf" || str == "infinity") {
+            result.special = special::Infinite;
+            return result;
+        } else if (str == "nan") {
+            result.special = special::Nan;
+            return result;
+        }
+
+        if(str.at(0) == '-') {
+            result.negative = true;
+            str.erase(0, 1);
+        }
+
+        if(str.at(0) == '+') str.erase(0, 1);
+
+        result.slots.reserve(str.length());
+        for(size_t i = str.length() - 1; i >= 0; i--) {
+            intslot slot = std::clamp(str[i]-'0', 0, 9); // what could possibly go wrong here
+            if(slot != str[i]-'0') throw std::runtime_error("symint::from_string: invalid character");
+            result.slots.push_back(slot);
+        }
+
+        return result;
+    }
+
+    // expo version of the symint from_string is available through symfloat, since
+    // throwing away so many things here doesn't make sense.
+    // you can clamp the constructed symfloat if you need.
+
+    inline size_t length() const { return slots.size(); }
+    inline auto at(size_t i) const { return slots.at(i); }
+    inline auto& operator[](size_t i) { return slots[i]; }
+
+    bool operator==(const symint& other) const {
+        return (length() == other.length()) && [&] {
+            for(size_t i = 0; i < length(); i++)
+                if(slots[i] != other.at(i)) return false;
+            return true;
         }();
     }
 
-    hpint operator+(const hpint& _comp) const {
-        if (special == hpcalc::Nan || _comp.special == hpcalc::Nan) return hpint(hpcalc::Nan);
-        if (special == hpcalc::Infinite || _comp.special == hpcalc::Infinite) return hpint(hpcalc::Infinite);
+    // Compare without time information, to avoid side channel attacks.
+    // Added for absolutely no reason.
+    bool constant_time_compare(const symint& other) const {
+        bool diff = true;
+        for (size_t i = 0; i < std::max(length(), other.length()); i++) {
+            auto a = (i < length()) ? at(i) : intslot(0);
+            auto b = (i < other.length()) ? other.at(i) : intslot(0);
+            if (a != b) diff = true;    
+        }
+        return diff;
+    }
+
+    symint operator+(const symint& other) const {
+        sreturn_if_both_infinite symint(Infinite);
+        sreturn_if_both_nan symint(Nan);
     
-        if (negative == _comp.negative) {
-            hpint result(0);
-            size_t maxLength = std::max(length(), _comp.length());
+        if (negative == other.negative) {
+            symint result;
+            size_t maxLength = std::max(length(), other.length());
             result.slots.resize(maxLength);
     
             for (size_t i = 0; i < maxLength; i++) {
-                hpislot a = (i < length()) ? at(i) : hpislot(0);
-                hpislot b = (i < _comp.length()) ? _comp.at(i) : hpislot(0);
+                intslot a = (i < length()) ? at(i) : intslot(0);
+                intslot b = (i < other.length()) ? other.at(i) : intslot(0);
                 result.slots[i] = a + b;
             }
+
+            // result shares the same sign as the operands
             result.negative = negative;
             return result.simplify();
         } else {
-            return *this - (-_comp);
+            return *this - (-other);
         }
     }
 
-    hpint operator-(const hpint& _comp) const {
-        if (special == hpcalc::Nan || _comp.special == hpcalc::Nan) return hpint(hpcalc::Nan);
-        if (special == hpcalc::Infinite && _comp.special == hpcalc::Infinite) return hpint(0);
-        if (special == hpcalc::Infinite) return hpint(hpcalc::Infinite);
-        if (_comp.special == hpcalc::Infinite) return - hpint(hpcalc::Infinite);
+    symint operator-(const symint& other) const {
+        sreturn_if_both_nan symint(Nan);
+        sreturn_if_both(Infinite) symint(); // 0
+        if (special == Infinite) return symint(Infinite);
+        if (other.special == Infinite) return - symint(Infinite);
     
-        if (negative != _comp.negative) {
-            return *this + (-_comp);
+        if (negative != other.negative) {
+            return *this + (-other);
+
+        } else if (*this < other) {
+            return -(other - *this);
+
         } else {
-            if (*this < _comp) {
-                return -(_comp - *this);
-            }
-    
-            hpint result(0);
-            size_t maxLength = std::max(length(), _comp.length());
+            symint result(0);
+            size_t maxLength = std::max(length(), other.length());
             result.slots.resize(maxLength);
     
             for (size_t i = 0; i < maxLength; i++) {
-                hpislot a = (i < length()) ? at(i) : hpislot(0);
-                hpislot b = (i < _comp.length()) ? _comp.at(i) : hpislot(0);
+                intslot a = (i < length()) ? at(i) : intslot(0);
+                intslot b = (i < other.length()) ? other.at(i) : intslot(0);
                 result.slots[i] = a - b;
             }
             result.negative = negative;
@@ -152,108 +234,123 @@ public:
         }
     }
     
-    hpint operator*(const hpint& _comp) const {
-        if (special == hpcalc::Nan || _comp.special == hpcalc::Nan) return hpint(hpcalc::Nan);
-        if (special == hpcalc::Infinite || _comp.special == hpcalc::Infinite) {
-            if (isZero() || _comp.isZero()) return hpint(hpcalc::Nan);
-            return hpint(hpcalc::Infinite).setNegative(negative != _comp.negative);
+    symint operator*(const symint& other) const {
+        sreturn_if_both_nan symint(Nan);
+        sreturn_if_both(Infinite) symint(Infinite);
+        if (special == Infinite || other.special == Infinite) {
+            if (isZero() || other.isZero()) return symint(Nan);
+            return symint(Infinite).setNegative(negative != other.negative);
         }
     
-        hpint result(0);
-        size_t maxLength = length() + _comp.length();
+        symint result;
+        size_t maxLength = length() + other.length();
         result.slots.resize(maxLength);
     
         for (size_t i = 0; i < length(); i++) {
-            for (size_t j = 0; j < _comp.length(); j++) {
-                result.slots[i + j] = result.slots[i + j] + at(i) * _comp.at(j);
+            for (size_t j = 0; j < other.length(); j++) {
+                result.slots[i + j] = result.slots[i + j] + at(i) * other.at(j);
             }
         }
-        result.negative = (negative != _comp.negative);
+        result.negative = (negative != other.negative);
         return result.simplify();
     }
     
-    hpint operator/(const hpint& _comp) const {
-        if (special == hpcalc::Nan || _comp.special == hpcalc::Nan) return hpint(hpcalc::Nan);
-        if (_comp.isZero()) return hpint(hpcalc::Nan);
-        if (special == hpcalc::Infinite) return hpint(hpcalc::Infinite).setNegative(negative != _comp.negative);
-        if (_comp.special == hpcalc::Infinite) return hpint(0);
+    symint operator/(const symint& other) const {
+        sreturn_if_both_nan symint(Nan);
+        if (other.isZero()) return symint(Nan);
+        if (special == Infinite) return symint(Infinite).setNegative(negative != other.negative);
+        if (other.special == Infinite) return symint(); // 0
     
         // Simplified division logic (integer division)
-        hpint result(0);
-        hpint remainder = *this;
-        result.negative = (negative != _comp.negative);
+        symint result;
+        symint remainder = *this;
+        result.negative = (negative != other.negative);
     
-        while (remainder >= _comp) {
-            remainder = remainder - _comp;
-            result = result + hpint(1);
+        while (remainder >= other) {
+            remainder = remainder - other;
+            result = result + symint(1);
         }
         return result.simplify();
     }
     
-    hpint operator%(const hpint& _comp) const {
-        if (special == hpcalc::Nan || _comp.special == hpcalc::Nan) return hpint(hpcalc::Nan);
-        if (_comp.isZero()) return hpint(hpcalc::Nan);
-        if (special == hpcalc::Infinite) return hpint(hpcalc::Nan);
-        if (_comp.special == hpcalc::Infinite) return *this;
+    symint operator%(const symint& other) const {
+        sreturn_if_both_nan symint(Nan);
+        if (other.isZero()) return symint(Nan);
+        if (special == Infinite) return symint(Nan);
+        if (other.special == Infinite) return *this;
     
-        hpint remainder = *this;
-        while (remainder >= _comp) {
-            remainder = remainder - _comp;
+        symint remainder = *this;
+        while (remainder >= other) {
+            remainder = remainder - other;
         }
         return remainder;
     }
 
-    bool operator>(const hpint& _comp) const {
-        if(length() > _comp.length()) return true;
-        if(length() < _comp.length()) return false;
+    bool operator>(const symint& other) const {
+        if(length() > other.length()) return true;
+        if(length() < other.length()) return false;
 
         for(size_t i = length(); i > 0; i--) {
-            if(at(i-1) > _comp.at(i-1)) return true;
-            if(at(i-1) < _comp.at(i-1)) return false;
+            if(at(i-1) > other.at(i-1)) return true;
+            if(at(i-1) < other.at(i-1)) return false;
         }
         return false;
     }
 
-    bool operator<(const hpint& _comp) const {
-        if(length() < _comp.length()) return true;
-        if(length() > _comp.length()) return false;
+    bool operator<(const symint& other) const {
+        if(length() < other.length()) return true;
+        if(length() > other.length()) return false;
 
         for(size_t i = length(); i > 0; i--) {
-            if(at(i-1) < _comp.at(i-1)) return true;
-            if(at(i-1) > _comp.at(i-1)) return false;
+            if(at(i-1) < other.at(i-1)) return true;
+            if(at(i-1) > other.at(i-1)) return false;
         }
         return false;
     }
 
-    bool operator>=(const hpint& _comp) const { return !(*this < _comp); }
-    bool operator<=(const hpint& _comp) const { return !(*this > _comp); }
-    bool operator!=(const hpint& _comp) const { return !(*this == _comp); }
+    bool operator>=(const symint& other) const { return !(*this < other); }
+    bool operator<=(const symint& other) const { return !(*this > other); }
+    bool operator!=(const symint& other) const { return !(*this == other); }
 
-    hpint operator+=(const hpint& _comp) { return (*this = *this + _comp); }
-    hpint operator-=(const hpint& _comp) { return (*this = *this - _comp); }
-    hpint operator*=(const hpint& _comp) { return (*this = *this * _comp); }
-    hpint operator/=(const hpint& _comp) { return (*this = *this / _comp); }
-    hpint operator%=(const hpint& _comp) { return (*this = *this % _comp); }
+    symint operator+=(const symint& other) { return (*this = *this + other); }
+    symint operator-=(const symint& other) { return (*this = *this - other); }
+    symint operator*=(const symint& other) { return (*this = *this * other); }
+    symint operator/=(const symint& other) { return (*this = *this / other); }
+    symint operator%=(const symint& other) { return (*this = *this % other); }
 
-    hpint operator++() { return (*this += hpint(1)); }
-    hpint operator--() { return (*this -= hpint(1)); }
+    symint operator++() { return (*this += symint(1)); }
+    symint operator--() { return (*this -= symint(1)); }
 
-    hpint operator<<(int shift) const {
-        hpint result(0);
+    /// @brief Really fast multiplication by 10.
+    /// @warning Not bitwise, instead based on 10.
+    symint operator<<(int shift) const {
+        symint result(0);
         result.slots.resize(length() + shift);
         std::copy(slots.begin(), slots.end(), result.slots.begin() + shift);
         return result;
     }
 
-    hpint operator>>(int shift) const {
-        if(shift >= length()) return hpint(0);
-        hpint result(0);
+    symint operator<<(const symint& shift) const {
+        if (shift.isNegative()) throw std::runtime_error("symint::operator<<: negative shift not allowed");
+        if (shift.isInfinite()) throw std::runtime_error("symint::operator<<: infinite shift not allowed");
+        if (shift.isNan()) throw std::runtime_error("symint::operator<<: NaN shift not allowed");
+
+
+        
+    }
+
+    /// @brief Really fast division by 10.
+    /// @warning Not bitwise, instead based on 10. Will discard digits that goes below 0. 
+    symint operator>>(int shift) const {
+        if(shift >= length()) return symint(0);
+        symint result(0);
         result.slots.resize(length() - shift);
         std::copy(slots.begin() + shift, slots.end(), result.slots.begin());
         return result;
     }
 
-    hpint& simplify() {
+    // remove leading zeros
+    symint& simplify() {
         while(length() > 0 && at(length()-1) == 0) {
             slots.pop_back();
         }
@@ -266,95 +363,166 @@ public:
         return false;
     }
 
-    hpint operator-() const {
-        if (special == hpcalc::Nan) return hpint(hpcalc::Nan); // 负的 NaN 仍然是 NaN
-        if (special == hpcalc::Infinite) {
-            hpint result(hpcalc::Infinite);
-            result.negative = !negative; // 反转符号
-            return result;
-        }
-        hpint result = *this;
-        result.negative = !negative; // 反转符号
+    symint operator-() const {
+        if (special == Nan) return symint(Nan); // Negative Nan is still Nan
+        // infinite is also reverse, merge into normal process
+        symint result = *this;
+        result.negative = !negative; // reverse symbol
         return result;
     }
     
-    bool isNegative() const { return negative; }
+    bool isNegative() const { return (special != Nan) && negative; }
     
-    hpint& setNegative(bool isNegative) {
+    symint& setNegative(bool isNegative) {
         negative = isNegative;
         return *this;
     }
 
-    bool isInfinite() const { return special == hpcalc::Infinite; }
-    bool isNan() const { return special == hpcalc::Nan; }
+    /// @brief Check if this symint fits in a standard integral type.
+    template<typename T>
+    requires std::is_integral_v<T>
+    bool fits_in() const {
+        if (special == Nan)
+            return std::numeric_limits<T>::has_quiet_NaN;
+        if (special == Infinite)
+            return std::numeric_limits<T>::has_infinity;
+        if (isZero())
+            return true;
+
+        symint simplified = *this;
+        simplified.simplify();
+
+        if constexpr (std::is_unsigned_v<T>) {
+            if (simplified.negative) return false;
+        }
+
+        symint max_val = symint::from_string(std::to_string(std::numeric_limits<T>::max()));
+
+        if constexpr (std::is_signed_v<T>) {
+            if (simplified.negative) {
+                symint min_val = symint::from_string(std::to_string(std::numeric_limits<T>::min()));
+                return simplified >= min_val;
+            }
+        }
+        return simplified <= max_val;
+    }
+
+    /// @brief Convert this symint to a standard integral type (must fit).
+    template<typename T>
+    requires std::is_integral_v<T>
+    T as() const {
+        if (special == Nan) {
+            if constexpr (std::numeric_limits<T>::has_quiet_NaN)
+                return std::numeric_limits<T>::quiet_NaN();
+            else
+                throw std::runtime_error("symint::as: NaN cannot be represented");
+        }
+        if (special == Infinite) {
+            if constexpr (std::numeric_limits<T>::has_infinity)
+                return negative ? -std::numeric_limits<T>::infinity()
+                                : std::numeric_limits<T>::infinity();
+            else
+                throw std::runtime_error("symint::as: Infinity cannot be represented");
+        }
+        if (!fits_in<T>())
+            throw std::runtime_error("symint::as: value does not fit in target type");
+
+        T result = 0;
+        for (size_t i = length(); i > 0; --i)
+            result = static_cast<T>(result * 10 + static_cast<uint8_t>(at(i - 1)));
+        return negative ? static_cast<T>(-result) : result;
+    }
+
+    bool isInfinite() const { return special == Infinite; }
+    bool isNan() const { return special == Nan; }
 
     std::string to_string() const {
         std::string result;
         if(negative) result += '-';
         if(length() == 0) return "0";
-        if(special == hpcalc::Infinite) return "inf";
-        if(special == hpcalc::Nan) return "nan";
+        if(special == Infinite) return "inf";
+        if(special == Nan) return "nan";
         for(size_t i = length(); i > 0; i--) {
-            result += std::to_string(at(i-1).data());
+            result += (slots.at(i-1) + '0');
         }
         return result;
     }
 
-    static hpint from_string(const std::string& str) {
-        hpint result(0);
-        result.make(str);
-        return result;
-    }
-
-
 protected:
-    std::vector<hpislot> slots;
+    std::vector<intslot> slots;
     bool negative;
-    hpcalc::specialState special = hpcalc::None;
+    special special = Null;
 };
 
-std::istream& operator>>(std::istream& in, hpint& _comp) {
+std::istream& operator>>(std::istream& in, symint& other) {
     std::string str;
     in >> str;
-    _comp.make(str);
+    other = symint::from_string(str);
     return in;
 }
 
-std::ostream& operator<<(std::ostream& out, const hpint& _comp) {
-    out << _comp.to_string();
+std::ostream& operator<<(std::ostream& out, const symint& other) {
+    out << other.to_string();
     return out;
 }
 
 
-class hpfloat {
+class symfloat {
 
 public:
-    hpfloat() : integer(0), fraction(0) {}
-    hpfloat(int32_t integer, int32_t fraction) : integer(integer), fraction(fraction) {}
-    hpfloat(int32_t integer) : integer(integer), fraction(0) {}
-    hpfloat(const hpint& integer, const hpint& fraction) : integer(integer), fraction(fraction) {}
-    hpfloat(const hpint& integer) : integer(integer), fraction(0) {}
+    symfloat() {}
+    symfloat(int32_t integer, int32_t fraction) : integer(integer), fraction(fraction) {}
+    symfloat(int32_t integer) : integer(integer), fraction(0) {}
+    symfloat(const symint& integer, const symint& fraction) : integer(integer), fraction(fraction) {}
+    symfloat(const symint& integer) : integer(integer), fraction(0) {}
 
-    hpfloat(float value) { make(std::to_string(value)); }
-    hpfloat(double value) { make(std::to_string(value)); }
-
-    hpfloat(hpcalc::specialState state) : integer(state), fraction(state), negative(false) {}
-
-    void make(const std::string& str) {
-        size_t dotPos = str.find('.');
-        if(dotPos != std::string::npos) {
-            integer.make(str.substr(0, dotPos));
-            fraction.make(str.substr(dotPos + 1));
-        } else {
-            integer.make(str);
-            fraction = hpint(0);
-        }
+    template<typename T>
+    requires std::is_floating_point_v<T>
+    symfloat(T value) {
+        *this = from_string(std::to_string(T));
     }
 
-    static hpfloat from_string(const std::string& str) {
-        hpfloat result;
-        result.make(str);
+    symfloat(special state) : integer(state), fraction(state), negative(false) {}
+
+    static symfloat from_string(const std::string& str) {
+        symfloat result;
+
+        if(size_t dotpos = str.find('.'); dotpos != std::string::npos) {
+            result.integer = symint::from_string(str.substr(0, dotpos));
+            result.fraction = symint::from_string(str.substr(dotpos + 1));
+        } else {
+            result.integer = symint::from_string(str);
+        }
+
         return result;
+    }
+
+    static symfloat from_string_expo(const std::string& str) {
+        if (str.empty()) return symint();
+
+        symint result;
+        // extract the number part and the exponent part
+        if (size_t pos = str.find_first_of("eE"); pos != std::string::npos) {
+            std::string num_part = str.substr(0, pos);
+            std::string exp_part = str.substr(pos + 1);
+
+            symfloat base = from_string(num_part);
+            
+            int exponent;
+            try {
+                exponent = std::stoi(exp_part);
+            } catch (const std::invalid_argument&) {
+                throw std::runtime_error("symint::from_string_expo: invalid exponent");
+            } catch (const std::out_of_range&) {
+                throw std::runtime_error("symint::from_string_expo: exponent out of range");
+            }
+
+            // calculate base * 10^exponent
+            symfloat result = base;
+            return (exponent > 0) ? result << exponent : result >> -exponent;
+        } else {
+            throw std::runtime_error("symint::from_string_expo: no exponent found");
+        }
     }
 
     std::string to_string() const {
@@ -367,22 +535,22 @@ public:
     }
 
     // 加法运算符
-    hpfloat operator+(const hpfloat& _comp) const {
-        if (special == hpcalc::Nan || _comp.special == hpcalc::Nan) return hpfloat(hpcalc::Nan);
-        if (special == hpcalc::Infinite || _comp.special == hpcalc::Infinite) {
-            if (special == hpcalc::Infinite && _comp.special == hpcalc::Infinite) {
-                return (negative == _comp.negative) ? *this : hpfloat(hpcalc::Nan);
+    symfloat operator+(const symfloat& other) const {
+        sreturn_if_both_nan symfloat(Nan);
+        if (special == Infinite || other.special == Infinite) {
+            if (special == Infinite && other.special == Infinite) {
+                return (negative == other.negative) ? *this : symfloat(Nan);
             }
-            return (special == hpcalc::Infinite) ? *this : _comp;
+            return (special == Infinite) ? *this : other;
         }
 
-        hpfloat result;
-        result.integer = integer + _comp.integer;
-        result.fraction = fraction + _comp.fraction;
+        symfloat result;
+        result.integer = integer + other.integer;
+        result.fraction = fraction + other.fraction;
 
         // 如果小数部分溢出，进位到整数部分
         if (result.fraction.length() > fraction.length()) {
-            result.integer += hpint(1);
+            result.integer += symint(1);
             result.fraction.simplify();
         }
 
@@ -390,114 +558,114 @@ public:
     }
 
     // 减法运算符
-    hpfloat operator-(const hpfloat& _comp) const {
-        if (special == hpcalc::Nan || _comp.special == hpcalc::Nan) return hpfloat(hpcalc::Nan);
-        if (special == hpcalc::Infinite || _comp.special == hpcalc::Infinite) {
-            if (special == hpcalc::Infinite && _comp.special == hpcalc::Infinite) {
-                return (negative == _comp.negative) ? hpfloat(0) : hpfloat(hpcalc::Nan);
+    symfloat operator-(const symfloat& other) const {
+        sreturn_if_both_nan symfloat(Nan);
+        if (special == Infinite || other.special == Infinite) {
+            if (special == Infinite && other.special == Infinite) {
+                return (negative == other.negative) ? symfloat(0) : symfloat(Nan);
             }
-            return (special == hpcalc::Infinite) ? *this : -_comp;
+            return (special == Infinite) ? *this : -other;
         }
 
-        hpfloat result;
-        result.integer = integer - _comp.integer;
-        result.fraction = fraction - _comp.fraction;
+        symfloat result;
+        result.integer = integer - other.integer;
+        result.fraction = fraction - other.fraction;
 
         // 如果小数部分借位，调整整数部分
         if (result.fraction.isNegative()) {
-            result.integer -= hpint(1);
-            result.fraction += hpint(10); // 假设小数部分是以 10 为基数
+            result.integer -= symint(1);
+            result.fraction += symint(10); // 假设小数部分是以 10 为基数
         }
 
         return result;
     }
 
     // 乘法运算符
-    hpfloat operator*(const hpfloat& _comp) const {
-        if (special == hpcalc::Nan || _comp.special == hpcalc::Nan) return hpfloat(hpcalc::Nan);
-        if (special == hpcalc::Infinite || _comp.special == hpcalc::Infinite) {
-            if (isZero() || _comp.isZero()) return hpfloat(hpcalc::Nan);
-            return hpfloat(hpcalc::Infinite).setNegative(negative != _comp.negative);
+    symfloat operator*(const symfloat& other) const {
+        sreturn_if_both_nan symfloat(Nan);
+        if (special == Infinite || other.special == Infinite) {
+            if (isZero() || other.isZero()) return symfloat(Nan);
+            return symfloat(Infinite).setNegative(negative != other.negative);
         }
 
-        hpfloat result;
-        result.integer = integer * _comp.integer;
-        result.fraction = (integer * _comp.fraction) + (fraction * _comp.integer);
+        symfloat result;
+        result.integer = integer * other.integer;
+        result.fraction = (integer * other.fraction) + (fraction * other.integer);
 
         return result;
     }
 
     // 除法运算符
-    hpfloat operator/(const hpfloat& _comp) const {
-        if (special == hpcalc::Nan || _comp.special == hpcalc::Nan) return hpfloat(hpcalc::Nan);
-        if (_comp.isZero()) return hpfloat(hpcalc::Nan);
-        if (special == hpcalc::Infinite) return hpfloat(hpcalc::Infinite).setNegative(negative != _comp.negative);
-        if (_comp.special == hpcalc::Infinite) return hpfloat(0);
+    symfloat operator/(const symfloat& other) const {
+        sreturn_if_both_nan symfloat(Nan);
+        if (other.isZero()) return symfloat(Nan);
+        if (special == Infinite) return symfloat(Infinite).setNegative(negative != other.negative);
+        if (other.special == Infinite) return symfloat(0);
 
-        hpfloat result;
-        result.integer = integer / _comp.integer;
-        result.fraction = (integer % _comp.integer) / _comp.fraction;
+        symfloat result;
+        result.integer = integer / other.integer;
+        result.fraction = (integer % other.integer) / other.fraction;
 
         return result;
     }
 
     // 取模运算符
-    hpfloat operator%(const hpfloat& _comp) const {
-        if (special == hpcalc::Nan || _comp.special == hpcalc::Nan) return hpfloat(hpcalc::Nan);
-        if (_comp.isZero()) return hpfloat(hpcalc::Nan);
-        if (special == hpcalc::Infinite) return hpfloat(hpcalc::Nan);
-        if (_comp.special == hpcalc::Infinite) return *this;
+    symfloat operator%(const symfloat& other) const {
+        sreturn_if_both_nan symfloat(Nan);
+        if (other.isZero()) return symfloat(Nan);
+        if (special == Infinite) return symfloat(Nan);
+        if (other.special == Infinite) return *this;
 
-        hpfloat result;
-        result.integer = integer % _comp.integer;
-        result.fraction = fraction % _comp.fraction;
+        symfloat result;
+        result.integer = integer % other.integer;
+        result.fraction = fraction % other.fraction;
 
         return result;
     }
 
     // 比较运算符
-    bool operator==(const hpfloat& _comp) const {
-        if (special != _comp.special) return false;
-        if (special == hpcalc::Nan || _comp.special == hpcalc::Nan) return false;
-        if (special == hpcalc::Infinite || _comp.special == hpcalc::Infinite) {
-            return (special == _comp.special) && (negative == _comp.negative);
-        }
-        return (integer == _comp.integer) && (fraction == _comp.fraction) && (negative == _comp.negative);
+    bool operator==(const symfloat& other) const {
+        if (special != other.special) return false;
+        sreturn_if_both_nan false;
+        sreturn_if_both_infinite (negative == other.negative);
+        return (integer == other.integer) && (fraction == other.fraction) && (negative == other.negative);
     }
 
-    bool operator!=(const hpfloat& _comp) const {
-        return !(*this == _comp);
+    bool operator!=(const symfloat& other) const {
+        return !(*this == other);
     }
 
-    bool operator<(const hpfloat& _comp) const {
-        if (special == hpcalc::Nan || _comp.special == hpcalc::Nan) return false;
-        if (special == hpcalc::Infinite) return negative; // 负的 Infinite 小于任何数
-        if (_comp.special == hpcalc::Infinite) return !_comp.negative; // 正的 Infinite 大于任何数
+    bool operator<(const symfloat& other) const {
+        if (special == Nan || other.special == Nan) return false;
+        sreturn_if_both_infinite [&] {
+            if (negative == other.negative) return false; // the same sign, equal is not less than
+            if (negative && !other.negative) return true; // -inf < +inf
+            if (!negative && other.negative) return false; // +inf > -inf
+        }();
+        if (negative != other.negative) return negative; // negative number is less than positive number
 
-        if (negative != _comp.negative) return negative; // 负数小于正数
-
-        if (integer != _comp.integer) return (negative ? integer > _comp.integer : integer < _comp.integer);
-        return (negative ? fraction > _comp.fraction : fraction < _comp.fraction);
+        if (integer != other.integer) return (negative ? integer > other.integer : integer < other.integer);
+        return (negative ? fraction > other.fraction : fraction < other.fraction);
     }
 
-    bool operator<=(const hpfloat& _comp) const {
-        return (*this < _comp) || (*this == _comp);
+    bool operator<=(const symfloat& other) const {
+        return (*this < other) || (*this == other);
     }
 
-    bool operator>(const hpfloat& _comp) const {
-        return !(*this <= _comp);
+    bool operator>(const symfloat& other) const {
+        return !(*this <= other);
     }
 
-    bool operator>=(const hpfloat& _comp) const {
-        return !(*this < _comp);
+    bool operator>=(const symfloat& other) const {
+        return !(*this < other);
     }
 
     // 复合赋值运算符
-    hpfloat& operator+=(const hpfloat& _comp) { return *this = *this + _comp; }
-    hpfloat& operator-=(const hpfloat& _comp) { return *this = *this - _comp; }
-    hpfloat& operator*=(const hpfloat& _comp) { return *this = *this * _comp; }
-    hpfloat& operator/=(const hpfloat& _comp) { return *this = *this / _comp; }
-    hpfloat& operator%=(const hpfloat& _comp) { return *this = *this % _comp; }
+    symfloat& operator+=(const symfloat& other) { return *this = *this + other; }
+    symfloat& operator-=(const symfloat& other) { return *this = *this - other; }
+    symfloat& operator*=(const symfloat& other) { return *this = *this * other; }
+    symfloat& operator/=(const symfloat& other) { return *this = *this / other; }
+    symfloat& operator%=(const symfloat& other) { return *this = *this % other; }
 
     // 判断是否为零
     bool isZero() const {
@@ -505,19 +673,19 @@ public:
     }
 
     // 赋值运算符
-    hpfloat& operator=(const hpfloat& _comp) {
-        if (this != &_comp) {
-            integer = _comp.integer;
-            fraction = _comp.fraction;
-            negative = _comp.negative;
-            special = _comp.special;
+    symfloat& operator=(const symfloat& other) {
+        if (this != &other) {
+            integer = other.integer;
+            fraction = other.fraction;
+            negative = other.negative;
+            special = other.special;
         }
         return *this;
     }
 
     // 取反运算符
-    hpfloat operator-() const {
-        hpfloat result = *this;
+    symfloat operator-() const {
+        symfloat result = *this;
         result.negative = !negative;
         return result;
     }
@@ -525,48 +693,257 @@ public:
     bool isNegative() const { return negative; }
 
     // 设置符号
-    hpfloat& setNegative(bool isNegative) {
+    symfloat& setNegative(bool isNegative) {
         negative = isNegative;
         return *this;
     }
 
-    bool isInfinite() const { return special == hpcalc::Infinite; }
-    bool isNan() const { return special == hpcalc::Nan; }
+    bool isInfinite() const { return special == Infinite; }
+    bool isNan() const { return special == Nan; }
 
-    friend hpfloat floor(const hpfloat& _ref, const int32_t lev);
-    friend hpfloat log(const hpfloat& _ref, const hpfloat& base);
-    friend hpint round(const hpfloat& _ref);
-    friend hpint ceil(const hpfloat& _ref);
-    friend hpint truncate(const hpfloat& _ref);
+    /// @brief Fast multiplication by 10^shift. Moves digits from fraction to integer.
+    /// @warning Leading zeros in fraction are not preserved (pre-existing limitation).
+    symfloat operator<<(int shift) const {
+        if (shift < 0) return *this >> (-shift);
+        if (shift == 0) return *this;
+        if (special == Nan || special == Infinite) return *this;
+
+        symfloat result = *this;
+        int flen = result.fraction.length();
+
+        if (flen == 0) {
+            result.integer = result.integer << shift;
+            return result;
+        }
+
+        if (shift >= flen) {
+            // All fraction digits move to integer, pad with zeros
+            result.integer = (result.integer << shift) + (result.fraction << (shift - flen));
+            result.fraction = symint(0);
+        } else {
+            // Move top 'shift' (most significant) digits from fraction to integer
+            symint top = result.fraction >> (flen - shift);
+            result.integer = (result.integer << shift) + top;
+            // Remove those digits from fraction
+            result.fraction = result.fraction - (top << (flen - shift));
+        }
+
+        return result;
+    }
+
+    /// @brief Fast division by 10^shift. Moves digits from integer to fraction.
+    /// @warning Leading zeros in fraction are not preserved (pre-existing limitation).
+    symfloat operator>>(int shift) const {
+        if (shift < 0) return *this << (-shift);
+        if (shift == 0) return *this;
+        if (special == Nan || special == Infinite) return *this;
+
+        symfloat result = *this;
+        int ilen = result.integer.length();
+
+        if (ilen == 0) return result;
+
+        if (shift >= ilen) {
+            // All integer digits become part of fraction; integer becomes 0.
+            // fraction = old_integer * 10^old_flen + old_fraction
+            int flen = result.fraction.length();
+            result.fraction = (result.integer << flen) + result.fraction;
+            result.integer = symint(0);
+        } else {
+            // Move bottom 'shift' (least significant) digits from integer to fraction
+            // Extract least significant 'shift' digits: integer - (integer >> shift) << shift
+            symint bottom = result.integer - ((result.integer >> shift) << shift);
+            result.integer = result.integer >> shift;
+
+            // Prepend bottom digits to fraction:
+            // new_fraction = bottom * 10^flen + old_fraction
+            int flen = result.fraction.length();
+            result.fraction = (bottom << flen) + result.fraction;
+        }
+
+        return result;
+    }
+
+    friend symfloat floor(const symfloat& _ref, const int32_t lev);
+    friend symfloat log(const symfloat& _ref, const symfloat& base);
+    friend symint round(const symfloat& _ref);
+    friend symint ceil(const symfloat& _ref);
+    friend symint truncate(const symfloat& _ref);
 
 protected:
-    hpint integer;
-    hpint fraction;
+    symint integer;
+    symint fraction;
 
     bool negative;
-    hpcalc::specialState special;
+    special special;
 };
 
 // 输入流运算符
-std::istream& operator>>(std::istream& in, hpfloat& _comp) {
+std::istream& operator>>(std::istream& in, symfloat& other) {
     std::string str;
     in >> str;
-    _comp.make(str);
+    other = symfloat::from_string(str);
     return in;
 }
 
 // 输出流运算符
-std::ostream& operator<<(std::ostream& out, const hpfloat& _comp) {
-    out << _comp.to_string();
+std::ostream& operator<<(std::ostream& out, const symfloat& other) {
+    out << other.to_string();
     return out;
 }
 
+template<typename T>
+concept symarray_supported = 
+    requires(T a, T b) {
+        { a + b } -> std::convertible_to<T>;
+        { a - b } -> std::convertible_to<T>;
+        { a * b } -> std::convertible_to<T>;
+        { a / b } -> std::convertible_to<T>;
+        { a > b } -> std::convertible_to<bool>;
+        { a < b } -> std::convertible_to<bool>;
+        { a == b } -> std::convertible_to<bool>;
+    };
 
-class hpfrac {
+template<typename T>
+concept has_from_string = requires(const std::string& str) {
+    { T::from_string(str) } -> std::convertible_to<T>;
+};
+
+template<typename T>
+concept has_to_string = 
+std::is_class_v<T> && requires(const T& obj) { { obj.to_string() } -> std::convertible_to<std::string>; }
+|| requires(const T& val) { { std::to_string(val) } -> std::convertible_to<std::string>; };
+
+// currently only support symint, but it would be easy to cast any container
+// into this array and allow math operations on it.
+// This is not really part of the symbolic math library. Should be moved to maths
+// module in the future.
+template<typename T>
+requires symarray_supported<T>
+class symarray : public std::vector<T>
+{
 public:
+    symarray() {}
+    symarray(int size, const T& value) : std::vector<T>(size, value) {}
+    symarray(const std::initializer_list<T>& init) : std::vector<T>(init) {}
+    symarray(const std::vector<T>& vec) : std::vector<T>(vec) {}
 
-protected:
-    hpint numerator;
-    hpint denominator;
+    T max() const {
+        if (empty()) throw std::runtime_error("symarray::max: empty array");
+        T maxValue = at(0);
+        for (const T& value : *this) {
+            if (value > maxValue) {
+                maxValue = value;
+            }
+        }
+        return maxValue;
+    }
+
+    T min() const {
+        if (empty()) throw std::runtime_error("symarray::min: empty array");
+        T minValue = at(0);
+        for (const T& value : *this) {
+            if (value < minValue) {
+                minValue = value;
+            }
+        }
+        return minValue;
+    }
+    
+    T sum() const {
+        T total(0);
+        for (const T& value : *this) {
+            total += value;
+        }
+        return total;
+    }
+
+    T average() const {
+        if (empty()) throw std::runtime_error("symarray::average: empty array");
+        T total = sum();
+        return total / static_cast<int>(size());
+    }
+
+    T median() const {
+        if (empty()) throw std::runtime_error("symarray::median: empty array");
+        symarray<T> sortedArray = *this;
+        std::sort(sortedArray.begin(), sortedArray.end());
+        size_t mid = size() / 2;
+        if (size() % 2 == 0) {
+            return (sortedArray[mid - 1] + sortedArray[mid]) / 2;
+        } else {
+            return sortedArray[mid];
+        }
+    }
+
+    T product() const {
+        T total(1);
+        for (const T& value : *this) {
+            total *= value;
+        }
+        return total;
+    }
+
+    symarray sort() const {
+        symarray<T> sortedArray = *this;
+        std::sort(sortedArray.begin(), sortedArray.end());
+        return sortedArray;
+    }
+
+    static symarray from_stringlist(const scl2::stringlist& strlist)
+        requires has_from_string<T>
+    {
+        symarray<T> result;
+        for (const std::string& str : strlist) {
+            T value = T::from_string(str);
+            result.push_back(value);
+        }
+        return result;
+    }
+
+    /// @brief Create a symarray from a string, splitting by common delimiters.
+    /// @warning supported splits are: ",", " ", "\t", "\n" 
+    static symarray from_string(const std::string& str)
+        requires has_from_string<T>
+    {
+        symarray<T> result;
+        scl2::stringlist strlist(str, scl2::stringlist({","," ","\t","\n"}));
+        strlist.remove_empty();
+        for (const std::string& s : strlist) {
+            T value = T::from_string(s);
+            result.push_back(value);
+        }
+        return result;
+    }
+
+    template<typename U = T>
+    requires has_to_string<U>
+    std::string T_to_string(const U& value) {
+        if (constexpr requires(const U& obj) {{obj.to_string()}}) {
+            return value.to_string();
+        } else if (constexpr requires(const U& val) {{std::to_string(val)}}) {
+            return std::to_string(value);
+        } else {
+            static_assert(false, "Type T does not have a to_string() method or std::to_string() overload.");
+        }
+    }
+
+    scl2::stringlist to_stringlist() const
+        requires has_to_string<T>
+    {
+        scl2::stringlist result;
+        for (const T& value : *this) {
+            result.push_back(value.to_string());
+        }
+        return result;
+    }
+
+    scl2::to_string() const
+        requires has_to_string<T>
+    {
+        return to_stringlist().join();
+    }
 
 };
+
+} // namespace scl2::sym

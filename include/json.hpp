@@ -13,7 +13,7 @@
     Also check jbt if you want some even more compact storage of json data.
 
     [SCL_STANDALONE_MODULE]
-    version: 1.8.1
+    version: 1.9.0
     cpp_generation: cxx17 - cxx23
 */
 
@@ -55,6 +55,9 @@ class json;
 class json_parser;
 class json_exporter;
 
+typedef std::vector<json_value> json_array;
+typedef std::map<std::string, json_value> json_object;
+
 enum class json_value_type : uint8_t {
     null = 0,
     boolean = 1,
@@ -95,11 +98,9 @@ private:
 };
 
 class json_value {
-#ifdef UNICODE
 protected:
     static std::string json_wtoa(const std::wstring& ws);
     static std::wstring json_atow(const std::string& s);
-#endif
 public:
     json_value() = default;
 
@@ -197,7 +198,6 @@ public:
     bool clear_as_object(); // clear the value, set it to an empty object
     bool empty_as_object() const; // check if the value is an object and empty
 
-#ifdef UNICODE
     // ── wstring compatibility ────────────────────────────────────────
     json_value(const std::wstring& ws) : json_value(json_wtoa(ws)) {}
     json_value(const wchar_t* ws) : json_value(json_wtoa(std::wstring(ws))) {}
@@ -210,7 +210,6 @@ public:
     bool erase(const std::wstring& key) { return remove_member(key); }
 
     std::wstring as_wstring() const { return json_atow(as_string()); }
-#endif
 
     // for string
     size_t length() const;
@@ -263,15 +262,11 @@ public:
     // static factory functions
     static json fromString(const std::string& str);
     static json fromFile(const std::filesystem::path& path);
-#ifdef UNICODE
     static json fromString(const std::wstring& wstr) { return fromString(json_value::json_wtoa(wstr)); }
-#endif
 
     std::string toString() const;
     std::string toCompatString() const;
-#ifdef UNICODE
     std::wstring toWString() const { return json_value::json_atow(toString()); }
-#endif
 
     // This uses the default format. If you want anything else, do it yourself.
     std::string toFile(const std::filesystem::path& path) const;

@@ -1,6 +1,6 @@
 # SharedCppLib2 API 参考
 
-文档版本: 0.2.0
+文档版本: 0.3.0
 
 SharedCppLib2 正在构建自己的 API（兼容层）。它提供了一系列标准，使得你的代码可以与 SharedCppLib2 直接交互，学习成本极低。
 
@@ -39,121 +39,81 @@ scl2_check_generic_serialize_deserialize(MyClass)
 
 这是 SharedCppLib2 的关键部分。此 API 层允许你将几乎任何内容转换为字节数组，或将其还原。
 
-这是一个强大的 API 集，因为你可以将字节数组用于文件、网络、管道或任何其他用途。
-
-数据包的转换从未如此简单。
-
-以下是 bytearray（dump/load）API 层的示例：
+在你的类中实现 `dump()` 和 `load()`，即可与 `gdump`/`gload` 兼容：
 
 ```cpp
 struct MyData {
     int d1;
     double d2;
-
     std::string d3;
     std::vector<int> d4;
 
-    scl2::bytearray dump(const MyData& data) const {
+    scl2::bytearray dump() const {
         scl2::bytearray ba;
 
-        // 数字类型可以直接追加到 bytearray
-        ba.append(data.d1);
-        ba.append(data.d2);
+        // 可平凡拷贝类型可以直接追加
+        ba.append(d1);
+        ba.append(d2);
 
-        // 字符串使用 addString()
-        ba.addString(data.d3);
+        // 字符串使用 append（自动添加长度前缀）
+        ba.append(d3);
 
-        // 注意：宽字符串使用 addWString()
-
-        // 对于 STL 兼容容器，使用 appendContainer()
-        // 它会自动处理所有大小和元素
-        ba.appendContainer(data.d4);
+        // 对于 STL 兼容容器，使用 appendContainer
+        ba.appendContainer(d4);
 
         return ba;
     }
 
-
-    // 使用 bytearray_view（必须是引用）进行加载。
-    // bytearray_view 处理所有读取操作，
-    // bytearray 本身没有这些操作。
-    MyData load(const scl2::bytearray_view& ba) const {
-        MyData data;
-
-        // 数字类型可以直接从 bytearray_view 读取
-        data.d1 = ba.read<int>();
-        data.d2 = ba.read<double>();
-
-        // 字符串使用 readString()
-        data.d3 = ba.readString();
-
-        // 注意：宽字符串使用 readWString()
-
-        // 对于 STL 兼容容器，使用 readContainer()
-        // 它会自动处理所有大小和元素
-        data.d4 = ba.readContainer<std::vector<int>>();
-
-        return data;
+    void load(scl2::bytearray& ba) {
+        // 按写入顺序读取
+        d1 = ba.read<int>();
+        d2 = ba.read<double>();
+        d3 = ba.readString();
+        d4 = ba.readContainer<std::vector<int>>();
     }
 };
 
+// 编译期验证兼容性
+scl2_check_generic_dump(MyData)
+scl2_check_generic_load(MyData)
 ```
 
-这是一个简单的示例。对于嵌套结构，你也可以递归地使用 dump/load：
+### 嵌套结构
+
+对于嵌套类型，递归调用 `gdump` / `gload`：
 
 ```cpp
-
 class MyClass {
     int meta;
     std::vector<MyData> datal;
 
 public:
-    scl2::bytearray dump(const MyClass& data) const {
+    scl2::bytearray dump() const {
         scl2::bytearray ba;
+        ba.append(meta);
 
-        ba.append(data.meta);
-        
-        // 目前不支持非基本类型的容器。
-        // 不过处理起来仍然很简单。
-
-        // 首先写入容器的大小。
-        // 确保使用 appendSize() 以获得正确的类型。
-        // 相信我，你不会想调试这个的。
-        ba.appendSize(data.datal.size());
-
-        for(const auto& item : data.datal) {
-            // 然后使用元素自己的 dump 函数写入每个元素。
-            ba.append(MyData::dump(item));
-        }
+        // 先写入容器大小，再写入每个元素
+        ba.append(static_cast<uint32_t>(datal.size()));
+        for (const auto& item : datal)
+            ba.append(scl2::gdump(item));
 
         return ba;
     }
 
-    MyClass load(const scl2::bytearray_view& ba) const {
-        MyClass data;
+    void load(scl2::bytearray& ba) {
+        meta = ba.read<int>();
 
-        data.meta = ba.read<int>();
-
-        // 首先读取容器的大小。
-        size_t size = ba.readSize();
-        data.datal.reserve(size); // 为容器预留空间
-        for(size_t i = 0; i < size; ++i) {
-            // 然后使用元素自己的 load 函数读取每个元素。
-            data.datal.push_back(MyData::load(ba));
-        }
-
-        return data;
+        uint32_t size = ba.read<uint32_t>();
+        datal.reserve(size);
+        for (uint32_t i = 0; i < size; ++i)
+            datal.push_back(scl2::gload<MyData>(ba));
     }
 };
-
 ```
 
-以上示例展示了 bytearray_view 层的全部潜力。你可以从单个源数组中串联调用 load 函数，所有数据映射都会自动处理。
+`bytearray` 内置的读取游标在每次 `read()` 调用后自动前进。只需按写入顺序读取——游标会自动处理位置。
 
-你只需要按顺序读取。确保两端的处理过程完全一致。你可以应用基本的压缩策略，例如对于一个包含 3 种不同类型的数据包，你不需要为其他类型预留数据。
-
-不过，确保代码的健壮性仍然是你的责任。上述示例不包含任何错误处理，如果出现问题（如进入无效状态或数据在传输过程中被截断），很可能会崩溃。
-
-有关错误处理的更多细节，请参考 [Bytearray](bytearray.md)。
+有关错误处理和高级功能，请参考 [Bytearray](bytearray.md)。
 
 
 ### 加密 API 层

@@ -11,11 +11,12 @@
 #include <vector>
 #include <initializer_list>
 #include <functional>
-#include <unordered_set>
+#include <string>
 
 #include "basics.hpp"
 // #include "stream.hpp"
 #include "bytearray.hpp"
+#include "string.hpp"
 
 /*
     Future Dev Plan:
@@ -27,10 +28,10 @@
 namespace scl2 {
 
 template<typename CharT>
-class basic_stringlist : public std::vector<std::basic_string<CharT>>
+class basic_stringlist : public std::vector<scl2::basic_string<CharT>>
 {
 public:
-    typedef std::basic_string<CharT> string_type;
+    typedef scl2::basic_string<CharT> string_type;
     typedef string_type value_type; // For STL compatibility
 
     // linking to default std::vector methods
@@ -84,11 +85,15 @@ public:
 
     /** @brief Execute f() for each of the element.
      * 
-     * void f(size_t id, string_type &content)
-     * 
-     * define normally or use lambda.
+     * @param f function to execute, signature: void f(size_t id, string_type &content)
      */
     void exec_foreach(std::function<void(size_t, string_type&)> f);
+
+    /** @brief execute f() for each of the element.
+     * 
+     * @param f function to execute, signature: void f(string_type &content)
+     */
+    void exec_foreach(std::function<void(string_type&)> f);
 
     /// @brief Build a stringlist from a dynamic list.
     /// @param build param list, use like {"1", "2"}.
@@ -115,7 +120,7 @@ public:
 
     basic_stringlist& operator=(const basic_stringlist& l);
 
-    size_t all_size();
+    size_t total_size();
 
 public:
     explicit basic_stringlist(int size, CharT** content, int begin = 0, int end = -1);

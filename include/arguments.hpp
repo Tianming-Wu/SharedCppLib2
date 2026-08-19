@@ -22,7 +22,8 @@
 #include "stringlist.hpp"
 #include "basics.hpp"
 #include "enum.hpp"
-#include "platform.hpp" // unluckily needed for string conversion helpers
+#include "platform.hpp"
+#include "string.hpp"
 
 #include <map>
 #include <stdexcept>
@@ -42,7 +43,7 @@ template<typename CharT>
 class basic_arguments : protected scl2::basic_stringlist<CharT>
 {
 public:
-    typedef std::basic_string<CharT> string_type;
+    typedef scl2::basic_string<CharT> string_type;
     typedef scl2::basic_stringlist<CharT> stringlist_type;
 
     // allow unscoped usage to simply, since user will need to combine multiple flags.
@@ -315,7 +316,7 @@ protected:
         if constexpr (std::is_same_v<CharT, char>) {
             return str;
         } else {
-            return platform::wstringToString(str);
+            return scl2::wstr_to_str(str);
         }
     }
 

@@ -1,6 +1,7 @@
 #include "tcpclient.hpp"
 #include "dns.hpp"
 #include "platform.hpp"
+#include "string.hpp"
 
 #include <cstring>
 
@@ -27,7 +28,7 @@ bool client::connect(const std::string& address, uint16_t port)
         addr.address = address;
     } catch (...) {
         // Not a direct IP, try DNS lookup
-        auto dns_result = dns::dns_query(platform::stringToWstring(address));
+        auto dns_result = dns::dns_query(scl2::str_to_wstr(address));
         if (dns_result.addresses.empty()) {
             return false;
         }
