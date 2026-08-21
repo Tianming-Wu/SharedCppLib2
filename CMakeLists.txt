@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.10)
 # endif()
 
 project(SharedCppLib2
-    VERSION 3.2.0
+    VERSION 3.3.0
     LANGUAGES CXX
 )
 
@@ -105,6 +105,8 @@ add_library(datauri STATIC src/datauri.cpp)
 add_library(json STATIC src/json.cpp)
 add_library(i18n STATIC src/i18n.cpp)
 add_library(yaml STATIC src/yaml.cpp)
+add_library(bitmap STATIC src/bitmap.cpp)
+add_library(qrcode STATIC src/qrcode.cpp)
 
 add_library(fileio STATIC src/fileio.cpp)
 add_library(file STATIC src/file.cpp)
@@ -151,9 +153,17 @@ target_link_libraries(datauri PUBLIC basic)
 target_link_libraries(network_tcp PUBLIC stream)
 
 # basic 库依赖关系
-foreach(target regexfilter logc sha256 sha512 sha1 crc32 arguments ini abstract xml keydb condition datauri json i18n yaml aes fileio file filepack uri)
+foreach(target
+    regexfilter logc sha256 sha512 sha1 crc32 arguments ini abstract
+    xml keydb condition datauri json i18n yaml aes
+    fileio file filepack uri
+    bitmap qrcode
+)
     target_link_libraries(${target} PUBLIC basic)
 endforeach()
+
+# qrcode 依赖 bitmap（调用 bitmap<bool> 的成员实现）
+target_link_libraries(qrcode PUBLIC bitmap)
 
 # file 额外依赖 fileio
 target_link_libraries(file PUBLIC fileio)
@@ -177,6 +187,7 @@ set(TARGET_LIST
     console aes keydb types condition filesystem datauri json i18n yaml
     fileio file filepack uri
     network_core network_dns network_tcp network_udp network_http
+    bitmap qrcode
 )
 
 # 安装目标
