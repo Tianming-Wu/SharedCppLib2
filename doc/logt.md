@@ -95,7 +95,7 @@ void send_data() {
 #include <SharedCppLib2/arguments.hpp>
 
 int main(int argc, char** argv) {
-    std::arguments args(argc, argv);
+    scl2::arguments args(argc, argv);
 
     // ... other log initialization code ...
 

@@ -33,7 +33,7 @@ target_link_libraries(target SharedCppLib2::arguments)
 #include <SharedCppLib2/arguments.hpp>
 
 int main(int argc, char** argv) {
-    std::arguments args(argc, argv);
+    scl2::arguments args(argc, argv);
     
     // 解析字符串参数
     std::string name;
@@ -187,11 +187,11 @@ enum parse_policy {
 ### 策略使用示例
 ```cpp
 // 严格模式：未知选项和空值都报错
-std::arguments args(argc, argv, 
+scl2::arguments args(argc, argv, 
     FailIfEmptyValue | FailIfUnknown);
 
 // 允许等号语法
-std::arguments args(argc, argv, 
+scl2::arguments args(argc, argv, 
     AllowEqualSign);
 ```
 
@@ -400,7 +400,7 @@ args.addParameter("--pos", position);
 
 ### 宽字符支持
 ```cpp
-std::warguments args(argc, argv);
+scl2::warguments args(argc, argv);
 
 std::wstring name;
 args.addParameter(L"--name", name, L"default");
@@ -412,12 +412,12 @@ args.addParameter(L"--name", name, L"default");
 
 ```cpp
 try {
-    std::arguments args(argc, argv, FailIfUnknown);
+    scl2::arguments args(argc, argv, FailIfUnknown);
     
     int port;
     args.addParameter("--port", port, 8080);
     
-} catch (const parameter_error& e) {
+} catch (const scl2::parameter_error& e) {
     std::cerr << "错误: " << e.what() << std::endl;
     return 1;
 }
@@ -461,7 +461,7 @@ args.addParameter("--enable-feature", enable, false);
 ### 4. 组合相关策略
 ```cpp
 const auto strict_policy = FailIfEmptyValue | FailIfUnknown;
-std::arguments args(argc, argv, strict_policy);
+scl2::arguments args(argc, argv, strict_policy);
 ```
 
 ## 实现说明
