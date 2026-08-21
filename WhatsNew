@@ -1,5 +1,18 @@
 # Changelog
 
+### v3.3.0
+- New: `bitmap<Pixel>` pixel-templated bitmap; `bitmap<bool>` (alias `bitmap_1c`) 1-bit packed monochrome with BMP I/O (`toBmp`/`fromBmp`), configurable row alignment, scaling, and `fit_into` (`Stretch::Fill/Cover/Contain/Center/Tile`).
+- New: `drawer<Pixel>` rasterization with `pen`/`brush`, pixel blending (`blend_at`), and anti-aliased line/circle (`draw_line_aa`/`draw_circle_aa`); 1-bit drawing stays hard-edge.
+- New: `color::blend()`/`operator+`, free `blend()`, and compact 4-byte `rgba8` storage pixel.
+- New: QR code encoder (`scl2::qrcode`, v1–v40) with Reed-Solomon error correction (`scl2::xmath`).
+- New: `transport_interface` in `stream` — connectable stream abstraction for protocol layers.
+- New: `bytearray` bit-level shift/rotate/take operations (`bitShiftLeft/Right`, `bitRotateLeft/Right`, `bitTakeLeft/Right`).
+- New: `bitenum_checkvalue` flag test helper in `enum`.
+- New: `Stretch` enum in `scldefs`.
+- Changed: `arguments` migrated from `std` to `scl2` namespace — use `scl2::arguments`/`scl2::warguments`.
+- Fixed: `typemask::to_handle` int-to-pointer cast (reinterpret_cast) + `<cstdint>`; `platform` defines `NOMINMAX` and uses `get_env()` for PATH lookup (C4996).
+- Fixed: removed duplicate `operator&=` from the enum bitop macro.
+
 ### v3.2.0
 - New: `xstring` — multi-type string variant with automatic conversion between ansi, wide, and UTF types. Passthrough operations (`substr`, `find`, `contains`, etc.) work regardless of stored type. Added to `basic`.
 - New: `scl2::str_to_wstr()` / `scl2::wstr_to_str()` — UTF-8 ↔ wide string conversion utilities in the `string` module.
