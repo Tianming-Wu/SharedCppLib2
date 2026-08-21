@@ -1,5 +1,8 @@
 # Changelog
 
+### v3.4.0
+- New: `scl2::variant` in `basic` — a QVariant-like dynamic value wrapping `std::variant`, with automatic conversion between numeric / string / bool (`as_xxx`, `as<T>()`), `fromString()` parsing, and `to_bytearray()` serialization via bytearray helpers.
+
 ### v3.3.0
 - New: `bitmap<Pixel>` pixel-templated bitmap; `bitmap<bool>` (alias `bitmap_1c`) 1-bit packed monochrome with BMP I/O (`toBmp`/`fromBmp`), configurable row alignment, scaling, and `fit_into` (`Stretch::Fill/Cover/Contain/Center/Tile`).
 - New: `drawer<Pixel>` rasterization with `pen`/`brush`, pixel blending (`blend_at`), and anti-aliased line/circle (`draw_line_aa`/`draw_circle_aa`); 1-bit drawing stays hard-edge.

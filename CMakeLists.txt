@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.10)
 # endif()
 
 project(SharedCppLib2
-    VERSION 3.3.0
+    VERSION 3.4.0
     LANGUAGES CXX
 )
 
@@ -71,6 +71,7 @@ add_library(typemask INTERFACE include/typemask.hpp)
 add_library(basic STATIC
     src/bytearray.cpp src/ansiio.cpp src/color.cpp src/stringlist.cpp
     src/stringlist_regex.cpp src/basics.cpp src/string.cpp src/xstring.cpp
+    src/variant.cpp
 )
 # Propagate generated header dir for add_subdirectory consumers
 target_include_directories(basic PUBLIC
