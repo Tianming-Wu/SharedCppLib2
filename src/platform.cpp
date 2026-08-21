@@ -66,12 +66,12 @@ fs::path findExecutableInPath(const std::string &name)
     }
 #endif
     // Fallback: manually search in PATH
-    const char* pathEnv = std::getenv("PATH");
-    if (!pathEnv) {
+    // (use get_env so MSVC's _dupenv_s path handles the C4996 warning)
+    std::string pathStr = platform::get_env("PATH");
+    if (pathStr.empty()) {
         return fs::path();
     }
 
-    std::string pathStr(pathEnv);
     size_t start = 0;
     size_t end = pathStr.find_first_of( ":;" );
     while (end != std::string::npos) {

@@ -119,6 +119,26 @@ Then scl2's bitenum utilities can recognize the range of your enum and work prop
 */
 
 
+// Check if a bitenum value contains a specific flag.
+// Can also be used to check multiple flags at once, e.g. bitenum_checkvalue(flags, FlagA | FlagB)
+template<typename E>
+requires std::is_enum_v<E>
+bool bitenum_checkvalue(const E& data, const E& target_value)
+{
+    if (target_value == static_cast<E>(0)) {
+        return data == static_cast<E>(0);
+    }
+
+    using U = std::make_unsigned_t<std::underlying_type_t<E>>;
+
+    const U raw_data = static_cast<U>(data);
+    const U raw_target = static_cast<U>(target_value);
+
+    return (raw_data & raw_target) == raw_target;
+}
+
+
+
 #if __cpp_lib_generator >= 202207L
 
 /// @brief Allow to scroll through bitwide flags using grammer `for (auto bit : enum_bitwiden(flags))`
@@ -240,11 +260,6 @@ std::generator<E> bitenum_ranged_iterator(E value, size_t minVal, size_t maxVal)
     inline constexpr NAME& operator^=(NAME &a, NAME b) noexcept { \
         using T = std::underlying_type_t<NAME>; \
         a = static_cast<NAME>(static_cast<T>(a) ^ static_cast<T>(b)); \
-        return a; \
-    } \
-    inline constexpr NAME& operator&=(NAME &a, NAME b) noexcept { \
-        using T = std::underlying_type_t<NAME>; \
-        a = static_cast<NAME>(static_cast<T>(a) & static_cast<T>(b)); \
         return a; \
     }
 
