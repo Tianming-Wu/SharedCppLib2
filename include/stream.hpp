@@ -77,6 +77,28 @@ public:
 class basic_sclstream : public basic_sclistream, public basic_sclostream
 {};
 
+// A connectable bidirectional stream — the transport abstraction used by
+// protocol layers (HTTP, TLS, etc.) that sit on top of a connection.
+//
+// Concrete transports (e.g. network::tcp::client, a future TLS client) inherit
+// this and implement connect/disconnect/is_connected alongside the
+// basic_sclstream I/O methods. Protocol layers hold a transport_interface& and
+// never need to know the concrete transport type.
+class transport_interface : public basic_sclstream {
+public:
+    transport_interface() = default;
+    virtual ~transport_interface() = default;
+
+    /// @brief Connect to a remote host.
+    virtual bool connect(const std::string& host, uint16_t port) = 0;
+
+    /// @brief Disconnect from the remote host.
+    virtual void disconnect() = 0;
+
+    /// @brief Whether a connection is currently established.
+    virtual bool is_connected() const = 0;
+};
+
 /*
 Usage note:
     This is purely template, and only provides virtual interface.

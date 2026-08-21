@@ -1,4 +1,15 @@
 /*
+    NOTE!!!:
+    Currently, you can use
+    ```cpp
+        auto operator*() {
+            return std::tie(a, b, *c);
+        }
+    ```
+    to support structured binding. You don't actually need to use all the shit
+    below.
+
+
     Structural Binding support template for multiple types.
     [[Warning]] This module is NOT TESTED.
 

@@ -121,6 +121,9 @@ size_t writeAs(const fs::path& path, const T& data) {
 // Single-line Call for writing a bytearray to file.
 size_t writeFile(const fs::path& path, const scl2::bytearray& data);
 
+// Single-line Call for writing a string to file.
+size_t writeFile(const fs::path& path, const std::string& data);
+
 template<typename T>
 requires ::scl2::has_generic_load<T>
 T readAndLoad(const fs::path& path) {
@@ -145,6 +148,8 @@ T readAs(const fs::path& path) {
 }
 
 scl2::bytearray readFile(const fs::path& path);
+
+scl2::string readFileAsString(const fs::path& path);
 
 // Syncing system:
 // automatically syncs the data in memory and the file on disk based on timestamps.

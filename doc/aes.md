@@ -211,5 +211,5 @@ PKCS7 padding is applied automatically. If the plaintext length is a multiple of
 
 ## Related Modules
 
-- [`crypto::xor_op`](xor.md) — Simple XOR encryption for obfuscation
+- [`hmac`](hmac.md) — Keyed-hash message authentication
 - `encryption_api.hpp` — Concept definitions for encryption providers

@@ -3,12 +3,6 @@
 
 #include <iomanip>
 
-namespace std {
-
-// old implementation of to_string has been removed
-    
-} //namespace std
-
 namespace scl2 {
 
 std::string version() {

@@ -56,7 +56,7 @@ concept has_decryption_support = has_static_decryption<T> || has_instance_decryp
 
 // ─── Optional fixed key size ────────────────────────────────────────
 // If a cipher exposes `static constexpr size_t key_size`, it can be queried.
-// If absent, key size is treated as dynamic/unknown (e.g., xor_op accepts any key).
+// If absent, key size is treated as dynamic/unknown.
 template<typename T>
 concept has_fixed_key_size = requires {
     requires std::is_class_v<T> && requires {

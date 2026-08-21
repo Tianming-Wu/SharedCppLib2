@@ -33,7 +33,7 @@ Built on top of [`stringlist`](stringlist.md), it supports multiple parsing styl
 #include <SharedCppLib2/arguments.hpp>
 
 int main(int argc, char** argv) {
-    std::arguments args(argc, argv);
+    scl2::arguments args(argc, argv);
     
     // Parse string parameter
     std::string name;
@@ -187,11 +187,11 @@ enum parse_policy {
 ### Example with Policies
 ```cpp
 // Strict mode: fail on unknown options and empty values
-std::arguments args(argc, argv, 
+scl2::arguments args(argc, argv, 
     FailIfEmptyValue | FailIfUnknown);
 
 // Allow equals syntax
-std::arguments args(argc, argv, 
+scl2::arguments args(argc, argv, 
     AllowEqualSign);
 ```
 
@@ -400,7 +400,7 @@ args.addParameter("--pos", position);
 
 ### Wide Character Support
 ```cpp
-std::warguments args(argc, argv);
+scl2::warguments args(argc, argv);
 
 std::wstring name;
 args.addParameter(L"--name", name, L"default");
@@ -412,12 +412,12 @@ All parameter parsing can throw `parameter_error`:
 
 ```cpp
 try {
-    std::arguments args(argc, argv, FailIfUnknown);
+    scl2::arguments args(argc, argv, FailIfUnknown);
     
     int port;
     args.addParameter("--port", port, 8080);
     
-} catch (const parameter_error& e) {
+} catch (const scl2::parameter_error& e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return 1;
 }
@@ -461,7 +461,7 @@ args.addParameter("--enable-feature", enable, false);
 ### 4. Group Related Policies
 ```cpp
 const auto strict_policy = FailIfEmptyValue | FailIfUnknown;
-std::arguments args(argc, argv, strict_policy);
+scl2::arguments args(argc, argv, strict_policy);
 ```
 
 ## Implementation Notes

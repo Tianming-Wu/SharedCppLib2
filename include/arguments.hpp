@@ -13,7 +13,7 @@
     The full document can be found at the bottom of this file.
 
     classes:
-        std::arguments, std::warguments
+        scl2::arguments, scl2::warguments
     link target:
         SharedCppLib2::arguments
 */
@@ -31,7 +31,7 @@
 #include <type_traits>
 #include <functional>
 
-namespace std {
+namespace scl2 {
 
 class parameter_error : public std::runtime_error {
 public:
@@ -94,7 +94,7 @@ public:
     bool addParameter(const string_type &name, bool& value, bool default_value = false);
 
     template<typename _TN>
-    requires(is_integral_v<_TN> && !is_same_v<_TN, bool>)
+    requires(std::is_integral_v<_TN> && !std::is_same_v<_TN, bool>)
     bool addParameter(const string_type &name, _TN& value, _TN default_value = 0, int base = 10) {
         auto it = m_parameters.find(name);
         if (it == m_parameters.end()) {
@@ -107,7 +107,7 @@ public:
             value = default_value;
             return false;
         }
-        if constexpr (is_same_v<CharT, char>) {
+        if constexpr (std::is_same_v<CharT, char>) {
             const auto& str = it->second.value;
             auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value, base);
             if (ec != std::errc{} || ptr != str.data() + str.size())
@@ -344,7 +344,7 @@ extern template class basic_arguments<wchar_t>;
 typedef basic_arguments<char> arguments;
 typedef basic_arguments<wchar_t> warguments;
 
-} // namespace std
+} // namespace scl2
 
 
 /*

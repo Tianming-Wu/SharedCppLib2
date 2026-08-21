@@ -93,7 +93,7 @@ void send_data() {
 
 int main(int argc, char** argv) {
     // 此处使用 arguments 库作为示例，你可以使用任何方式解析。
-    std::arguments args(argc, argv);
+    scl2::arguments args(argc, argv);
 
     // ... 其他日志初始化代码 ...
 

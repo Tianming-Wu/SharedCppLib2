@@ -17,6 +17,12 @@ namespace fs = std::filesystem;
 
 #if defined(_WIN32) || defined(_WIN64)
     #define OS_WINDOWS
+
+    // Sadly, this will remove some functions that we actually need.
+    // I'll deal with it later.
+    // #define WIN32_LEAN_AND_MEAN
+    #define NOMINMAX // Bad job
+
     #include <windows.h>
     #include <direct.h>
 #else

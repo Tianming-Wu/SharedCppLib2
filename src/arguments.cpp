@@ -4,7 +4,7 @@
 // and will be later used to dock with log
 #define ARGUMENTS_IGNORE_FLAG_WARNING(flag, TEXT)
 
-namespace std {
+namespace scl2 {
 
 template class basic_arguments<char>;
 template class basic_arguments<wchar_t>;
@@ -463,4 +463,4 @@ typename basic_arguments<CharT>::string_type basic_arguments<CharT>::getSecondar
     return m_secondaryCommand;
 }
 
-} // namespace std
+} // namespace scl2

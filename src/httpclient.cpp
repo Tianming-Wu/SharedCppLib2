@@ -6,6 +6,12 @@
 namespace network::http {
 
 client::client()
+    : m_transport(std::make_unique<tcp::client>())
+{
+}
+
+client::client(std::unique_ptr<transport_interface> transport)
+    : m_transport(std::move(transport))
 {
 }
 
@@ -18,17 +24,17 @@ bool client::connect(const std::string& host, uint16_t port)
 {
     m_host = host;
     m_port = port;
-    return m_tcp_client.connect(host, port);
+    return m_transport->connect(host, port);
 }
 
 void client::disconnect()
 {
-    m_tcp_client.disconnect();
+    m_transport->disconnect();
 }
 
 bool client::is_connected() const
 {
-    return m_tcp_client.is_connected();
+    return m_transport->is_connected();
 }
 
 response client::get(const std::string& path, 
@@ -60,7 +66,7 @@ response client::send_request(const request& req)
     std::string req_str = req.serialize();
     scl2::bytearray req_data(req_str);
     
-    size_t sent = m_tcp_client.write(req_data);
+    size_t sent = m_transport->write(req_data);
     if (sent == 0) {
         throw network_error("Failed to send request");
     }
@@ -123,8 +129,8 @@ response client::receive_response()
     
     // Read until we have complete headers
     while (!response::has_complete_headers(buffer)) {
-        if (m_tcp_client.readyRead()) {
-            auto data = m_tcp_client.readAll();
+        if (m_transport->readyRead()) {
+            auto data = m_transport->readAll();
             if (!data.empty()) {
                 buffer += data.toStdString();
             }
@@ -165,8 +171,8 @@ response client::receive_response()
     size_t current_body_length = buffer.size() - body_start;
     
     while (current_body_length < content_length) {
-        if (m_tcp_client.readyRead()) {
-            auto data = m_tcp_client.readAll();
+        if (m_transport->readyRead()) {
+            auto data = m_transport->readAll();
             if (!data.empty()) {
                 buffer += data.toStdString();
                 current_body_length = buffer.size() - body_start;

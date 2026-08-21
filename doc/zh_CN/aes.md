@@ -210,5 +210,5 @@ scl2::encrypt_stream<scl2::aes_ecb_128>(in, out, key);
 
 ## 相关模块
 
-- `crypto::xor_op` — 用于混淆的简单 XOR 加密
+- [`hmac`](hmac.md) — 密钥哈希消息认证
 - `encryption_api.hpp` — 加密提供者的概念定义

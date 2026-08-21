@@ -403,6 +403,16 @@ public:
     bytearray rotateLeft(size_t offset) const;
     bytearray rotateRight(size_t offset) const;
 
+    // Shift and rotate at bit level. The offset is in bits, not bytes.
+    bytearray bitShiftLeft(size_t offset) const;
+    bytearray bitShiftRight(size_t offset) const;
+    bytearray bitRotateLeft(size_t offset) const;
+    bytearray bitRotateRight(size_t offset) const;
+
+    // Take specific number of bits from the left or right, returning the taken bits.
+    bytearray bitTakeLeft(size_t bitCount) const;
+    bytearray bitTakeRight(size_t bitCount) const;
+
     // ── Operators ────────────────────────────────────────────────────
     bool operator==(const bytearray& other) const;
     bool operator!=(const bytearray& other) const { return !(*this == other); }

@@ -133,5 +133,6 @@ scl2::bytearray tag = scl2::hmac<scl2::sha256>::compute(payload, key);
 
 ## 已知问题：
 - 可能无法在 gcc / clang 上编译，因为 gcc 采用了与 MSVC 不同的模板实例化策略，导致某些模板无法通过编译期检查。在可用的时候，尽量使用 MSVC 编译器。作者会定期进行相关测试，并尝试修复相关编译问题。
+- HTTPS 实现已从 mainstream 正式放弃，但是预留了 http 集成接口。后续可能会有 OpenSSL 兼容集成，分到独立项目中。
 
 **完整更新日志**: [WhatsNew](WhatsNew) （也可能缺少维护）

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint> // uintptr_t
+
 /*
     Type mask for some type definitions, and make them compatible with WinAPI types,
     while also not forcing users to include Windows headers if they don't want to.
@@ -36,7 +38,9 @@ typedef void* ptr_t;
     template<typename H>
     requires (sizeof(H) == sizeof(winhandle_t))
     inline H to_handle(winhandle_t handle) {
-        return static_cast<H>(reinterpret_cast<uintptr_t>(handle));
+        // H is a pointer type (a WinAPI handle); int -> pointer requires
+        // reinterpret_cast (static_cast forbids int-to-pointer).
+        return reinterpret_cast<H>(reinterpret_cast<uintptr_t>(handle));
     }
 
 #endif

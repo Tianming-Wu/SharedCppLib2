@@ -12,6 +12,7 @@
 #include "http.hpp"
 
 #include <string>
+#include <memory>
 #include <chrono>
 #include <optional>
 
@@ -21,7 +22,13 @@ namespace network::http {
 class client
 {
 public:
+    /// @brief Default client — owns an internal TCP transport.
     client();
+
+    /// @brief Client using an externally-provided transport (e.g. TLS).
+    /// @param transport A connected (or connectable) transport. Ownership is transferred.
+    explicit client(std::unique_ptr<transport_interface> transport);
+
     ~client();
 
     enable_move_only(client)
@@ -83,7 +90,7 @@ private:
     /// @brief Receive response from server (blocks until complete or timeout)
     response receive_response();
 
-    tcp::client m_tcp_client;
+    std::unique_ptr<transport_interface> m_transport;
     std::string m_host;
     uint16_t m_port = 80;
     std::chrono::milliseconds m_timeout = std::chrono::seconds(30);

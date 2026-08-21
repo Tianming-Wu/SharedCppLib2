@@ -16,7 +16,7 @@
 namespace network::tcp {
 
 /// @brief TCP client for connecting and communicating with remote servers
-class client : public basic_sclstream
+class client : public transport_interface
 {
 public:
     client();
@@ -28,16 +28,16 @@ public:
     /// @param address Target server address (IP or hostname)
     /// @param port Target port
     /// @return true if connection successful
-    bool connect(const std::string& address, uint16_t port);
+    bool connect(const std::string& address, uint16_t port) override;
     
     /// @brief Connect to a remote server using network_address
     bool connect(const network_address& address, uint16_t port);
     
     /// @brief Disconnect from the server
-    void disconnect();
+    void disconnect() override;
     
     /// @brief Check if connected to a server
-    bool is_connected() const;
+    bool is_connected() const override;
     
     /// @brief Check if the connection is valid
     bool valid() override;
