@@ -165,6 +165,156 @@ bytearray bytearray::shiftRight(size_t o) const { if(o>=size())return bytearray(
 bytearray bytearray::rotateLeft(size_t o) const { if(empty()||o==0)return *this; o%=size(); bytearray r=subarr(o); r.append(subarr(0,o)); return r; }
 bytearray bytearray::rotateRight(size_t o) const { if(empty()||o==0)return *this; return rotateLeft(size()-o%size()); }
 
+bytearray bytearray::bitShiftLeft(size_t offset) const
+{
+    if (offset == 0) return *this;
+    size_t byteShift = offset / 8;
+    size_t bitShift = offset % 8;
+    bytearray result(size(), std::byte{0});
+
+    if (bitShift == 0) {
+        // Whole-byte shift: one memcpy of the tail, the rest stays zero-filled.
+        if (byteShift < size()) {
+            std::memcpy(result.data(), data() + byteShift, size() - byteShift);
+        }
+        return result;
+    }
+
+    for (size_t i = 0; i < size(); ++i) {
+        // at(i) moves to byte (i - byteShift); its low bits spill into the next byte.
+        if (i >= byteShift) {
+            result[i - byteShift] |= static_cast<std::byte>(std::to_integer<uint8_t>(at(i)) << bitShift);
+        }
+        if (bitShift > 0 && i >= byteShift + 1) {
+            result[i - byteShift - 1] |= static_cast<std::byte>(std::to_integer<uint8_t>(at(i)) >> (8 - bitShift));
+        }
+    }
+
+    return result;
+}
+
+bytearray bytearray::bitShiftRight(size_t offset) const
+{
+    if (offset == 0) return *this;
+    size_t byteShift = offset / 8;
+    size_t bitShift = offset % 8;
+    bytearray result(size(), std::byte{0});
+
+    if (bitShift == 0) {
+        // Whole-byte shift: one memcpy of the head, the front stays zero-filled.
+        if (byteShift < size()) {
+            std::memcpy(result.data() + byteShift, data(), size() - byteShift);
+        }
+        return result;
+    }
+
+    for (size_t i = 0; i < size(); ++i) {
+        // at(i) moves to byte (i + byteShift); its low bits spill into the next byte.
+        if (i + byteShift < size()) {
+            result[i + byteShift] |= static_cast<std::byte>(std::to_integer<uint8_t>(at(i)) >> bitShift);
+        }
+        if (bitShift > 0 && i + byteShift + 1 < size()) {
+            result[i + byteShift + 1] |= static_cast<std::byte>(std::to_integer<uint8_t>(at(i)) << (8 - bitShift));
+        }
+    }
+
+    return result;
+}
+
+bytearray bytearray::bitRotateLeft(size_t offset) const
+{
+    if (empty() || offset == 0) return *this;
+    size_t byteShift = (offset / 8) % size(); // byte-level left rotation: b[i] -> (i - byteShift) mod size
+    size_t bitShift = offset % 8;
+    bytearray result(size(), std::byte{0});
+
+    for (size_t i = 0; i < size(); ++i) {
+        size_t newIndex = (i + size() - byteShift) % size();
+        result[newIndex] |= static_cast<std::byte>(std::to_integer<uint8_t>(at(i)) << bitShift);
+        if (bitShift > 0) {
+            size_t nextIndex = (newIndex + 1) % size();
+            result[nextIndex] |= static_cast<std::byte>(std::to_integer<uint8_t>(at(i)) >> (8 - bitShift));
+        }
+    }
+
+    return result;
+}
+
+bytearray bytearray::bitRotateRight(size_t offset) const
+{
+    if (empty() || offset == 0) return *this;
+    size_t byteShift = (offset / 8) % size(); // byte-level right rotation: b[i] -> (i + byteShift) mod size
+    size_t bitShift = offset % 8;
+    bytearray result(size(), std::byte{0});
+
+    for (size_t i = 0; i < size(); ++i) {
+        size_t newIndex = (i + byteShift) % size();
+        result[newIndex] |= static_cast<std::byte>(std::to_integer<uint8_t>(at(i)) >> bitShift);
+        if (bitShift > 0) {
+            size_t nextIndex = (newIndex + 1) % size();
+            result[nextIndex] |= static_cast<std::byte>(std::to_integer<uint8_t>(at(i)) << (8 - bitShift));
+        }
+    }
+
+    return result;
+}
+
+bytearray bytearray::bitTakeLeft(size_t bitCount) const
+{
+    if (bitCount == 0) return {};
+
+    size_t bytesTaken = bitCount / 8;
+    size_t bitsTaken = bitCount % 8;
+
+    if (bytesTaken >= size()) {
+        return *this;
+    }
+
+    // Copy the leading bytes in one memcpy via subarr, then append the
+    // masked partial byte if bitCount is not byte-aligned.
+    bytearray result = subarr(0, bytesTaken);
+    if (bitsTaken > 0) {
+        uint8_t lastByte = std::to_integer<uint8_t>(at(bytesTaken));
+        lastByte &= static_cast<uint8_t>(0xFF << (8 - bitsTaken)); // keep the high bitsTaken bits
+        result.append(std::byte(lastByte));
+    }
+
+    return result;
+}
+
+bytearray bytearray::bitTakeRight(size_t bitCount) const
+{
+    if (bitCount == 0) return {};
+
+    size_t bytesTaken = bitCount / 8;
+    size_t bitsTaken = bitCount % 8;
+
+    if (bytesTaken >= size()) {
+        return *this;
+    }
+
+    // Copy the trailing bytes in one memcpy via subarr.
+    bytearray result = subarr(size() - bytesTaken, bytesTaken);
+    if (bitsTaken > 0) {
+        // Take the low bitsTaken bits of the preceding byte, then prepend it.
+        uint8_t lastByte = std::to_integer<uint8_t>(at(size() - 1 - bytesTaken));
+        lastByte &= static_cast<uint8_t>(0xFF >> (8 - bitsTaken));
+        result.insert(0, static_cast<std::byte>(lastByte));
+
+        // Left-align: shift the whole result left by (8 - bitsTaken) bits so the
+        // taken bits occupy the most-significant positions.
+        size_t shift = 8 - bitsTaken;
+        uint8_t carry = 0;
+        for (size_t i = result.size(); i-- > 0; ) {
+            uint16_t val = (static_cast<uint16_t>(std::to_integer<uint8_t>(result[i])) << shift) | carry;
+            result[i] = static_cast<std::byte>(val & 0xFF);
+            carry = static_cast<uint8_t>(val >> 8);
+        }
+    }
+
+    return result;
+}
+
 bool bytearray::operator==(const bytearray& o) const { return size()==o.size()&&(empty()||std::memcmp(data(),o.data(),size())==0); }
 bool bytearray::operator<(const bytearray& o) const {
     size_t minLen = std::min(size(), o.size());
