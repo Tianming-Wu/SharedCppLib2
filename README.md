@@ -128,7 +128,7 @@ Detailed documentation is available in header files as Doxygen comments.
 
 ## Known Issues
 - May not compile on gcc / clang due to different template instantiation strategies, leading to compilation errors. Use MSVC when possible. The author will regularly test and attempt to fix these compilation issues.
-
+- https implementation has been officially abandoned from mainstream, but http integration interface is reserved. There may be OpenSSL compatible integration in the future, split into a separate project.
 
 **Full Changelog**: [WhatsNew](WhatsNew)
 
