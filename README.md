@@ -53,6 +53,8 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **`platform`** - Cross-platform utilities and abstractions
 - **`xml`** - XML parsing and serialization library (in development) (Warning: Though the module is basically functional, some functions are yet unsafe and cause crashes.)
 - **`html`** - HTML parsing and manipulation library (in development)
+- **[`bitmap`](doc/bitmap.md)** - Pixel bitmap container with drawing support (BMP I/O)
+- **[`qrcode`](doc/qrcode.md)** - QR Code encoder (Reed-Solomon error correction)
 
 ## Deprecated Modules
 

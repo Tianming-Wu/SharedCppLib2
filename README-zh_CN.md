@@ -52,6 +52,8 @@ Other languages: [English](README.md)
 - **`platform`** - 跨平台工具和抽象层
 - **`xml`** - XML 解析和序列化库（开发中）（警告：虽然模块基本功能正常，但某些函数尚不安全，可能导致崩溃。）
 - **`html`** - HTML 解析和操作库（开发中）
+- **[`bitmap`](doc/zh_CN/bitmap.md)** - 像素位图容器与绘制支持（BMP 读写）
+- **[`qrcode`](doc/zh_CN/qrcode.md)** - 二维码编码器（Reed-Solomon 纠错）
 
 ## 已弃用模块
 
