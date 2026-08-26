@@ -47,6 +47,16 @@ scl2::basic_string<CharT> basic_string<CharT>::trim()
     return result;
 }
 
+template <typename CharT>
+void basic_string<CharT>::find_and_replace(const scl2::basic_string<CharT> &target, const scl2::basic_string<CharT> &replacement)
+{
+    size_t pos = std::basic_string<CharT>::npos, lpos = 0;
+    while ( (pos = this->find(target, lpos)) != std::basic_string<CharT>::npos) {
+        this->replace(pos, target.length(), replacement);
+        lpos = pos + replacement.length(); // advance cursor to avoid infinite loop if replacement contains target
+    }
+}
+
 // Regex-based methods commented out: regex_chop/extract are char-only,
 // but templates must compile for both char and wchar_t.
 
