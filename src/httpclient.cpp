@@ -10,7 +10,7 @@ client::client()
 {
 }
 
-client::client(std::unique_ptr<transport_interface> transport)
+client::client(std::unique_ptr<scl2::transport_interface> transport)
     : m_transport(std::move(transport))
 {
 }

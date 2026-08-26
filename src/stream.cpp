@@ -3,7 +3,9 @@
 #include <thread>
 #include <chrono>
 
-bool basic_sclistream::waitForReadyRead(std::chrono::milliseconds timeout)
+namespace scl2 {
+
+bool basic_istream::waitForReadyRead(std::chrono::milliseconds timeout)
 {
     const auto deadline = std::chrono::steady_clock::now() + timeout;
     constexpr auto poll_interval = std::chrono::milliseconds(10);
@@ -20,7 +22,9 @@ bool basic_sclistream::waitForReadyRead(std::chrono::milliseconds timeout)
     return readyRead();
 }
 
-bool basic_sclistream::reset()
+bool basic_istream::reset()
 {
     return false;
 }
+
+} // namespace scl2

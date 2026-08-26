@@ -27,7 +27,7 @@ public:
 
     /// @brief Client using an externally-provided transport (e.g. TLS).
     /// @param transport A connected (or connectable) transport. Ownership is transferred.
-    explicit client(std::unique_ptr<transport_interface> transport);
+    explicit client(std::unique_ptr<scl2::transport_interface> transport);
 
     ~client();
 
@@ -90,7 +90,7 @@ private:
     /// @brief Receive response from server (blocks until complete or timeout)
     response receive_response();
 
-    std::unique_ptr<transport_interface> m_transport;
+    std::unique_ptr<scl2::transport_interface> m_transport;
     std::string m_host;
     uint16_t m_port = 80;
     std::chrono::milliseconds m_timeout = std::chrono::seconds(30);

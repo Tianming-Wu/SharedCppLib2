@@ -71,7 +71,7 @@ add_library(typemask INTERFACE include/typemask.hpp)
 add_library(basic STATIC
     src/bytearray.cpp src/ansiio.cpp src/color.cpp src/stringlist.cpp
     src/stringlist_regex.cpp src/basics.cpp src/string.cpp src/xstring.cpp
-    src/variant.cpp
+    src/variant.cpp src/stream.cpp
 )
 # Propagate generated header dir for add_subdirectory consumers
 target_include_directories(basic PUBLIC
@@ -95,7 +95,6 @@ add_library(ini STATIC src/ini.cpp)
 add_library(xml STATIC src/xml.cpp)
 add_library(abstract STATIC src/abstract.cpp)
 add_library(debug STATIC src/debug.cpp)
-add_library(stream STATIC src/stream.cpp)
 add_library(console STATIC src/console.cpp)
 add_library(aes STATIC src/aes.cpp)
 add_library(keydb STATIC src/keydb.cpp)
@@ -150,8 +149,8 @@ target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要
 # datauri 依赖
 target_link_libraries(datauri PUBLIC basic)
 
-# network_tcp uses stream for basic_sclistream/basic_sclostream
-target_link_libraries(network_tcp PUBLIC stream)
+# network_tcp uses basic for the virtual stream interface (basic_istream/basic_ostream)
+target_link_libraries(network_tcp PUBLIC basic)
 
 # basic 库依赖关系
 foreach(target
@@ -184,7 +183,7 @@ target_compile_definitions(json PUBLIC
 # 库列表
 set(TARGET_LIST
     sha256 sha512 sha1 crc32 basic indexer regexfilter
-    logt logc platform arguments ini abstract xml debug stream
+    logt logc platform arguments ini abstract xml debug
     console aes keydb types condition filesystem datauri json i18n yaml
     fileio file filepack uri
     network_core network_dns network_tcp network_udp network_http

@@ -43,9 +43,10 @@
 
 #include <type_traits>
 
+namespace scl2 {
+
 // XML parsing and serialization utilities
-namespace xml
-{
+namespace xml {
 
 // Parsing strategy flags is only reserved for future use
 enum class ParsingStrategy : uint32_t {
@@ -307,3 +308,10 @@ std::string escapeTextContent(const std::string& text);
 std::string unescapeTextContent(const std::string& text);
 
 } // namespace xml
+
+
+using xml_node = xml::node;
+using xml_document = xml::document;
+
+
+} // namespace scl2

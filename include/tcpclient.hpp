@@ -16,7 +16,7 @@
 namespace network::tcp {
 
 /// @brief TCP client for connecting and communicating with remote servers
-class client : public transport_interface
+class client : public scl2::transport_interface
 {
 public:
     client();

@@ -2,6 +2,7 @@
 
 ### v3.4.0
 - New: `scl2::variant` in `basic` — a QVariant-like dynamic value wrapping `std::variant`, with automatic conversion between numeric / string / bool (`as_xxx`, `as<T>()`), `fromString()` parsing, and `to_bytearray()` serialization via bytearray helpers.
+- Changed: `stream` classes moved into `scl2` and renamed — `v_sclstream`→`scl2::virtual_stream`, `basic_sclistream`→`scl2::basic_istream`, `basic_sclostream`→`scl2::basic_ostream`, `basic_sclstream`→`scl2::basic_iostream`, `transport_interface`→`scl2::transport_interface`; the `stream` module was merged into `basic` (was a separate `stream` target).
 
 ### v3.3.0
 - New: `bitmap<Pixel>` pixel-templated bitmap; `bitmap<bool>` (alias `bitmap_1c`) 1-bit packed monochrome with BMP I/O (`toBmp`/`fromBmp`), configurable row alignment, scaling, and `fit_into` (`Stretch::Fill/Cover/Contain/Center/Tile`).

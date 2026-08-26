@@ -30,7 +30,7 @@ struct client_info {
 };
 
 
-class server_client_handler : basic_sclstream
+class server_client_handler : scl2::basic_iostream
 {
 public:
     server_client_handler(server& srv, client_info& info);

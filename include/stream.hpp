@@ -18,21 +18,23 @@
 
 #include "bytearray.hpp"
 
+namespace scl2 {
+
 // basic virtual stream object
-class v_sclstream {
+class virtual_stream {
 public:
-    v_sclstream() = default;
-    virtual ~v_sclstream() = default;
+    virtual_stream() = default;
+    virtual ~virtual_stream() = default;
 
     // Should return true if the stream is in a valid state, false otherwise.
     virtual bool valid() = 0;
 };
 
-class basic_sclistream : public v_sclstream
+class basic_istream : public virtual_stream
 {
 public:
-    basic_sclistream() = default;
-    virtual ~basic_sclistream() = default;
+    basic_istream() = default;
+    virtual ~basic_istream() = default;
     
     // Should return true if there is data available to read, false otherwise.
     virtual bool readyRead() = 0;
@@ -45,10 +47,10 @@ public:
     virtual size_t available() = 0;
 
     // Should read the specified number of bytes from the stream, and return them as a bytearray.
-    virtual scl2::bytearray read(size_t bytes) = 0;
+    virtual bytearray read(size_t bytes) = 0;
 
     // Should read all available data from the stream, and return them as a bytearray.
-    virtual scl2::bytearray readAll() = 0;
+    virtual bytearray readAll() = 0;
 
     // You'd better not add your own functions like readMessage(), you should reuse readAll()
     // instead.
@@ -64,27 +66,27 @@ public:
     virtual bool reset(); 
 };
 
-class basic_sclostream : public v_sclstream {
+class basic_ostream : public virtual_stream {
 public:
-    basic_sclostream() = default;
-    virtual ~basic_sclostream() = default;
+    basic_ostream() = default;
+    virtual ~basic_ostream() = default;
 
     // Should write the given data to the stream, and return the number of bytes actually written.
-    virtual size_t write(const scl2::bytearray& data) = 0;
+    virtual size_t write(const bytearray& data) = 0;
 };
 
 // The I/O stream that can be used for both input and output.
-class basic_sclstream : public basic_sclistream, public basic_sclostream
+class basic_iostream : public basic_istream, public basic_ostream
 {};
 
 // A connectable bidirectional stream — the transport abstraction used by
 // protocol layers (HTTP, TLS, etc.) that sit on top of a connection.
 //
-// Concrete transports (e.g. network::tcp::client, a future TLS client) inherit
+// Concrete transports (e.g. network::tcp::client, a TLS client) inherit
 // this and implement connect/disconnect/is_connected alongside the
-// basic_sclstream I/O methods. Protocol layers hold a transport_interface& and
+// basic_iostream I/O methods. Protocol layers hold a transport_interface& and
 // never need to know the concrete transport type.
-class transport_interface : public basic_sclstream {
+class transport_interface : public basic_iostream {
 public:
     transport_interface() = default;
     virtual ~transport_interface() = default;
@@ -99,14 +101,16 @@ public:
     virtual bool is_connected() const = 0;
 };
 
+} // namespace scl2
+
 /*
 Usage note:
     This is purely template, and only provides virtual interface.
-    To implement a concrete stream, inherit from basic_sclistream or basic_sclostream,
+    To implement a concrete stream, inherit from scl2::basic_istream or scl2::basic_ostream,
     and implement the virtual functions.
 
     For example, a pipe stream wrapper on windows platform may look like this:
-    class pipe_stream : public basic_sclstream {
+    class pipe_stream : public scl2::basic_iostream {
     public:
         pipe_stream(HANDLE read_handle, HANDLE write_handle);
         virtual ~pipe_stream();
