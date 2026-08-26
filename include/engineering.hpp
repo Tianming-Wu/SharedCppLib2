@@ -7,20 +7,24 @@
 
 #pragma once
 
+#include <cstddef>
 #include <type_traits>
 
-inline constexpr size_t operator"" _Ki(size_t in) { return in << 10; }
-inline constexpr size_t operator"" _Mi(size_t in) { return in << 20; }
-inline constexpr size_t operator"" _Gi(size_t in) { return in << 30; }
-inline constexpr size_t operator"" _Ti(size_t in) { return in << 40; }
-inline constexpr size_t operator"" _Pi(size_t in) { return in << 50; }
-inline constexpr size_t operator"" _Ei(size_t in) { return in << 60; }
-// higher version are not supported, since size_t is usually 64-bit at most
+// fix gcc requiring unsigned long long as literal input
+typedef unsigned long long eng_t;
 
-inline constexpr size_t operator"" _K(size_t in) { return in * 1000ULL; }
-inline constexpr size_t operator"" _M(size_t in) { return in * 1000000ULL; }
-inline constexpr size_t operator"" _G(size_t in) { return in * 1000000000ULL; }
-inline constexpr size_t operator"" _T(size_t in) { return in * 1000000000000ULL; }
-inline constexpr size_t operator"" _P(size_t in) { return in * 1000000000000000ULL; }
-inline constexpr size_t operator"" _E(size_t in) { return in * 1000000000000000000ULL; }
-// higher version are not supported, since size_t is usually 64-bit at most
+inline constexpr size_t operator"" _Ki(eng_t in) { return in << 10; }
+inline constexpr size_t operator"" _Mi(eng_t in) { return in << 20; }
+inline constexpr size_t operator"" _Gi(eng_t in) { return in << 30; }
+inline constexpr size_t operator"" _Ti(eng_t in) { return in << 40; }
+inline constexpr size_t operator"" _Pi(eng_t in) { return in << 50; }
+inline constexpr size_t operator"" _Ei(eng_t in) { return in << 60; }
+// higher version are not supported, since eng_t is usually 64-bit at most
+
+inline constexpr size_t operator"" _K(eng_t in) { return in * 1000ULL; }
+inline constexpr size_t operator"" _M(eng_t in) { return in * 1000000ULL; }
+inline constexpr size_t operator"" _G(eng_t in) { return in * 1000000000ULL; }
+inline constexpr size_t operator"" _T(eng_t in) { return in * 1000000000000ULL; }
+inline constexpr size_t operator"" _P(eng_t in) { return in * 1000000000000000ULL; }
+inline constexpr size_t operator"" _E(eng_t in) { return in * 1000000000000000000ULL; }
+// higher version are not supported, since eng_t is usually 64-bit at most

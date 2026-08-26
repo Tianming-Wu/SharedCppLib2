@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <map>
@@ -22,6 +23,8 @@
 #ifdef __cpp_lib_generator
     #include <generator>
 #endif
+
+using std::nullptr_t;
 
 namespace scl2::yaml {
 
@@ -190,7 +193,9 @@ public:
         bool compact = false; // minimal whitespace between top-level items
     };
 
-    std::string toString(const value& v, config cfg = {});
+    static const config default_conf;
+
+    std::string toString(const value& v, config cfg = default_conf);
 
 private:
     void writeValue(const value& v, int level);

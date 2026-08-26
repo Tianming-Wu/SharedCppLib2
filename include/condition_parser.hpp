@@ -6,7 +6,9 @@
 
 #pragma once
 
-#include <generator>
+#ifdef __cpp_lib_generator
+#   include <generator>
+#endif
 
 #include "condition.hpp"
 
@@ -39,12 +41,14 @@ public:
 
     virtual Token nextToken() = 0; // pure virtual
 
+#ifdef __cpp_lib_generator
     inline std::generator<Token> tokenize() {
         Token token;
         while ((token = nextToken()).type != TokenType::EndOfInput) {
             co_yield token;
         }
     }
+#endif // __cpp_lib_generator
 
 protected:
     void skipWhitespace();

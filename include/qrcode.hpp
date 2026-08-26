@@ -99,11 +99,13 @@ public:
         int quiet_zone = 4;               // white border in modules
     };
 
+    static const options default_opt;
+
     /// @brief Encode data and produce the final QR image (incl. quiet zone).
-    static scl2::bitmap_1c generate(const std::string& data, const options& opt = {});
+    static scl2::bitmap_1c generate(const std::string& data, const options& opt = default_opt);
 
     /// @brief Encode data and produce the bare N x N matrix (no quiet zone).
-    static scl2::bitmap_1c make_matrix(const std::string& data, const options& opt = {});
+    static scl2::bitmap_1c make_matrix(const std::string& data, const options& opt = default_opt);
 
     /// @brief Choose the smallest version that fits the data.
     static Version select_version(const std::string& data, Mode m, ErrorCorrectionLevel l);
