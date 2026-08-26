@@ -2,6 +2,7 @@
 
 ### v3.4.0
 - New: `scl2::variant` in `basic` — a QVariant-like dynamic value wrapping `std::variant`, with automatic conversion between numeric / string / bool (`as_xxx`, `as<T>()`), `fromString()` parsing, and `to_bytearray()` serialization via bytearray helpers.
+- New: `network::io` in `network_io` — HTTP file transfer helpers `download()`/`download_file()`/`upload()`/`upload_file()` built on the HTTP client and bytearray (http only; https via the SCL2Ext openssl integration).
 - Changed: `stream` classes moved into `scl2` and renamed — `v_sclstream`→`scl2::virtual_stream`, `basic_sclistream`→`scl2::basic_istream`, `basic_sclostream`→`scl2::basic_ostream`, `basic_sclstream`→`scl2::basic_iostream`, `transport_interface`→`scl2::transport_interface`; the `stream` module was merged into `basic` (was a separate `stream` target).
 
 ### v3.3.0

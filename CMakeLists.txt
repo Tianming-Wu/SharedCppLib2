@@ -124,10 +124,13 @@ add_library(network_http STATIC
     src/httpclient.cpp
 )
 
+add_library(network_io STATIC src/network_io.cpp)
+target_link_libraries(network_io PUBLIC network_http network_tcp uri fileio basic)
+
 # Aggregate target — link this to get all network functionality
 add_library(network INTERFACE)
 target_link_libraries(network INTERFACE
-    network_core network_dns network_tcp network_udp network_http
+    network_core network_dns network_tcp network_udp network_http network_io
 )
 
 # 禁用 MSVC 的显式模板实例化警告
@@ -150,7 +153,8 @@ target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要
 target_link_libraries(datauri PUBLIC basic)
 
 # network_tcp uses basic for the virtual stream interface (basic_istream/basic_ostream)
-target_link_libraries(network_tcp PUBLIC basic)
+# and depends on network_core/dns for addresses and name resolution
+target_link_libraries(network_tcp PUBLIC basic network_core network_dns)
 
 # basic 库依赖关系
 foreach(target
@@ -186,7 +190,7 @@ set(TARGET_LIST
     logt logc platform arguments ini abstract xml debug
     console aes keydb types condition filesystem datauri json i18n yaml
     fileio file filepack uri
-    network_core network_dns network_tcp network_udp network_http
+    network_core network_dns network_tcp network_udp network_http network_io
     bitmap qrcode
 )
 
