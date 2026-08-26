@@ -38,6 +38,8 @@
     #include "datauri.hpp"
 #endif
 
+using std::nullptr_t;
+
 namespace scl2 {
 
 // Helper: convert a u8 string literal to std::string (C++20 only).

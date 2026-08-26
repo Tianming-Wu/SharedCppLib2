@@ -8,6 +8,7 @@
 
 namespace scl2::filesystem {
 
+#ifdef __cpp_lib_generator
 std::generator<path> fast_directory_iterator()
 {
     std::error_code ec;
@@ -19,6 +20,7 @@ std::generator<path> fast_directory_iterator()
     }
     co_return;
 }
+#endif //  __cpp_lib_generator
 
  
 #ifdef OS_WINDOWS

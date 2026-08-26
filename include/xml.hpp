@@ -35,13 +35,16 @@
 
 #include <string>
 #include <string_view>
+#include <cstdint>
 #include <map>
 #include <optional>
 #include <vector>
-#include <generator>
 #include <stdexcept>
-
 #include <type_traits>
+
+#ifdef __cpp_lib_generator
+#   include <generator>
+#endif
 
 namespace scl2 {
 
@@ -182,6 +185,8 @@ public:
     std::vector<node>& getChildNodes();
     const std::vector<node>& getChildNodes() const;
 
+#ifdef __cpp_lib_generator
+
     /// @brief Yield only Element-typed children (skip Text and Comment).
     std::generator<const node&> elements() const {
         if (children.has_value()) {
@@ -207,6 +212,8 @@ public:
             }
         }
     }
+
+#endif // __cpp_lib_generator
 
     void addChildNode(node&& child);
     void removeChildNode(size_t index);
