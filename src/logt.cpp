@@ -142,7 +142,7 @@ std::string logt_sso::default_formatter(const logt_format::formatSettings& setti
         if (!thread_name.empty()) {
             format_result += "[" + thread_name + "] ";
         } else {
-            format_result += "[#" + streamed_to_string(std::this_thread::get_id()) + "] ";
+            format_result += "[#" + scl2::streamed_to_string(std::this_thread::get_id()) + "] ";
         }
     }
 
