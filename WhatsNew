@@ -1,5 +1,8 @@
 # Changelog
 
+### v3.5.0
+- New: `scl2::toml` in `toml` — a TOML parser/serializer. A document is always a table of key/value pairs; values can be string / integer / floating / boolean / date-time / array / table (no null). Supports dotted keys, `[table]` / `[[array-of-tables]]` headers, arrays, inline tables (incl. multi-line), basic/literal strings (incl. multi-line), comments, and verbatim date-times. Verified against Minecraft `META-INF/neoforge.mods.toml`.
+
 ### v3.4.0
 - New: `scl2::variant` in `basic` — a QVariant-like dynamic value wrapping `std::variant`, with automatic conversion between numeric / string / bool (`as_xxx`, `as<T>()`), `fromString()` parsing, and `to_bytearray()` serialization via bytearray helpers.
 - New: `network::io` in `network_io` — HTTP file transfer helpers `download()`/`download_file()`/`upload()`/`upload_file()` built on the HTTP client and bytearray (http only; https via the SCL2Ext openssl integration).
