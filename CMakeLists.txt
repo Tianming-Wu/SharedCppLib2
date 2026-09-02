@@ -124,6 +124,9 @@ add_library(network_http STATIC
     src/httpserver.cpp
     src/httpclient.cpp
 )
+# httpclient/httpserver 基于 tcp::client/server（network_tcp）与 transport_interface
+# （basic）；依赖声明为 PUBLIC，find_package 消费方才能自动带上这些库
+target_link_libraries(network_http PUBLIC basic network_core network_tcp)
 
 add_library(network_io STATIC src/network_io.cpp)
 target_link_libraries(network_io PUBLIC network_http network_tcp uri fileio basic)
