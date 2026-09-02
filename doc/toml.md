@@ -2,7 +2,7 @@
 
 + Name: toml
 + Namespace: `scl2`
-+ Document Version: `0.1.0`
++ Document Version: `0.2.0`
 
 ## CMake Info
 
@@ -120,6 +120,7 @@ for (const auto& dep : doc["dependencies"]["hostilenetworks"].as_array()) {
 | Array | `operator[](size_t)`, `array_size()`, `push_back()`, `empty_as_array()` |
 | Table | `operator[](const std::string&)`, `at(key)`, `has_key()`, `contains()`, `table_size()` |
 | Universal | `type()` → `toml_value_type`, `size()`, `empty()`, `operator==` |
+| Assign | `assign_to(T& dest)` — write this value into a user variable (concrete type or `std::variant`) |
 
 ### `toml` — the document (always a table)
 

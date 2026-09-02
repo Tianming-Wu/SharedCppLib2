@@ -239,6 +239,8 @@ std::generator<std::pair<const std::string&, const json_value&>> object_members(
 size_t size() const;       // array/object size, string length, or 0
 void clear();              // reset to null
 json_value_type type() const;
+
+template<typename T> void assign_to(T& dest) const;  // write into a user variable (concrete type or std::variant)
 ```
 
 ### json (extends json_value)

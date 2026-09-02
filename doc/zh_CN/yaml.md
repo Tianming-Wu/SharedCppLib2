@@ -2,7 +2,7 @@
 
 + 名称: yaml
 + 命名空间: `scl2::yaml`
-+ 文档版本: `0.1.0`
++ 文档版本: `0.2.0`
 
 ## CMake 配置信息
 
@@ -165,6 +165,8 @@ std::generator<std::pair<const std::string&, const value&>> object_members() con
 size_t size() const;       // 数组/对象大小、字符串长度，或 0
 void clear();              // 重置为 null
 type type() const;         // 基于索引的类型查询
+
+template<typename T> void assign_to(T& dest) const;  // 写入用户变量（具体类型或 std::variant）
 ```
 
 ### document（继承自 value）

@@ -22,7 +22,7 @@
         std::string out = doc.toString();                    // serialize back
 
     [SCL_STANDALONE_MODULE]
-    version: 0.1.0
+    version: 0.2.0
     cpp_generation: cxx17 - cxx23
 */
 
@@ -31,6 +31,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -133,6 +134,34 @@ public:
 
     bool operator==(const toml_value& other) const;
     bool operator!=(const toml_value& other) const { return !(*this == other); }
+
+    // ---- assign into a user variable ----
+    /// @brief Write this value into @p dest, converting to @p dest's type.
+    ///        Works with concrete targets (bool / integral / floating /
+    ///        std::string / toml_datetime / toml_array / toml_table) and with
+    ///        std::variant targets (picks the matching alternative).
+    /// @throw std::runtime_error if the value is not assignable to @p dest
+    ///        (including implicit-conversion cases the target cannot accept).
+    /// @note std::visit / if constexpr are C++17; this module targets cxx17-cxx23
+    ///       so no feature guard is needed.
+    template<typename T>
+    void assign_to(T& dest) const {
+        std::visit([&](const auto& src) {
+            using SRC = std::decay_t<decltype(src)>;
+            constexpr bool string_exact = std::is_same_v<T, std::string> && std::is_same_v<SRC, std::string>;
+            constexpr bool bool_exact   = std::is_same_v<T, bool> && std::is_same_v<SRC, bool>;
+            if constexpr (string_exact || bool_exact) {
+                dest = src;
+            } else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, bool>) {
+                // never allow narrowing like int -> char (string::operator=(char)) or int -> bool
+                throw std::runtime_error("toml: assign_to: value type is not assignable to the target");
+            } else if constexpr (std::is_assignable_v<T&, const SRC&>) {
+                dest = src;
+            } else {
+                throw std::runtime_error("toml: assign_to: value type is not assignable to the target");
+            }
+        }, value);
+    }
 
 private:
     std::variant<std::string, int64_t, double, bool, toml_datetime,

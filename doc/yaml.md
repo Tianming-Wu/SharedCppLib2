@@ -2,7 +2,7 @@
 
 + Name: yaml
 + Namespace: `scl2::yaml`
-+ Document Version: `0.1.0`
++ Document Version: `0.2.0`
 
 ## CMake Info
 
@@ -165,6 +165,8 @@ std::generator<std::pair<const std::string&, const value&>> object_members() con
 size_t size() const;       // array/object size, string length, or 0
 void clear();              // reset to null
 type type() const;         // index-based type query
+
+template<typename T> void assign_to(T& dest) const;  // write into a user variable (concrete type or std::variant)
 ```
 
 ### document (extends value)

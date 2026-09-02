@@ -2,7 +2,7 @@
 
 + 名称: toml
 + 命名空间: `scl2`
-+ 文档版本: `0.1.0`
++ 文档版本: `0.2.0`
 
 ## CMake 配置信息
 
@@ -120,6 +120,7 @@ for (const auto& dep : doc["dependencies"]["hostilenetworks"].as_array()) {
 | 数组 | `operator[](size_t)`、`array_size()`、`push_back()`、`empty_as_array()` |
 | 表 | `operator[](const std::string&)`、`at(key)`、`has_key()`、`contains()`、`table_size()` |
 | 通用 | `type()` → `toml_value_type`、`size()`、`empty()`、`operator==` |
+| 赋值 | `assign_to(T& dest)` — 把该值写入用户变量（具体类型或 `std::variant`） |
 
 ### `toml` —— 文档（永远是一张表）
 
