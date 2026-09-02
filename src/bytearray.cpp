@@ -122,9 +122,13 @@ std::string bytearray::toBase64() const {
 
 bytearray bytearray::fromBase64(const std::string& s){
     if(s.empty())return{};
-    size_t len=s.size(),pad=0;
-    if(len>0&&s[len-1]=='='){++pad;--len;} if(len>0&&s[len-1]=='='){++pad;--len;}
-    size_t outLen=(len/4)*3; if(pad==1)++outLen; else if(pad==2)outLen+=2;
+    size_t len=s.size();
+    if(len>0&&s[len-1]=='='){--len;} if(len>0&&s[len-1]=='='){--len;}
+    // 去掉 '=' 后的有效字符数决定尾部字节数：整 4 组 → 0 字节余数、
+    // 2 个有效字符 → 1 字节、3 个有效字符 → 2 字节；1 个为非法长度。
+    const size_t rem=len%4;
+    if(rem==1) throw std::invalid_argument("bytearray::fromBase64: invalid length");
+    size_t outLen=(len/4)*3 + (rem==3?2:(rem==2?1:0));
     bytearray r(outLen); size_t oi=0;
     for(size_t i=0;i<len;i+=4){
         int i0=b64_idx(s[i]),i1=b64_idx(s[i+1]),i2=(i+2<len)?b64_idx(s[i+2]):0,i3=(i+3<len)?b64_idx(s[i+3]):0;
