@@ -82,6 +82,7 @@ add_library(sha256 STATIC src/sha256.cpp)
 add_library(sha512 STATIC src/sha512.cpp)
 add_library(sha1 STATIC src/sha1.cpp)
 add_library(crc32 STATIC src/crc32.cpp)
+add_library(zlib STATIC src/zlib.cpp)
 add_library(indexer STATIC src/indexer.cpp)
 add_library(regexfilter STATIC src/regexfilter.cpp)
 add_library(logt STATIC src/logt.cpp)
@@ -164,7 +165,7 @@ target_link_libraries(network_tcp PUBLIC basic network_core network_dns)
 foreach(target
     regexfilter logc sha256 sha512 sha1 crc32 arguments ini abstract
     xml keydb condition datauri json toml i18n yaml aes
-    fileio file filepack uri
+    fileio file filepack uri zlib
     bitmap qrcode
 )
     target_link_libraries(${target} PUBLIC basic)
@@ -195,7 +196,7 @@ set(TARGET_LIST
     console aes keydb types condition filesystem datauri json toml i18n yaml
     fileio file filepack uri
     network_core network_dns network_tcp network_udp network_http network_io
-    bitmap qrcode
+    bitmap qrcode zlib
 )
 
 # 安装目标
