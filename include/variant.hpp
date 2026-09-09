@@ -90,6 +90,36 @@ public:
     const std::map<scl2::string, variant>& as_object() const;
     std::map<scl2::string, variant>& as_object();
 
+    // ---- type specific operations ----
+    // -- array --
+    const variant& operator[](size_t index) const;
+    variant& operator[](size_t index);
+    size_t array_size() const;
+    size_t array_capacity() const;
+    bool array_empty() const;
+    void push_back(const variant& v);
+
+    // -- object --
+    const variant& operator[](const scl2::string& key) const;
+    variant& operator[](const scl2::string& key);
+    size_t object_size() const;
+    bool object_empty() const;
+    void insert(const scl2::string& key, const variant& value);
+    
+    // -- string --
+    void append(const scl2::string& s);
+    void append(const char* s);
+
+    // -- bytearray --
+    size_t bytearray_size() const;
+    void bytearray_resize(size_t size);
+    void append(const scl2::bytearray& ba);
+
+    // ---- type specific operations, but automatically routed based on type ----
+    /// @brief Get the size of the value, if applicable.
+    /// @return For string/bytearray, the length; for array/object, the number of elements; for scalars, 1; for null, 0.
+    size_t size() const;
+
     /// @brief Generic typed access; auto-converts scalar types.
     /// @throw std::runtime_error if the value cannot be converted.
     template<typename T>
@@ -115,6 +145,10 @@ public:
     // ---- comparison ----
     bool operator==(const variant& o) const;
     bool operator!=(const variant& o) const { return !(*this == o); }
+
+    // ---- load / dump serial ----
+    scl2::bytearray dump() const;
+    static variant load(const scl2::bytearray& data);
 
 private:
     static bool parse_bool(const scl2::string& s);
