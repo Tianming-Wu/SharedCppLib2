@@ -287,6 +287,12 @@ install(FILES
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
 )
 
+# 安装便捷 CMake 脚本（由 Config.cmake 引入，例如 i18n_copy_lang）
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/i18n.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
+)
+
 # 安装配置文件
 # install(EXPORT SharedCppLib2Targets
 #     FILE SharedCppLib2Config.cmake
