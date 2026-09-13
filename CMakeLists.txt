@@ -90,6 +90,8 @@ add_library(logc STATIC src/logc.cpp)
 add_library(base64 INTERFACE)
 target_link_libraries(base64 INTERFACE basic)
 add_library(platform STATIC src/platform.cpp)
+# perm 依赖 platform（OS_* 宏）与 basic（stringlist）；Windows 下另需 Advapi32
+add_library(perm STATIC src/perm.cpp)
 # add_library(process STATIC src/process.cpp) # A major update in progress, not ready to use
 add_library(arguments STATIC src/arguments.cpp)
 add_library(ini STATIC src/ini.cpp)
@@ -166,7 +168,7 @@ target_link_libraries(network_tcp PUBLIC basic network_core network_dns)
 # basic 库依赖关系
 foreach(target
     regexfilter logc sha256 sha512 sha1 crc32 arguments ini abstract
-    xml keydb condition datauri json toml i18n yaml aes
+    xml keydb perm condition datauri json toml i18n yaml aes
     fileio file filepack uri zlib
     bitmap qrcode
 )
@@ -178,6 +180,11 @@ target_link_libraries(qrcode PUBLIC bitmap)
 
 # file 额外依赖 fileio
 target_link_libraries(file PUBLIC fileio)
+
+# perm 在 Windows 上使用 SID / token 查询（Advapi32）与 ShellExecuteEx 提权（Shell32）
+if(WIN32)
+    target_link_libraries(perm PRIVATE advapi32 shell32)
+endif()
 
 # json 额外依赖
 target_link_libraries(json PUBLIC datauri)
@@ -194,7 +201,7 @@ target_compile_definitions(json PUBLIC
 # 库列表
 set(TARGET_LIST
     sha256 sha512 sha1 crc32 basic indexer regexfilter
-    logt logc platform arguments ini abstract xml xml2 debug
+    logt logc platform perm arguments ini abstract xml xml2 debug
     console aes keydb types condition filesystem datauri json toml i18n yaml
     fileio file filepack uri
     network_core network_dns network_tcp network_udp network_http network_io

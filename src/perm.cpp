@@ -1,5 +1,10 @@
 #include "perm.hpp"
 
+#ifdef OS_WINDOWS
+#  include "string.hpp"   // scl2::str_to_wstr
+#  include <shellapi.h>    // ShellExecuteExW
+#endif
+
 namespace scl2::perm {
 
 // ============================================================
@@ -47,8 +52,35 @@ ElevationResult elevate(const scl2::stringlist& args)
         return ElevationResult::NotPossible;
 
 #ifdef OS_WINDOWS
-    // TODO: ShellExecute with "runas" verb
-    return ElevationResult::Error;
+    // 用 ShellExecuteEx + "runas" 重新启动自己，由 UAC 弹框完成提权。
+    // 新进程启动后本进程应立即退出（返回 Success 表示已启动）。
+    if (isElevated())
+        return ElevationResult::AlreadyElevated;
+
+    wchar_t exe_path[MAX_PATH]{};
+    if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0)
+        return ElevationResult::Error;
+
+    // 参数交给 stringlist::pack() 处理引号，再转成宽字符
+    std::wstring params;
+    if (args.size() > 0)
+        params = scl2::str_to_wstr(args.pack());
+
+    SHELLEXECUTEINFOW sei{};
+    sei.cbSize = sizeof(sei);
+    sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI;
+    sei.lpVerb = L"runas";          // 触发提权（UAC）
+    sei.lpFile = exe_path;
+    sei.lpParameters = params.empty() ? nullptr : params.c_str();
+    sei.nShow = SW_SHOWNORMAL;
+
+    if (!ShellExecuteExW(&sei)) {
+        // 用户在 UAC 对话框中选择“否”
+        return GetLastError() == ERROR_CANCELLED
+                   ? ElevationResult::Denied
+                   : ElevationResult::Error;
+    }
+    return ElevationResult::Success;
 #elif defined(OS_ANDROID)
     if (geteuid() == 0)
         return ElevationResult::AlreadyElevated;
