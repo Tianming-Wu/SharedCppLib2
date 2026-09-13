@@ -6,6 +6,17 @@
 #include <filesystem>
 
 i18n* i18n::trInstance = nullptr;
+std::filesystem::path i18n::langFolder = L"lang";
+
+void i18n::set_lang_folder(const std::filesystem::path& folder)
+{
+    langFolder = folder;
+}
+
+const std::filesystem::path& i18n::lang_folder()
+{
+    return langFolder;
+}
 
 i18n::i18n()
 {
@@ -43,32 +54,38 @@ void i18n::autoLoad()
 
 bool i18n::load(const std::wstring &lang_code)
 {
-    std::wstring filename = L"lang/" + lang_code + L".json";
+    const std::filesystem::path filename = langFolder / (lang_code + L".json");
     if (!std::filesystem::exists(filename)) return false;
 
-    scl2::json j = scl2::json::fromFile(filename);
+    scl2::json j = scl2::json::fromFile(filename.wstring());
     if (!j.is_object()) return false;
 
-    auto load_object = [this](const scl2::json_object& obj, const std::wstring& prefix, auto& self) -> void {
+    // 先装进临时容器，全部成功后再替换：
+    // 这样一次 load 就是"换一套词条"，而不是与上一次加载的语言混合。
+    std::map<std::wstring, tr_entry> loaded;
+
+    auto load_object = [](const scl2::json_object& obj, const std::wstring& prefix,
+                          std::map<std::wstring, tr_entry>& out, auto& self) -> void {
         for (const auto& [key, value] : obj) {
             std::wstring key_wstr = std::wstring(key.begin(), key.end());
             std::wstring full_key = prefix.empty() ? key_wstr : prefix + L":" + key_wstr;
 
             if (value.is_string()) {
-                entries[full_key] = tr_entry{ scl2::xstring(value.as_wstring()) };
+                out[full_key] = tr_entry{ scl2::xstring(value.as_wstring()) };
             } else if (value.is_array()) {
                 std::vector<scl2::xstring> arr;
                 for (const auto& item : value.as_array())
                     arr.push_back(scl2::xstring(item.as_wstring()));
-                entries[full_key] = tr_entry{ arr };
+                out[full_key] = tr_entry{ arr };
             } else if (value.is_object()) {
-                self(value.as_object(), full_key, self);
+                self(value.as_object(), full_key, out, self);
             }
         }
     };
 
-    load_object(j.as_object(), L"", load_object);
+    load_object(j.as_object(), L"", loaded, load_object);
 
+    entries = std::move(loaded);
     m_valid = true;
     return true;
 }
