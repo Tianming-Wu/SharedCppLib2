@@ -94,7 +94,11 @@ add_library(platform STATIC src/platform.cpp)
 # platform 对它是**头依赖**（只用 OS_* 宏与 fs 别名，不调用 platform 的函数，故不 link）。
 # Windows 下另需 Advapi32（SID / token）与 Shell32（ShellExecuteEx）。
 add_library(perm STATIC src/perm.cpp)
-# add_library(process STATIC src/process.cpp) # A major update in progress, not ready to use
+# process 两个平台都有实现（Windows 走匿名管道 + WaitForMultipleObjects，Unix 走 pipe/fork
+# + poll），头文件本身平台无关：native handle 以 std::intptr_t 传递，不引入 windows.h。
+# 它用 platform::windows::TranslateErrorW 把 Win32 错误码转成文本，故私有链接 platform。
+add_library(process STATIC src/process.cpp)
+target_link_libraries(process PUBLIC basic PRIVATE platform)
 add_library(arguments STATIC src/arguments.cpp)
 add_library(ini STATIC src/ini.cpp)
 add_library(xml STATIC src/xml.cpp)
@@ -203,7 +207,7 @@ target_compile_definitions(json PUBLIC
 # 库列表
 set(TARGET_LIST
     sha256 sha512 sha1 crc32 basic indexer regexfilter
-    logt logc platform perm arguments ini abstract xml xml2 debug
+    logt logc platform perm process arguments ini abstract xml xml2 debug
     console aes keydb types condition filesystem datauri json toml i18n yaml
     fileio file filepack uri
     network_core network_dns network_tcp network_udp network_http network_io

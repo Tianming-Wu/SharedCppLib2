@@ -52,6 +52,7 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **[`yaml`](doc/yaml.md)** - YAML 1.2 parser with streaming support (early development)
 - **[`toml`](doc/toml.md)** - TOML parser and serializer (early development)
 - **`platform`** - Cross-platform utilities and abstractions
+- **[`process`](doc/process.md)** - Child process management with pipe-based stdio (QProcess-inspired)
 - **`xml`** - XML parsing and serialization library (in development) (Warning: Though the module is basically functional, some functions are yet unsafe and cause crashes.)
 - **[`bitmap`](doc/bitmap.md)** - Pixel bitmap container with drawing support (BMP I/O)
 - **[`qrcode`](doc/qrcode.md)** - QR Code encoder (Reed-Solomon error correction)
