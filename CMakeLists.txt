@@ -90,7 +90,9 @@ add_library(logc STATIC src/logc.cpp)
 add_library(base64 INTERFACE)
 target_link_libraries(base64 INTERFACE basic)
 add_library(platform STATIC src/platform.cpp)
-# perm 依赖 platform（OS_* 宏）与 basic（stringlist）；Windows 下另需 Advapi32
+# perm 只链接 basic（stringlist / str_to_wstr）；
+# platform 对它是**头依赖**（只用 OS_* 宏与 fs 别名，不调用 platform 的函数，故不 link）。
+# Windows 下另需 Advapi32（SID / token）与 Shell32（ShellExecuteEx）。
 add_library(perm STATIC src/perm.cpp)
 # add_library(process STATIC src/process.cpp) # A major update in progress, not ready to use
 add_library(arguments STATIC src/arguments.cpp)
