@@ -119,6 +119,8 @@ add_library(i18n STATIC src/i18n.cpp)
 add_library(yaml STATIC src/yaml.cpp)
 add_library(bitmap STATIC src/bitmap.cpp)
 add_library(qrcode STATIC src/qrcode.cpp)
+# png 依赖 bitmap（像素容器）、zlib（IDAT 就是 zlib 流）、crc32（块校验）
+add_library(png STATIC src/png.cpp)
 
 add_library(fileio STATIC src/fileio.cpp)
 add_library(file STATIC src/file.cpp)
@@ -176,13 +178,16 @@ foreach(target
     regexfilter logc sha256 sha512 sha1 crc32 arguments ini abstract
     xml keydb perm condition datauri json toml i18n yaml aes
     fileio file filepack uri zlib
-    bitmap qrcode
+    bitmap qrcode png
 )
     target_link_libraries(${target} PUBLIC basic)
 endforeach()
 
 # qrcode 依赖 bitmap（调用 bitmap<bool> 的成员实现）
 target_link_libraries(qrcode PUBLIC bitmap)
+
+# png 在 bitmap 上工作，并且自己调 zlib / crc32
+target_link_libraries(png PUBLIC bitmap zlib crc32)
 
 # file 额外依赖 fileio
 target_link_libraries(file PUBLIC fileio)
@@ -211,7 +216,7 @@ set(TARGET_LIST
     console aes keydb types condition filesystem datauri json toml i18n yaml
     fileio file filepack uri
     network_core network_dns network_tcp network_udp network_http network_io
-    bitmap qrcode zlib
+    bitmap qrcode zlib png
 )
 
 # 安装目标

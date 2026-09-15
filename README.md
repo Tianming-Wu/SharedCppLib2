@@ -56,6 +56,7 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **`xml`** - XML parsing and serialization library (in development) (Warning: Though the module is basically functional, some functions are yet unsafe and cause crashes.)
 - **[`bitmap`](doc/bitmap.md)** - Pixel bitmap container with drawing support (BMP I/O)
 - **[`qrcode`](doc/qrcode.md)** - QR Code encoder (Reed-Solomon error correction)
+- **[`png`](doc/png.md)** - PNG image codec (decode + encode) working on `bitmap<rgba8>`
 
 ## Deprecated Modules
 

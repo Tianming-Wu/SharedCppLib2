@@ -221,9 +221,19 @@ struct bit_reader {
         if (rem) { cur >>= rem; n -= rem; }
     }
     void read_bytes(string& out, size_t count) {
+        // cur 里可能还缓冲着已经越过 p+i 的整字节（get() 是按需补字节的），
+        // 所以必须先把它吐出来，否则从 p+i 读会整体错位一整个字节。
+        while (count > 0 && n >= 8) {
+            out.push_back(static_cast<char>(cur & 0xFFu));
+            cur >>= 8;
+            n -= 8;
+            --count;
+        }
         if (i + count > len) throw zlib_incomplete{};
-        out.append(reinterpret_cast<const char*>(p + i), count);
-        i += count;
+        if (count > 0) {
+            out.append(reinterpret_cast<const char*>(p + i), count);
+            i += count;
+        }
     }
 };
 
