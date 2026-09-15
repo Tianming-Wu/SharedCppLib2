@@ -203,6 +203,21 @@ static bytearray fromRaw(const char* raw, size_t size);
 ```
 从原始字符数据创建 bytearray。
 
+#### randomarray
+```cpp
+static bytearray randomarray(size_t size);
+```
+从平台熵源取 `size` 个随机字节，构造一个 bytearray。
+
+**示例：**
+```cpp
+scl2::bytearray key = scl2::bytearray::randomarray(32);   // 一个 256 位密钥
+std::cout << key.toHex();                                  // 例如 "9f3c..."
+```
+
+结果无法设种子、也无法复现，这正是它能用于密钥、IV、nonce 的原因。大块生成比 PRNG 慢；
+平台若没有熵源会抛 `std::runtime_error`。
+
 ### 实用操作
 
 #### append

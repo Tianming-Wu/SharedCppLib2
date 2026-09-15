@@ -262,9 +262,11 @@ public:
     }
 
     // Container read (gdump elements)
+    // const: the body only uses const readers, and the recursive
+    // scl2::gload<value_type>(*this) accepts a const bytearray.
     template<typename _T>
     requires (!::scl2::stl::trivially_copyable_container<_T> && ::scl2::has_gdump_container<_T>)
-    _T readContainer() {
+    _T readContainer() const {
         if (!available<uint32_t>()) throw std::out_of_range("bytearray::readContainer: not enough data for count");
         uint32_t count = read<uint32_t>();
         _T result;
@@ -290,6 +292,66 @@ public:
     }
     size_t tellr() const { return read_pointer; }
     size_t tellw() const { return write_pointer; }
+
+    /// @brief RAII guard that restores the read cursor on scope exit.
+    ///
+    /// For speculative reads that must not disturb the caller's cursor —
+    /// format sniffing, probing a header, trying a decode and falling back.
+    ///
+    ///     {
+    ///         auto guard = data.rp_guard();
+    ///         if (data.read<uint32_t>() == magic) { ... }   // cursor moves
+    ///     }   // cursor restored
+    ///
+    /// The guard holds a `const bytearray*`: both `tellr()` and `seekr()` are
+    /// const (the read cursor is `mutable`), so it works on a
+    /// `const bytearray&` — which is the usual case when sniffing.
+    ///
+    /// Move-only; the destructor always restores, including on exception.
+    class read_guard {
+    public:
+        read_guard(const read_guard&) = delete;
+        read_guard& operator=(const read_guard&) = delete;
+
+        explicit read_guard(const bytearray& target)
+            : m_target(&target), m_pos(target.tellr()) {}
+
+        read_guard(read_guard&& other) noexcept
+            : m_target(other.m_target), m_pos(other.m_pos) { other.m_target = nullptr; }
+
+        read_guard& operator=(read_guard&& other) noexcept {
+            if (this != &other) {
+                restore();
+                m_target = other.m_target;
+                m_pos = other.m_pos;
+                other.m_target = nullptr;
+            }
+            return *this;
+        }
+
+        ~read_guard() { restore(); }
+
+        /// @brief Disarm without restoring: the cursor keeps its current position.
+        /// Same sense as std::unique_lock::release(). Use it to "commit" the
+        /// reads performed inside the scope.
+        void release() { m_target = nullptr; }
+
+        /// @brief Restore the recorded position now and disarm.
+        void restore() {
+            if (m_target) {
+                m_target->seekr(m_pos);
+                m_target = nullptr;
+            }
+        }
+
+    private:
+        const bytearray* m_target = nullptr;
+        size_t m_pos = 0;
+    };
+
+    /// @brief Create a guard restoring the read cursor when it goes out of scope.
+    /// @note Discarding the result is a no-op, hence [[nodiscard]].
+    [[nodiscard]] read_guard rp_guard() const { return read_guard(*this); }
 
     // ── Query ────────────────────────────────────────────────────────
     size_t size() const { return base_type::size(); }
@@ -451,6 +513,13 @@ public:
     static bytearray fromUtf8(const std::u8string& utf8);
     static bytearray fromUtf16(const std::u16string& utf16);
     static bytearray fromUtf32(const std::u32string& utf32);
+
+    /// @brief `size` random bytes from the platform's entropy source.
+    /// @note Not a PRNG: it cannot be seeded and cannot be reproduced, and every byte
+    ///       comes from the OS entropy source, so the result is usable for keys, IVs and
+    ///       nonces. Bulk generation is slower than a PRNG, and this throws
+    ///       `std::runtime_error` if the platform provides no entropy source.
+    static bytearray randomarray(size_t size);
 
 private:
     size_t write_pointer = 0;

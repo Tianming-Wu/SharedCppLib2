@@ -203,6 +203,22 @@ static bytearray fromRaw(const char* raw, size_t size);
 ```
 Creates bytearray from raw character data.
 
+#### randomarray
+```cpp
+static bytearray randomarray(size_t size);
+```
+Creates a bytearray of `size` random bytes taken from the platform's entropy source.
+
+**Example:**
+```cpp
+scl2::bytearray key = scl2::bytearray::randomarray(32);   // a 256-bit key
+std::cout << key.toHex();                                  // e.g. "9f3c..."
+```
+
+The result cannot be seeded or reproduced, which is what makes it suitable for keys,
+IVs and nonces. Bulk generation is slower than a PRNG, and this throws
+`std::runtime_error` if the platform provides no entropy source.
+
 ### Utility Operations
 
 #### append

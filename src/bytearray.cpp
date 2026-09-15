@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <limits>
 #include <iomanip>
+#include <random>
 
 namespace scl2 {
 
@@ -349,7 +350,24 @@ bytearray bytearray::fromPointer(const void* p){ if(!p)return{}; return bytearra
 bytearray bytearray::fromUtf8(const std::u8string& s){ return bytearray(reinterpret_cast<const std::byte*>(s.data()),s.size()); }
 bytearray bytearray::fromUtf16(const std::u16string& s){ return bytearray(reinterpret_cast<const std::byte*>(s.data()),s.size()*sizeof(char16_t)); }
 bytearray bytearray::fromUtf32(const std::u32string& s){ return bytearray(reinterpret_cast<const std::byte*>(s.data()),s.size()*sizeof(char32_t)); }
+scl2::bytearray bytearray::randomarray(size_t sz) {
+    bytearray out(sz);
+    if (sz == 0) return out;
 
+    // Take every byte from the platform entropy source rather than seeding a PRNG,
+    // so the result is not reproducible and can be used for keys / IVs / nonces.
+    // The cost is one random_device call per four bytes, which is slower than a PRNG
+    // for large buffers.
+    std::random_device rd;
+    std::byte* p = out.data();
+    for (size_t i = 0; i < sz;) {
+        const unsigned int v = rd();
+        for (int k = 0; k < 4 && i < sz; ++k, ++i) {
+            p[i] = static_cast<std::byte>(static_cast<unsigned char>(v >> (8 * k)));
+        }
+    }
+    return out;
+}
 bytearray bytearray_view::subarr(size_t begin, size_t n) const {
     if(begin>=size_)return{}; size_t end=(n==bytearray::seek_end)?size_:std::min(size_,begin+n);
     return bytearray(data_+begin,end-begin);
