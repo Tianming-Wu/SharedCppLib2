@@ -21,14 +21,14 @@ target_link_libraries(target SharedCppLib2::bitmap)
 
 A pixel-templated bitmap container plus a small rasterization toolkit:
 
-- `bitmap<Pixel>` — generic bitmap for any pixel type (`scl2::color`, `scl2::rgba8`, ...).
+- `bitmap<Pixel>` — generic bitmap for any pixel type; `scl2::rgba8` is the dense 4-byte RGBA storage type used for colour images.
 - `bitmap<bool>` (alias `bitmap_1c`) — 1-bit packed monochrome with BMP I/O and configurable row alignment (byte / 32-bit rows) for MCU / framebuffer use.
 - `drawer<Pixel>` — rasterization primitives (line / rectangle / circle), anti-aliasing, and `pen` / `brush` styling (in `drawer.hpp`).
 - `bitmap_pattern<W,H>` — constexpr-friendly monochrome raster for hard-coding fixed patterns (QR markers, glyphs, ...).
 
 The abstract `draw_target<Pixel>` interface lets `drawer` render onto any surface without knowing the concrete pixel storage.
 
-File support: BMP (1-bit). PNG / JPG / GIF are not supported yet.
+File support: BMP (1-bit, 8-bit, 24-bit, 32-bit). PNG is handled by the separate [`png`](png.md) module. JPG / GIF are not supported.
 
 ## Quick Start
 
@@ -92,6 +92,8 @@ auto tile = bm.fit_into(100, 80, scl2::Stretch::Tile);    // repeat
 |--------|-------------|
 | `bitmap(w, h, init)` | Construct with a fill value |
 | `set_pixel(x, y, v)` / `get_pixel` | Access a pixel (throws on out-of-bounds) |
+| `row(y)` | One row as a `std::span`, bypassing the per-pixel bounds check |
+| `data()` | The whole pixel buffer as a `std::span` |
 | `width()` / `height()` / `getSize()` | Dimensions |
 | `resize(w, h)` | Discard content and resize |
 | `resize(w, h, align)` | Resize preserving content with alignment |
