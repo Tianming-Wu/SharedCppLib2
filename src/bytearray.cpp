@@ -46,6 +46,16 @@ void bytearray::copy_to(void* raw, size_t sz) const {
     std::memcpy(raw, this->data(), sz);
 }
 
+void bytearray::wipe() noexcept
+{
+    // Through a volatile pointer on purpose: a plain loop over a buffer that is about to
+    // be freed can be dropped as a dead store, and that is exactly the case this is for
+    // (a secure_bytearray wiping itself from its destructor).
+    volatile std::byte* p = this->data();
+    for (size_t i = 0, n = this->size(); i < n; ++i)
+        p[i] = std::byte{0};
+}
+
 std::string bytearray::toString() const {
     seekr(0); if (empty()) return {};
     uint32_t len = read<uint32_t>(); if (len == 0) return {};

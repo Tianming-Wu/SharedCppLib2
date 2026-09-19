@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <type_traits>
+#include <utility>
 // #include <experimental/scope>
 
 #include "basics.hpp"
@@ -358,6 +359,14 @@ public:
     bool empty() const { return base_type::empty(); }
     void clear() { base_type::clear(); write_pointer = 0; read_pointer = 0; }
 
+    /// @brief Overwrite every byte with zero, keeping the size.
+    /// @note This is for key material, not a general way to zero an array. The writes go
+    ///       through a `volatile` pointer so they are not removed as dead stores, which a
+    ///       plain `std::fill` on a buffer that is about to be freed may be. Note that
+    ///       `clear()` does not erase anything, and that this cannot reach memory the
+    ///       underlying vector has already reallocated away.
+    void wipe() noexcept;
+
     const std::byte* data() const { return base_type::data(); }
     std::byte* data() { return base_type::data(); }
 
@@ -524,6 +533,41 @@ public:
 private:
     size_t write_pointer = 0;
     mutable size_t read_pointer = 0;
+};
+
+// ── secure_bytearray (wipes itself on destruction) ───────────────────
+
+/// @brief A `bytearray` that zeroes its buffer when it is destroyed.
+/// @note It protects the container and nothing else. Any `bytearray` the class produces
+///       by value (`subarr()`, `readBytes()`, arithmetic, `operator+`) is a plain copy
+///       that is not wiped, and bytes the underlying vector has already reallocated away
+///       are out of reach. Use it for members that hold a secret for their whole lifetime.
+class secure_bytearray : public bytearray {
+public:
+    using bytearray::bytearray;
+
+    // Inheriting the constructors does not bring in the base class' copy/move
+    // constructors, so taking over a plain bytearray needs to be spelled out.
+    secure_bytearray(const bytearray& other) : bytearray(other) {}
+    secure_bytearray(bytearray&& other) noexcept : bytearray(std::move(other)) {}
+
+    secure_bytearray(const secure_bytearray&) = delete;
+    secure_bytearray& operator=(const secure_bytearray&) = delete;
+    secure_bytearray(secure_bytearray&&) noexcept = default;
+
+    secure_bytearray& operator=(secure_bytearray&& other) noexcept
+    {
+        // The buffer that is about to be dropped is erased first. Move-assigning the
+        // underlying vector frees the old allocation without running any destructor on it,
+        // so relying on ~secure_bytearray() here would leave the old secret in freed memory.
+        if (this != &other) {
+            wipe();
+            bytearray::operator=(std::move(other));
+        }
+        return *this;
+    }
+
+    ~secure_bytearray() { wipe(); }
 };
 
 // ── bytearray_view (non-owning span, like string_view) ───────────────
