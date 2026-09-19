@@ -53,10 +53,13 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **[`toml`](doc/toml.md)** - TOML parser and serializer (early development)
 - **`platform`** - Cross-platform utilities and abstractions
 - **[`process`](doc/process.md)** - Child process management with pipe-based stdio (QProcess-inspired)
+- **[`unixsocket`](doc/unixsocket.md)** - Local (AF_UNIX) sockets, POSIX only
 - **`xml`** - XML parsing and serialization library (in development) (Warning: Though the module is basically functional, some functions are yet unsafe and cause crashes.)
 - **[`bitmap`](doc/bitmap.md)** - Pixel bitmap container with drawing support (BMP I/O)
 - **[`qrcode`](doc/qrcode.md)** - QR Code encoder (Reed-Solomon error correction)
 - **[`png`](doc/png.md)** - PNG image codec (decode + encode) working on `bitmap<rgba8>`
+- **[`xkeydb`](doc/xkeydb.md)** - File-backed key-value database (`variant` values, optional compression, integrity check and encryption)
+- **[`compression`](doc/compression.md)** - Compression providers and algorithm identifiers, for choosing an algorithm at run time
 
 ## Deprecated Modules
 

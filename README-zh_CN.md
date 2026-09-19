@@ -52,10 +52,13 @@ Other languages: [English](README.md)
 - **[`toml`](doc/zh_CN/toml.md)** - TOML 解析与序列化（早期开发）
 - **`platform`** - 跨平台工具和抽象层
 - **[`process`](doc/zh_CN/process.md)** - 子进程管理与管道标准流读写（参考 QProcess）
+- **[`unixsocket`](doc/zh_CN/unixsocket.md)** - 本地（AF_UNIX）套接字，仅限 POSIX
 - **`xml`** - XML 解析和序列化库（开发中）（警告：虽然模块基本功能正常，但某些函数尚不安全，可能导致崩溃。）
 - **[`bitmap`](doc/zh_CN/bitmap.md)** - 像素位图容器与绘制支持（BMP 读写）
 - **[`qrcode`](doc/zh_CN/qrcode.md)** - 二维码编码器（Reed-Solomon 纠错）
 - **[`png`](doc/zh_CN/png.md)** - PNG 图像编解码器（解码 + 编码），工作在 `bitmap<rgba8>` 上
+- **[`xkeydb`](doc/zh_CN/xkeydb.md)** - 绑定文件的键值数据库（值用 `variant`，可选压缩、校验与加密）
+- **[`compression`](doc/zh_CN/compression.md)** - 压缩 provider 与算法标识符，供运行期选择算法
 
 ## 已弃用模块
 

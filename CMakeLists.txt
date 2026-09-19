@@ -50,7 +50,7 @@ add_library(api INTERFACE include/api.hpp)
 set(INTERFACE_TARGET_LIST
     hmac logh rerr bits cache exexception engineering multindex percentage RAII singleinst
     structural_binding typemask
-    network base64
+    network base64 unixsocket
 )
 
 add_library(hmac INTERFACE include/hmac.hpp)
@@ -66,6 +66,10 @@ add_library(RAII INTERFACE include/RAII.hpp)
 add_library(singleinst INTERFACE include/singleinst.hpp)
 add_library(structural_binding INTERFACE include/structural_binding.hpp)
 add_library(typemask INTERFACE include/typemask.hpp)
+# unixsocket 是 POSIX 专有的头文件模块（AF_UNIX）；在 Windows 上它什么都不定义，只是发一条
+# 警告，所以做成 INTERFACE 目标，不需要（也不能有）对应的源文件。
+add_library(unixsocket INTERFACE include/unixsocket.hpp)
+target_link_libraries(unixsocket INTERFACE basic)
 
 # 定义所有库
 add_library(basic STATIC
