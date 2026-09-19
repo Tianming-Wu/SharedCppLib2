@@ -367,6 +367,8 @@ variant variant::load(const scl2::bytearray &data)
         default:
             throw std::runtime_error("variant: unknown type in load");
     }
+
+    return v;
 }
 
 // ---- helpers ----
