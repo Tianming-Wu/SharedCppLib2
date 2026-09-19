@@ -36,7 +36,10 @@ public:
     server_client_handler(server& srv, client_info& info);
     ~server_client_handler() = default; // does not have ownership of anything
 
-    enable_copy_move(server_client_handler)
+    server_client_handler(const server_client_handler&) = default;
+    server_client_handler(server_client_handler&&) = default;
+    server_client_handler& operator=(const server_client_handler&) = delete;
+    server_client_handler& operator=(server_client_handler&&) = delete;
 
     bool readyRead() override final;
     size_t available() override final;
