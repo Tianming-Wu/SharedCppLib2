@@ -57,11 +57,17 @@ Point restored = serialized.to<Point>();    // Deserialization
 
 #### Basic Constructors
 ```cpp
-bytearray();                                  // Empty array
-bytearray(const bytearray &ba);               // Copy
-explicit bytearray(const std::string &str);   // From string, raw bytes
-explicit bytearray(const char *raw, size_t size);  // From raw data
-explicit bytearray(size_t count);             // `count` zeroed bytes
+bytearray();                                        // Empty array
+bytearray(const bytearray &ba);                     // Copy
+bytearray(std::byte b);                             // Single byte
+explicit bytearray(const std::string &str);         // From string, raw bytes
+explicit bytearray(const char *raw, size_t size);   // From raw data
+explicit bytearray(const std::byte *raw, size_t size);
+explicit bytearray(const void *raw, size_t size);
+explicit bytearray(size_t count);                   // `count` zeroed bytes
+explicit bytearray(size_t count, std::byte value);  // `count` copies of `value`
+bytearray(std::initializer_list<std::byte> init);
+template<typename InputIt> bytearray(InputIt first, InputIt last);
 ```
 
 #### Writing a Value
@@ -69,29 +75,70 @@ explicit bytearray(size_t count);             // `count` zeroed bytes
 template<typename T> void append(const T& data);  // trivially copyable
 static bytearray fromTrivialType(const auto& data);
 ```
-There is no constructor that takes an arbitrary type, so a value is written in with
-`append()`, which stores its object representation - its bytes as they are in memory.
+There is no constructor that takes an arbitrary type. A value goes in with `append()`, which
+stores its object representation - its bytes as they are in memory - and `fromTrivialType()`
+is the same thing where you want an expression instead of two statements.
 
 **Careful:** `bytearray(size_t count)` takes a *count*, so a one-argument construction from
-an integer is not a conversion. `scl2::bytearray(42)` is 42 zeroed bytes, not the number 42;
-use `append()`.
+an integer is not a conversion. `scl2::bytearray(42)` is 42 zeroed bytes, not the number 42.
 
 **Example:**
 ```cpp
 int value = 42;
-scl2::bytearray ba;
-ba.append(value);                                    // 4 bytes
-scl2::bytearray same = scl2::bytearray::fromTrivialType(value);
+scl2::bytearray ba = scl2::bytearray::fromTrivialType(value);   // 4 bytes
+std::cout << ba.size();                                         // 4
+
+scl2::bytearray same;
+same.append(value);                                             // the same, in two statements
 ```
+
+#### B, PCB and bytes
+```cpp
+#define B(IN)   std::byte{IN}                            // a byte literal, shorter to write
+#define PCB(IN) reinterpret_cast<const std::byte*>(&IN)  // the bytes of a value
+
+template<size_t ContentSize> struct bytes;
+```
+`B(0x08)` is `std::byte{0x08}`. `PCB(v)` is the address of `v`, read as bytes, which is what
+the pointer-and-length overloads take:
+
+```cpp
+uint32_t v = 0x12345678;
+ba.append(PCB(v), sizeof(v));
+```
+
+Define `BYTEARRAY_NODEFINE` before including the header if those two macro names get in the
+way. `scl2::bytes<N>` is a fixed-size block of bytes carrying its own size; it is the
+argument type a fixed-size construction API is meant to take, and until then it can be
+appended like any other trivially copyable value.
 
 ### Data Access & Manipulation
 
-#### at & vat
+#### size, cursors and the buffer
 ```cpp
-byte at(size_t i) const;
-byte vat(size_t p, const byte &v = byte('\0')) const;
+size_t size() const;
+bool empty() const;
+void clear();                          // size 0, and both cursors back to 0
+const std::byte* data() const;         // and a mutable overload
+
+tellr(), seekr(pos)                    // the read cursor; seekr is const, the cursor is mutable
+tellw(), seekw(pos)                    // the write cursor, which insert() without a position uses
+bytesAvailable(length), remaining()    // how much is left to read
+available<T>(), fits<T>()              // enough for one T; exactly sizeof(T)
 ```
-Safe element access with bounds checking and default value support.
+Passing `seek_end` as a position means "the end".
+
+#### Element access
+```cpp
+const std::byte& operator[](size_t i) const;   // and a mutable overload; no bounds check
+std::byte at(size_t i) const;                  // throws std::out_of_range
+std::byte vat(size_t p, const std::byte& v = std::byte{0}) const;   // returns `v` when out of range
+std::byte& front();  std::byte& back();
+void push_back(std::byte b);
+void resize(size_t n);  void resize(size_t n, std::byte v);
+void reserve(size_t n);
+```
+Iteration is the usual `begin()` / `end()` / `cbegin()` / `cend()`.
 
 **Example:**
 ```cpp
@@ -99,6 +146,13 @@ scl2::bytearray data("Hello");
 std::byte b1 = data.at(0);     // 'H'
 std::byte b2 = data.vat(10, std::byte{'X'});  // 'X' (safe access)
 ```
+
+#### copy_from & copy_to
+```cpp
+void copy_from(const void* raw, size_t size);   // replace the content with `size` bytes
+void copy_to(void* raw, size_t size) const;     // copy the content out
+```
+Both throw `std::invalid_argument` for a null pointer, and for a size that does not fit.
 
 #### subarr
 ```cpp
@@ -130,6 +184,29 @@ std::string toStdString() const;
 ```
 Converts bytearray to std::string, the raw bytes and nothing else.
 
+#### toWString, toStdWString, toString
+```cpp
+std::wstring toWString() const;      // uint32_t length, then the characters
+std::wstring toStdWString() const;   // the raw bytes, read as wchar_t
+std::string toString() const;        // the char version of toWString()
+```
+The `String` trio and the `StdString` trio differ in the same way as `fromString()` and
+`fromStdString()` below: one expects a length prefix in front, the other does not.
+
+#### toEscapedString, xtoEscapedString
+```cpp
+std::string toEscapedString() const;    // printable ASCII kept, the rest escaped
+std::string xtoEscapedString() const;   // every byte as \xNN
+```
+Both are meant for logs and for embedding bytes in text.
+
+#### toUtf8, toUtf16, toUtf32, toBase64
+```cpp
+std::u8string toUtf8() const;                    // and toUtf16() / toUtf32()
+std::string toBase64() const;
+```
+The UTF trio reinterprets the bytes as that encoding - it does not convert or validate them.
+
 #### toHex
 ```cpp
 std::string toHex() const;
@@ -150,12 +227,26 @@ scl2::wstringlist toWStringlist(const std::wstring& split = L" ") const;
 ```
 Splits bytearray into string list using delimiter.
 
+#### as
+```cpp
+template<typename T> const T& as() const;
+template<typename T> T& as();
+```
+Reads the whole content as a `T` without copying. The size must be exactly `sizeof(T)`, and
+this throws `std::out_of_range` when it is not.
+
+**Example:**
+```cpp
+scl2::bytearray ba = scl2::bytearray::fromTrivialType(cfg);
+myConfig back = ba.as<myConfig>();   // a reference, copied into `back`
+```
+
 #### to
 ```cpp
 template<typename _T>
 _T to() const;
 ```
-Deserializes bytearray back to original type.
+Deserializes bytearray back to original type, by value.
 
 **Requirements:**
 - Type must be trivially copyable
@@ -168,6 +259,13 @@ scl2::bytearray serialized;
 serialized.append(3.14f);
 float value = serialized.to<float>();
 ```
+
+#### toContainer
+```cpp
+template<typename _T> _T toContainer() const;
+```
+Builds a container (`_T` has a trivially copyable `value_type`) out of the content, taking
+the element count from the size.
 
 ### Stream Operations
 
@@ -211,11 +309,45 @@ std::cout << data.toStdString();  // "Hello"
 
 `fromHex()` skips characters that are not hex digits; it does not throw.
 
-#### fromRaw
+#### fromRaw, fromPointer
 ```cpp
-static bytearray fromRaw(const char* raw, size_t size);
+static bytearray fromRaw(const char* raw, size_t size);        // and an unsigned char overload
+static bytearray fromPointer(const void* ptr);                 // the bytes at `ptr`
 ```
-Creates bytearray from raw character data.
+Creates bytearray from raw character data, or from what a pointer points at.
+
+#### fromString, fromWString
+```cpp
+static bytearray fromString(const std::string& str);    // uint32_t length, then the characters
+static bytearray fromWString(const std::wstring& str);
+```
+The inverse of `readString()` / `toWString()`.
+
+#### fromStdString, fromStdWString
+```cpp
+static bytearray fromStdString(const std::string& str);  // the bytes alone
+static bytearray fromStdWString(const std::wstring& str);
+```
+The inverse of `toStdString()` / `toStdWString()`. Note that `fromString()` and
+`fromStdString()` are **not** interchangeable: the first writes a length prefix, the second
+does not.
+
+#### fromBase64
+```cpp
+static bytearray fromBase64(const std::string& base64);
+```
+
+#### fromUtf8, fromUtf16, fromUtf32
+```cpp
+static bytearray fromUtf8(const std::u8string& utf8);   // and the UTF-16 / UTF-32 twins
+```
+Takes the bytes of that string, with no conversion and no validation.
+
+#### fromTrivialType
+```cpp
+static bytearray fromTrivialType(const auto& data);
+```
+A trivially copyable value, as its own bytes. See [Writing a Value](#writing-a-value).
 
 #### randomarray
 ```cpp
@@ -235,15 +367,34 @@ IVs and nonces. Bulk generation is slower than a PRNG, and this throws
 
 ### Utility Operations
 
-#### append
-Multiple overloads for appending various data types:
-- `append(const bytearray &ba)`
-- `append(const std::byte* data, size_t len)`
-- `append(std::byte b)`
-- `template<typename T> append(const T& data)` - any trivially copyable value, written as its own bytes
-- `append(const std::string &str)` / `append(const std::wstring &str)` - uint32_t length, then the characters
-- `appendRawString(const std::string &str)` - the characters alone, no length prefix
-- `appendByte(uint8_t byte)`
+#### insert & append
+The write side comes in three positions, each with the same overload set:
+```cpp
+void insert(size_t pos, const bytearray &data);   // at a position
+void insert(const bytearray &data);               // at the write cursor
+void append(const bytearray &data);               // at the end
+```
+- `(const std::byte* data, size_t len)` - raw bytes
+- `(std::byte b)` - one byte
+- `(const T& data)` - any trivially copyable value, written as its own bytes
+- `(const std::string &str)` / `(const std::wstring &str)` - uint32_t length, then the characters
+- `insertRawString(pos, str)` / `appendRawString(str)` - the characters alone, no length prefix
+- `insertRawWString(pos, str)` / `appendRawWString(str)` - the same for the wide form
+- `insertByte(pos, uint8_t byte)` / `appendByte(uint8_t byte)` - one byte from a plain integer
+- `insertContainer(pos, const C &container)` / `appendContainer(const C &container)` - count, element size, then the elements
+
+The string forms pair up with the readers: `append(str)` writes what `readString()` reads
+back, and `appendRawString(str)` writes what `readRawString(n)` reads back.
+
+#### shift, rotate and bit operations
+```cpp
+bytearray shiftLeft(size_t offset) const;     // and shiftRight() - offset in bytes
+bytearray rotateLeft(size_t offset) const;    // and rotateRight()
+bytearray bitShiftLeft(size_t offset) const;  // and bitShiftRight() - offset in bits
+bytearray bitRotateLeft(size_t offset) const; // and bitRotateRight()
+bytearray bitTakeLeft(size_t bitCount) const; // and bitTakeRight() - the taken bits, as a bytearray
+```
+Each one returns a new bytearray and leaves the original alone.
 
 #### reverse
 ```cpp
@@ -278,9 +429,13 @@ std::cout << data.toHex();                 // print it as hex
 
 ### Comparison
 ```cpp
-bool operator== (const bytearray &ba) const;
+bool operator==(const bytearray& other) const;
+bool operator!=(const bytearray& other) const;
+bool operator<(const bytearray& other) const;        // lexicographic, for ordering only
+bytearray operator+(const bytearray& other) const;   // concatenation
 ```
-Compares two bytearrays for exact binary equality.
+`==` compares the bytes for exact equality. `operator<` is a lexicographic order, meant for
+`std::map` / `std::set` keys; it has no numeric meaning.
 
 ## Advanced Usage
 
@@ -372,7 +527,9 @@ User deserialize(const scl2::bytearray& data) {
 
 | Member | Description |
 |---------|---------|
-| `read<T>()` / `readString()` / `readBytes(n)` / `readContainer<T>()` | Take from the read cursor and advance it |
+| `read<T>()` / `readString()` / `readWString()` / `readBytes(n)` / `readContainer<T>()` | Take from the read cursor and advance it |
+| `readRawString(n)` / `readRawWString(n)` | Take `n` characters, with no length prefix |
+| `getref<T>()` | A mutable reference to the next `sizeof(T)` bytes, cursor advanced |
 | `available<T>()` / `bytesAvailable(n)` / `remaining()` | Whether a read of that size would succeed |
 | `seekr(pos)` / `tellr()` | The read cursor. `seekr(seek_end)` goes to the end |
 | `seekw(pos)` / `tellw()` | The write cursor, which `insert()` without a position uses |
@@ -381,8 +538,9 @@ User deserialize(const scl2::bytearray& data) {
 Every read throws `std::out_of_range` when the data runs out, so a decoder can let the
 exception carry it out instead of checking each field.
 
-`rp_guard()` is for speculative reads - sniffing a header, trying a decode and falling back -
-where the caller's cursor must not move:
+`rp_guard()` returns a `read_guard`: move-only, and its destructor restores the cursor, also
+when an exception leaves the scope. It is for speculative reads - sniffing a header, trying a
+decode and falling back - where the caller's cursor must not move:
 
 ```cpp
 {

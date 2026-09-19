@@ -57,11 +57,17 @@ Point restored = serialized.to<Point>();    // 反序列化
 
 #### 基本构造函数
 ```cpp
-bytearray();                                  // 空数组
-bytearray(const bytearray &ba);               // 复制
-explicit bytearray(const std::string &str);   // 从字符串，裸字节
-explicit bytearray(const char *raw, size_t size);  // 从原始数据
-explicit bytearray(size_t count);             // `count` 个零字节
+bytearray();                                        // 空数组
+bytearray(const bytearray &ba);                     // 复制
+bytearray(std::byte b);                             // 单个字节
+explicit bytearray(const std::string &str);         // 从字符串，裸字节
+explicit bytearray(const char *raw, size_t size);   // 从原始数据
+explicit bytearray(const std::byte *raw, size_t size);
+explicit bytearray(const void *raw, size_t size);
+explicit bytearray(size_t count);                   // `count` 个零字节
+explicit bytearray(size_t count, std::byte value);  // `count` 个 `value`
+bytearray(std::initializer_list<std::byte> init);
+template<typename InputIt> bytearray(InputIt first, InputIt last);
 ```
 
 #### 写入一个值
@@ -69,27 +75,68 @@ explicit bytearray(size_t count);             // `count` 个零字节
 template<typename T> void append(const T& data);  // 可简单复制
 static bytearray fromTrivialType(const auto& data);
 ```
-没有接受任意类型的构造函数，值要用 `append()` 写入，它存的是对象的表示（即它在内存里的字节）。
+没有接受任意类型的构造函数。值用 `append()` 写入，存的是对象的表示（即它在内存里的字节）；
+想要一个表达式而不是两条语句时，`fromTrivialType()` 干的是同一件事。
 
 **注意：** `bytearray(size_t count)` 收的是**个数**，所以拿一个整数单参数构造不是类型转换：
-`scl2::bytearray(42)` 是 42 个零字节，不是数字 42。要写值就用 `append()`。
+`scl2::bytearray(42)` 是 42 个零字节，不是数字 42。
 
 **示例:**
 ```cpp
 int value = 42;
-scl2::bytearray ba;
-ba.append(value);                                    // 4 个字节
-scl2::bytearray same = scl2::bytearray::fromTrivialType(value);
+scl2::bytearray ba = scl2::bytearray::fromTrivialType(value);   // 4 个字节
+std::cout << ba.size();                                         // 4
+
+scl2::bytearray same;
+same.append(value);                                             // 一样，只是写成两条语句
 ```
+
+#### B、PCB 与 bytes
+```cpp
+#define B(IN)   std::byte{IN}                            // 字节字面量，写起来短一点
+#define PCB(IN) reinterpret_cast<const std::byte*>(&IN)  // 一个值的字节
+
+template<size_t ContentSize> struct bytes;
+```
+`B(0x08)` 就是 `std::byte{0x08}`。`PCB(v)` 是把 `v` 的地址按字节看，正是那些
+"指针 + 长度" 重载要的东西：
+
+```cpp
+uint32_t v = 0x12345678;
+ba.append(PCB(v), sizeof(v));
+```
+
+如果这两个宏名字碍事，就在包含头文件前定义 `BYTEARRAY_NODEFINE`。`scl2::bytes<N>` 是一块
+自带大小的定长字节块；它是以后那套定长构造 API 要收的参数类型，在那之前它和任何可简单
+复制的值一样可以直接 append。
 
 ### 数据访问与操作
 
-#### at & vat
+#### size、游标与缓冲区
 ```cpp
-byte at(size_t i) const;
-byte vat(size_t p, const byte &v = byte('\0')) const;
+size_t size() const;
+bool empty() const;
+void clear();                          // 大小归零，两个游标也回到 0
+const std::byte* data() const;         // 另有可变重载
+
+tellr()、seekr(pos)                    // 读游标；seekr 是 const，游标本身 mutable
+tellw()、seekw(pos)                    // 写游标，不传位置的 insert() 用它
+bytesAvailable(length)、remaining()    // 还剩多少可读
+available<T>()、fits<T>()              // 够不够读一个 T；是否正好 sizeof(T)
 ```
-安全的元素访问，支持边界检查和默认值。
+位置传 `seek_end` 表示"到末尾"。
+
+#### 元素访问
+```cpp
+const std::byte& operator[](size_t i) const;   // 另有可变重载；不做边界检查
+std::byte at(size_t i) const;                  // 越界抛 std::out_of_range
+std::byte vat(size_t p, const std::byte& v = std::byte{0}) const;   // 越界返回 `v`
+std::byte& front();  std::byte& back();
+void push_back(std::byte b);
+void resize(size_t n);  void resize(size_t n, std::byte v);
+void reserve(size_t n);
+```
+迭代用通常的 `begin()` / `end()` / `cbegin()` / `cend()`。
 
 **示例:**
 ```cpp
@@ -97,6 +144,13 @@ scl2::bytearray data("Hello");
 std::byte b1 = data.at(0);     // 'H'
 std::byte b2 = data.vat(10, std::byte{'X'});  // 'X' (安全访问)
 ```
+
+#### copy_from 与 copy_to
+```cpp
+void copy_from(const void* raw, size_t size);   // 用 `size` 个字节替换内容
+void copy_to(void* raw, size_t size) const;     // 把内容拷出去
+```
+两个函数对空指针、以及放不下的长度都抛 `std::invalid_argument`。
 
 #### subarr
 ```cpp
@@ -127,6 +181,29 @@ std::string toStdString() const;
 ```
 将 bytearray 转换为 std::string，就是那些裸字节。
 
+#### toWString、toStdWString、toString
+```cpp
+std::wstring toWString() const;      // 先 uint32_t 长度，再是字符
+std::wstring toStdWString() const;   // 裸字节，按 wchar_t 读
+std::string toString() const;        // toWString() 的 char 版本
+```
+带 `String` 的三个和带 `StdString` 的三个的区别，和下面 `fromString()` 与 `fromStdString()`
+一样：一个要求前面有长度前缀，一个不要求。
+
+#### toEscapedString、xtoEscapedString
+```cpp
+std::string toEscapedString() const;    // 可打印 ASCII 保留，其余转义
+std::string xtoEscapedString() const;   // 每个字节都写成 \xNN
+```
+两者都是给日志、或者把字节嵌进文本用的。
+
+#### toUtf8、toUtf16、toUtf32、toBase64
+```cpp
+u8string toUtf8() const;                 // 以及 toUtf16() / toUtf32()
+std::string toBase64() const;
+```
+UTF 那三个只是把字节按那种编码重新解释，不转换也不校验。
+
 #### toHex
 ```cpp
 std::string toHex() const;
@@ -147,12 +224,25 @@ scl2::wstringlist toWStringlist(const std::wstring& split = L" ") const;
 ```
 使用分隔符将 bytearray 分割为字符串列表。
 
+#### as
+```cpp
+template<typename T> const T& as() const;
+template<typename T> T& as();
+```
+把整个内容当成一个 `T` 读，不拷贝。大小必须正好是 `sizeof(T)`，否则抛 `std::out_of_range`。
+
+**示例:**
+```cpp
+scl2::bytearray ba = scl2::bytearray::fromTrivialType(cfg);
+myConfig back = ba.as<myConfig>();   // 拿到引用，再拷进 `back`
+```
+
 #### to
 ```cpp
 template<typename _T>
 _T to() const;
 ```
-将 bytearray 反序列化回原始类型。
+把 bytearray 反序列化回原始类型，按值返回。
 
 **要求:**
 - 类型必须可简单复制
@@ -165,6 +255,12 @@ scl2::bytearray serialized;
 serialized.append(3.14f);
 float value = serialized.to<float>();
 ```
+
+#### toContainer
+```cpp
+template<typename _T> _T toContainer() const;
+```
+把内容装成一个容器（`_T` 的 `value_type` 可简单复制），元素个数由大小推出来。
 
 ### 流操作
 
@@ -208,11 +304,44 @@ std::cout << data.toStdString();  // "Hello"
 
 `fromHex()` 会跳过不是十六进制数字的字符，不抛异常。
 
-#### fromRaw
+#### fromRaw、fromPointer
 ```cpp
-static bytearray fromRaw(const char* raw, size_t size);
+static bytearray fromRaw(const char* raw, size_t size);        // 另有 unsigned char 重载
+static bytearray fromPointer(const void* ptr);                 // `ptr` 指向的那些字节
 ```
-从原始字符数据创建 bytearray。
+从原始字符数据创建 bytearray，或者从一个指针指向的内容创建。
+
+#### fromString、fromWString
+```cpp
+static bytearray fromString(const std::string& str);    // 先 uint32_t 长度，再是字符
+static bytearray fromWString(const std::wstring& str);
+```
+`readString()` / `toWString()` 的逆操作。
+
+#### fromStdString、fromStdWString
+```cpp
+static bytearray fromStdString(const std::string& str);  // 只有字节
+static bytearray fromStdWString(const std::wstring& str);
+```
+`toStdString()` / `toStdWString()` 的逆操作。注意 `fromString()` 和 `fromStdString()` **不能**
+互替：前者会写长度前缀，后者不写。
+
+#### fromBase64
+```cpp
+static bytearray fromBase64(const std::string& base64);
+```
+
+#### fromUtf8、fromUtf16、fromUtf32
+```cpp
+static bytearray fromUtf8(const std::u8string& utf8);   // 以及 UTF-16 / UTF-32 的同名函数
+```
+取那种字符串的字节，不转换也不校验。
+
+#### fromTrivialType
+```cpp
+static bytearray fromTrivialType(const auto& data);
+```
+把一个可简单复制的值按自身字节写入。见[写入一个值](#写入一个值)。
 
 #### randomarray
 ```cpp
@@ -231,15 +360,34 @@ std::cout << key.toHex();                                  // 例如 "9f3c..."
 
 ### 实用操作
 
-#### append
-多种重载用于追加各种数据类型：
-- `append(const bytearray &ba)`
-- `append(const std::byte* data, size_t len)`
-- `append(std::byte b)`
-- `template<typename T> append(const T& data)` —— 任何可简单复制的值，按自身字节写入
-- `append(const std::string &str)` / `append(const std::wstring &str)` —— 先 uint32_t 长度，再是字符
-- `appendRawString(const std::string &str)` —— 只有字符，没有长度前缀
-- `appendByte(uint8_t byte)`
+#### insert 与 append
+写侧共有三个位置，每个位置都是同一套重载：
+```cpp
+void insert(size_t pos, const bytearray &data);   // 写到指定位置
+void insert(const bytearray &data);               // 写到写游标处
+void append(const bytearray &data);               // 写到末尾
+```
+- `(const std::byte* data, size_t len)` —— 裸字节
+- `(std::byte b)` —— 一个字节
+- `(const T& data)` —— 任何可简单复制的值，按自身字节写入
+- `(const std::string &str)` / `(const std::wstring &str)` —— 先 uint32_t 长度，再是字符
+- `insertRawString(pos, str)` / `appendRawString(str)` —— 只有字符，没有长度前缀
+- `insertRawWString(pos, str)` / `appendRawWString(str)` —— 宽字符版同理
+- `insertByte(pos, uint8_t byte)` / `appendByte(uint8_t byte)` —— 从普通整数写一个字节
+- `insertContainer(pos, const C &container)` / `appendContainer(const C &container)` —— 先个数、再元素大小、再元素
+
+字符串形式与读函数是成对的：`append(str)` 写出的正是 `readString()` 读回的东西，
+`appendRawString(str)` 写出的则是 `readRawString(n)` 读回的。
+
+#### 移位、旋转与位运算
+```cpp
+bytearray shiftLeft(size_t offset) const;     // 以及 shiftRight()，offset 按字节
+bytearray rotateLeft(size_t offset) const;    // 以及 rotateRight()
+bytearray bitShiftLeft(size_t offset) const;  // 以及 bitShiftRight()，offset 按位
+bytearray bitRotateLeft(size_t offset) const; // 以及 bitRotateRight()
+bytearray bitTakeLeft(size_t bitCount) const; // 以及 bitTakeRight()，返回取下的位
+```
+每个都返回新的 bytearray，不动原来的那个。
 
 #### reverse
 ```cpp
@@ -273,9 +421,13 @@ std::cout << data.toHex();                 // 以十六进制打印
 
 ### 比较
 ```cpp
-bool operator== (const bytearray &ba) const;
+bool operator==(const bytearray& other) const;
+bool operator!=(const bytearray& other) const;
+bool operator<(const bytearray& other) const;        // 字典序，仅供排序
+bytearray operator+(const bytearray& other) const;   // 拼接
 ```
-比较两个 bytearray 的精确二进制相等性。
+`==` 比的是字节是否完全相同。`operator<` 是字典序，给 `std::map` / `std::set` 的键用，
+没有数值含义。
 
 ## 高级用法
 
@@ -367,7 +519,9 @@ User deserialize(const scl2::bytearray& data) {
 
 | 成员 | 说明 |
 |---------|---------|
-| `read<T>()` / `readString()` / `readBytes(n)` / `readContainer<T>()` | 从读游标取出并推进它 |
+| `read<T>()` / `readString()` / `readWString()` / `readBytes(n)` / `readContainer<T>()` | 从读游标取出并推进它 |
+| `readRawString(n)` / `readRawWString(n)` | 取 `n` 个字符，没有长度前缀 |
+| `getref<T>()` | 拿到接下来 `sizeof(T)` 字节的可变引用，游标同时推进 |
 | `available<T>()` / `bytesAvailable(n)` / `remaining()` | 如果按这个大小读，会不会成功 |
 | `seekr(pos)` / `tellr()` | 读游标。`seekr(seek_end)` 到末尾 |
 | `seekw(pos)` / `tellw()` | 写游标，不传位置的 `insert()` 用它 |
@@ -375,7 +529,8 @@ User deserialize(const scl2::bytearray& data) {
 
 数据不够时每个读函数都抛 `std::out_of_range`，所以解包代码可以让异常把它带出去，不必逐个字段检查。
 
-`rp_guard()` 是给"试探性读取"用的 —— 嗅探文件头、试一次解码再回退 —— 这种场合调用方的游标
+`rp_guard()` 返回一个 `read_guard`：只可移动，析构时恢复游标，异常退出作用域也照样恢复。
+它是给"试探性读取"用的 —— 嗅探文件头、试一次解码再回退 —— 这种场合调用方的游标
 不应该被移动：
 
 ```cpp
