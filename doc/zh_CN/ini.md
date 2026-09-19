@@ -90,7 +90,7 @@ auto maybeEnabled = cfg.getValueAsBoolOptional("Feature", "Enable");
 ## stringlist 与 bytearray 支持
 
 - `getValueAsStringList(...)` / `getValueAsStringListOptional(...)`：用于解析由 `stringlist::pack()` 生成的字符串列表表示。
-- `getValueAsByteArray(...)` / `getValueAsByteArrayOptional(...)`：用于解析十六进制编码（由 `scl2::bytearray::tohex()` 生成）的字节数组。
+- `getValueAsByteArray(...)` / `getValueAsByteArrayOptional(...)`：用于解析十六进制编码（由 `scl2::bytearray::toHex()` 生成）的字节数组。
 
 示例：
 ```cpp
