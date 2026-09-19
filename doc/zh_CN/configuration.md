@@ -151,8 +151,7 @@ struct MyConfig {
 
 ```cpp
 myConfig cfg{800, 600, true};
-scl2::bytearray ba;
-ba.append(cfg); // 就是对象的字节，就这么简单
+scl2::bytearray ba = scl2::bytearray::fromTrivialType(cfg); // 就这么简单
 
 myConfig cfg2 = ba.as<myConfig>(); // 同样简单。
 ```

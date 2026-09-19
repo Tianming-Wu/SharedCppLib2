@@ -151,8 +151,7 @@ Plain structures are directly supported, however you need to construct the bytea
 
 ```cpp
 myConfig cfg{800, 600, true};
-scl2::bytearray ba;
-ba.append(cfg); // the bytes of the object, as simple as that
+scl2::bytearray ba = scl2::bytearray::fromTrivialType(cfg); // as simple as that
 
 myConfig cfg2 = ba.as<myConfig>(); // and also simple.
 ```
