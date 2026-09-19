@@ -151,14 +151,15 @@ struct MyConfig {
 
 ```cpp
 myConfig cfg{800, 600, true};
-scl2::bytearray ba(cfg); // 就这么简单。
+scl2::bytearray ba;
+ba.append(cfg); // 就是对象的字节，就这么简单
 
-myConfig cfg2 = ba.as<MyConfig>(); // 同样简单。
+myConfig cfg2 = ba.as<myConfig>(); // 同样简单。
 ```
 
 如果是用于内嵌场景，你也可以为结构体编写 load 和 dump 函数。唯一的区别在于 load 函数中需要指定大小：
 ```cpp
-myStruct myStruct::load(const scl2::bytearray_view& data) {
+myStruct myStruct::load(const scl2::bytearray& data) {
     return data.readBytes(sizeof(myStruct)).as<myStruct>();
 }
 ```
@@ -180,14 +181,15 @@ struct MyConfig {
 struct MyConfig {
     // ... 之前的定义 ...
 
-    static MyConfig load(const scl2::bytearray_view& data);
+    static MyConfig load(const scl2::bytearray& data);
     static scl2::bytearray dump(const MyConfig& config);
 };
 
 // 你可以使用这个宏来断言你是否正确编写了 API：
 scl2_check_generic_dump_load(MyConfig);
 ```
-注意这里使用的是 bytearray_view 而不是 bytearray，因为 bytearray_view 为你处理了游标，是使代码简洁易读的关键部分。
+load 函数收的是 `const bytearray&`：游标就在 bytearray 里，读函数都是 const，而游标是
+`mutable`，所以一个字段接着一个字段地读下来就足够了。
 
 然后你需要实现 load 和 dump 函数。
 
@@ -195,16 +197,16 @@ scl2_check_generic_dump_load(MyConfig);
 
 ```cpp
 
-MyConfig MyConfig::load(const scl2::bytearray_view& data) {
+MyConfig MyConfig::load(const scl2::bytearray& data) {
     MyConfig config;
 
     // 对于字符串，使用提供的 readString。
-    // 你应该将 readString() 和 addString() 成对使用。
+    // 你应该将 readString() 和 append() 成对使用。
     config.name = data.readString();
 
-    // 对于宽字符串，还有 readWString 和 addWString。
-    // 所有其他字符串类型如 u8string 和 u16string 不受
-    // 视图 API 支持，但受 bytearray API 支持。你可以根据需要手动处理它们。
+    // 对于宽字符串，有 readWString。
+    // 这两个是仅有的字符串读函数；其它类型（u8string、u16string）
+    // 自己读字节再转换。
 
     // 对于大多数普通类型，使用模板 read。
     config.debug_mode = data.read<bool>();
@@ -219,8 +221,8 @@ scl2::bytearray MyConfig::dump(const MyConfig& config) {
     // 你可以选择预分配 bytearray。语法与 STL 容器相同。
     ba.reserve(256); // 这不是必须的，但可以减少内存分配次数，提高性能。
     
-    // 对于字符串，使用提供的 addString。此函数会为你处理字符串长度。
-    ba.addString(config.name);
+    // 对于字符串，append() 会替你写好长度前缀。
+    ba.append(config.name);
 
     // 对于大多数数据类型，尤其是数字类型（包括枚举），你可以直接将它们追加到 bytearray。
     ba.append(config.debug_mode);
@@ -243,7 +245,7 @@ struct AppConfig {
 
 以下是精彩的部分。load/dump 函数可以对子结构体递归调用。
 ```cpp
-AppConfig AppConfig::load(const scl2::bytearray_view& data) {
+AppConfig AppConfig::load(const scl2::bytearray& data) {
     AppConfig config;
 
     // 只需调用子结构体的 load 函数，它就会为你处理一切。
@@ -284,10 +286,6 @@ int main() {
         scl2::bytearray ba;
         cfgf >> ba;
 
-        // 这里不太清楚，但**无论如何**，你必须让当前作用域拥有
-        // 加载后的 bytearray，并确保它在你完成配置加载之前保持有效生命周期。
-        // 这是因为 bytearray_view 不拥有数据，你有责任确保数据在
-        // 你完成配置加载之前保持有效。
         MyConfig config = MyConfig::load(ba);
 
         // 如果你不喜欢临时的 bytearray 对象，可以在使用后清除它。
@@ -336,7 +334,7 @@ SharedCppLib2 实际上提供了流定义，请查看 `stream.hpp`。
 ##### 加密
 SharedCppLib2 还提供了一套加密 API 定义，包含在 SharedCppLib2 通用 API 中。
 
-但是，目前 SharedCppLib2 中还没有实现任何加密算法。对于用户编写的任何满足要求的类（有关更多详细信息，请参阅加密 API 文档），应该很简单：
+对于任何满足 `encryption_api.hpp` 里那些 concept 的类（`aes` 模块就是一个例子），用起来很简单：
 
 ```cpp
 #include <SharedCppLib2/api.hpp>
@@ -344,10 +342,10 @@ SharedCppLib2 还提供了一套加密 API 定义，包含在 SharedCppLib2 通�
 
 scl2::bytearray cfgData = MyConfig::dump(config);
 
-scl2::bytearray enc = scl2::encrypt<AES256>(cfgData, key);
+scl2::bytearray enc = scl2::generic_encrypt<AES256>(cfgData, key);
 scl2::writeFile("config.enc", enc);
 
-scl2::bytearray uecfgData = scl2::decrypt<AES256>(enc, key);
+scl2::bytearray uecfgData = scl2::generic_decrypt<AES256>(enc, key);
 
 // ...
 ```

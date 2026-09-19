@@ -151,14 +151,15 @@ Plain structures are directly supported, however you need to construct the bytea
 
 ```cpp
 myConfig cfg{800, 600, true};
-scl2::bytearray ba(cfg); // as simple.
+scl2::bytearray ba;
+ba.append(cfg); // the bytes of the object, as simple as that
 
-myConfig cfg2 = ba.as<MyConfig>(); // and also simple.
+myConfig cfg2 = ba.as<myConfig>(); // and also simple.
 ```
 
 If it is meant to be embedded, you can also make the load and dump functions for the struct. The only difference is the load function, where you need to specify the size:
 ```cpp
-myStruct myStruct::load(const scl2::bytearray_view& data) {
+myStruct myStruct::load(const scl2::bytearray& data) {
     return data.readBytes(sizeof(myStruct)).as<myStruct>();
 }
 ```
@@ -180,14 +181,16 @@ For the API to work, it's suggested to use the following method:
 struct MyConfig {
     // ... previous definition ...
 
-    static MyConfig load(const scl2::bytearray_view& data);
+    static MyConfig load(const scl2::bytearray& data);
     static scl2::bytearray dump(const MyConfig& config);
 };
 
 // You can use this macro to do an assert about whether you have written the API correctly:
 scl2_check_generic_dump_load(MyConfig);
 ```
-Notice that bytearray_view is used here instead of bytearray, since bytearray_view handles the cursor for you, and is the key part to make the code clean and easy to read.
+The load function takes a `const bytearray&`: the cursor lives in the bytearray itself, and
+while the readers are const the cursor is `mutable`, so reading one field after another is
+all it takes.
 
 Then you need to implement the load and dump functions.
 
@@ -195,17 +198,16 @@ The ONLY thing you need to ensure is that these functions are consistent with ea
 
 ```cpp
 
-MyConfig MyConfig::load(const scl2::bytearray_view& data) {
+MyConfig MyConfig::load(const scl2::bytearray& data) {
     MyConfig config;
 
     // For string, use the provided readString.
-    // You should use readString() and addString() in pairs.
+    // You should use readString() and append() in pairs.
     config.name = data.readString();
 
-    // For wide strings, there are also readWString and addWString.
-    // All other string types like u8string and u16string are not
-    // supported by the view API, but they are supported by the
-    // bytearray API. You can handle them manually if you want. 
+    // For wide strings, there is readWString.
+    // Those two are the only string readers; for any other type
+    // (u8string, u16string) read the bytes and convert them yourself.
 
     // For most of the plain types, use the template read.
     config.debug_mode = data.read<bool>();
@@ -220,8 +222,8 @@ scl2::bytearray MyConfig::dump(const MyConfig& config) {
     // You can choose to pre-allocate the bytearray. The grammar is the same as STL containers.
     ba.reserve(256); // This is not necessary, but it can improve performance by reducing the number of memory allocations.
     
-    // For string, use the provided addString. This function handles the length of the string for you.
-    ba.addString(config.name);
+    // For string, append() writes the length prefix for you.
+    ba.append(config.name);
 
     // For most of the data types, especially numeric types (enum included), you can directly append them to the bytearray.
     ba.append(config.debug_mode);
@@ -244,7 +246,7 @@ struct AppConfig {
 
 And here's the amazing part. Load/dump functions can be called recursively for sub-structures.
 ```cpp
-AppConfig AppConfig::load(const scl2::bytearray_view& data) {
+AppConfig AppConfig::load(const scl2::bytearray& data) {
     AppConfig config;
 
     // Just call the load function of the sub-structure, and it will handle everything for you.
@@ -285,11 +287,6 @@ int main() {
         scl2::bytearray ba;
         cfgf >> ba;
 
-        // It's not pretty clear here, but NO MATTER WHAT, you must let the current scope own
-        // the loaded bytearray and make sure it is within its life cycle until you finish
-        // loading the config.
-        // This is because the bytearray_view does not own the data, and it is your responsibility
-        // to ensure that the data is valid until you finish loading the config.
         MyConfig config = MyConfig::load(ba);
 
         // If you are not happy with the temporary bytearray object, you can clear it after using it.
@@ -338,7 +335,8 @@ For a good example, check the project [LibPipe](https://github.com/Tianming-Wu/L
 ##### Encryption
 SharedCppLib2 also provides an encryption API definition set, and it is included in the SharedCppLib2 Generic API.
 
-However, currently there is no encryption algorithm implemented in SharedCppLib2. For any satisfied classes that is written by users (see Encryption API documentation for more details), it should be simple:
+For any class that satisfies the concepts in `encryption_api.hpp` (the `aes` module is one
+example), it is simple:
 
 ```cpp
 #include <SharedCppLib2/api.hpp>
@@ -346,10 +344,10 @@ However, currently there is no encryption algorithm implemented in SharedCppLib2
 
 scl2::bytearray cfgData = MyConfig::dump(config);
 
-scl2::bytearray enc = scl2::encrypt<AES256>(cfgData, key);
+scl2::bytearray enc = scl2::generic_encrypt<AES256>(cfgData, key);
 scl2::writeFile("config.enc", enc);
 
-scl2::bytearray uecfgData = scl2::decrypt<AES256>(enc, key);
+scl2::bytearray uecfgData = scl2::generic_decrypt<AES256>(enc, key);
 
 // ...
 ```
