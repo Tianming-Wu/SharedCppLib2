@@ -36,8 +36,8 @@
 
 #include <chrono>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
-#include <vector>
 
 namespace scl2::pipe {
 
@@ -46,13 +46,6 @@ class permissions;
 class server_client;
 class server;
 class client;
-
-// Built-in message structures.
-// The original implementation is using bytearray. You can use these to
-// make sure the message format, sturcture, sizes and encoding are consistent
-// between the server and client.
-struct request;
-struct response;
 
 /// @brief What a pipe carries.
 enum class mode {
@@ -72,7 +65,24 @@ enum class permission_preset {
     SameSID,  // Allow current user to access the pipe.
 };
 
+/// @brief The token acknowledge() sends.
+/// @deprecated The kernel already reports when the peer has read what you wrote, so a token
+/// in the data stream is not needed. Use waitForFinished() instead.
+[[deprecated("use waitForFinished() instead")]]
 inline constexpr std::byte acknowledge_token = std::byte{0xFF};
+
+
+/// @brief Thrown when an operation finds the connection gone, on a connection that was told to
+/// throw instead of only recording it.
+///
+/// Nothing here is a programming error: the peer may crash, or close its end, at any moment,
+/// which is why this is off by default - a program that does not catch it dies exactly where it
+/// meant to handle the failure. Turn it on per connection with setThrowOnBroken() when a
+/// try/catch around the handler is the shape you want.
+class connection_broken : public std::runtime_error {
+public:
+    explicit connection_broken(const std::string& what) : std::runtime_error(what) {}
+};
 
 
 /// @brief The permissions a server creates its pipe with.
@@ -91,11 +101,12 @@ private:
 
 
 /* This is a single client. This is required since a pipe can have multiple clients. */
-/* Different client handlers are thread-safe. */
+/* It owns its handle and its buffer, and shares nothing with another one, so a handler can be
+   moved to its own thread. The object itself is not thread-safe: one connection, one thread. */
 class server_client : public scl2::basic_iostream {
     friend class server;
 private:
-    server_client(winhandle_t hpipe, size_t buffer_size, mode pipe_mode);
+    server_client(winhandle_t hpipe, size_t buffer_size, mode pipe_mode, winhandle_t cancel_event);
 
     disable_copy(server_client)
 
@@ -107,7 +118,23 @@ public:
     virtual ~server_client();
 
     virtual bool valid() override;
+
+    /// Whether an operation has found this connection gone. It is recorded by every operation
+    /// that can find it, including the ones that only look (available(), readyRead()), so a
+    /// failed call is enough to tell a timeout from a dead peer.
     bool broken() const;
+
+    /// Whether a failing operation should throw connection_broken instead of only recording it.
+    /// Off by default.
+    void setThrowOnBroken(bool enabled);
+    bool throwOnBroken() const;
+
+    /// Wake up any wait on this connection without closing it: the wait answers false, as if it
+    /// had timed out. Sticky until reset(). This is the one call that is meant to be made from
+    /// another thread, and it never throws. server::stop() does the same for the connections
+    /// that server handed out.
+    void cancel();
+    bool cancelled() const;
 
     virtual bool readyRead() override;
     virtual bool waitForReadyRead(std::chrono::milliseconds timeout = std::chrono::seconds(5)) override;
@@ -119,21 +146,38 @@ public:
 
     virtual size_t write(const scl2::bytearray& data) override;
 
+    /// Wait until the peer has read everything written so far, so that closing the pipe
+    /// cannot discard anything. A negative timeout waits for as long as it takes.
+    bool waitForFinished(std::chrono::milliseconds timeout = std::chrono::seconds(5));
+
+    [[deprecated("use waitForFinished() instead")]]
     bool acknowledge();
+    [[deprecated("use waitForFinished() instead")]]
     bool waitForAcknowledged(std::chrono::milliseconds timeout = std::chrono::seconds(5));
 
     bool close();
-    bool cleanup();
+
+    /// The stream interface name for dropping the connection: release the handle and go back to
+    /// an invalid state. Idempotent, so this answers true even when there is nothing to release.
+    virtual bool reset() override;
 
     // This buffer size is not settable, it keeps the same as the server.
     size_t bufferSize() const;
 
 private:
+    // Adds this connection's cancel events to a wait array, for the waits in the implementation.
+    // void**, because the header stays free of Windows types: a HANDLE is a void*.
+    size_t appendCancelEvents(void** waits, size_t count) const;
+
     winhandle_t m_pipe;
-    scl2::bytearray m_read_buffer;  // Internal read buffer
+    winhandle_t m_cancel_event;         // set by cancel()
+    winhandle_t m_shared_cancel_event;  // copy of the server's stop event, set by server::stop()
+    scl2::bytearray m_read_buffer;      // Internal read buffer
     bool m_broken = false;
+    bool m_throw_on_broken = false;
+    bool m_message_incomplete = false;  // the buffer holds only the start of a message
     mode m_mode;
-    size_t buffer_size;
+    size_t m_buffer_size;
 };
 
 
@@ -151,8 +195,6 @@ public:
     bool active() const;
     bool stopped() const;
 
-    int clientCount() const;
-
     server_client queryNextConnection();
     bool hasPendingConnection() const;
 
@@ -167,13 +209,13 @@ public:
     void setPipeMode(mode pipe_mode);
     mode getPipeMode() const;
 
-    void setMaxClients(int maxClients);
-    int getMaxClients() const;
+    void setClientLimit(int limit);
+    int clientLimit() const;
 
-    // Windows hard limit on named pipe instances is 255, but queryNextConnection()
-    // momentarily holds two simultaneous instances during accept-and-relisten handoff,
-    // so the user-visible maximum is capped at 254 (CreateNamedPipe receives max_clients+1).
-    constexpr static int unlimitedClients = 254;
+    // Windows caps the instances of one pipe name at 255, and queryNextConnection()
+    // momentarily holds two of them during the accept-and-relisten handoff, so the usable
+    // maximum is one less (CreateNamedPipe receives the limit + 1).
+    constexpr static int maximumClientLimit = 254;
 
 private:
     std::string m_name;
@@ -182,15 +224,13 @@ private:
     bool m_stopped = false;
 
     winhandle_t m_pipe;
-    winhandle_t m_completion_port;
     winhandle_t m_connect_event;
     winhandle_t m_stop_event;   // Event to signal server stop
     void* m_overlapped_connect; // OVERLAPPED*, kept out of the header
 
-    std::vector<server_client> m_clients;
-    int max_clients = unlimitedClients; // CreateNamedPipe receives max_clients+1
+    int m_client_limit = maximumClientLimit; // CreateNamedPipe receives the limit + 1
 
-    size_t buffer_size = 4_Ki;
+    size_t m_buffer_size = 4_Ki;
 };
 
 
@@ -222,12 +262,31 @@ public:
 
     virtual size_t write(const scl2::bytearray& data) override;
 
+    /// Wait until the peer has read everything written so far, so that closing the pipe
+    /// cannot discard anything. A negative timeout waits for as long as it takes.
+    bool waitForFinished(std::chrono::milliseconds timeout = std::chrono::seconds(5));
+
+    [[deprecated("use waitForFinished() instead")]]
     bool acknowledge();
+    [[deprecated("use waitForFinished() instead")]]
     bool waitForAcknowledged(std::chrono::milliseconds timeout = std::chrono::seconds(5));
 
     bool broken() const;
+    /// Whether a failing operation should throw connection_broken instead of only recording it.
+    /// Off by default.
+    void setThrowOnBroken(bool enabled);
+    bool throwOnBroken() const;
+
+    /// Wake up any wait on this connection without closing it: the wait answers false, as if it
+    /// had timed out. Sticky until reset(). This is the one call that is meant to be made from
+    /// another thread, and it never throws.
+    void cancel();
+    bool cancelled() const;
     bool close();
-    bool cleanup();
+
+    /// The stream interface name for dropping the connection: release the handle and go back to
+    /// an invalid state. Idempotent, so this answers true even when there is nothing to release.
+    virtual bool reset() override;
 
     // Returns the mode detected from the server after connect().
     // Can be overridden with setPipeMode() if you need MessageChunk behaviour on a Message pipe.
@@ -235,13 +294,20 @@ public:
     void setPipeMode(mode pipe_mode);
 
 private:
+    // Adds this connection's cancel events to a wait array, for the waits in the implementation.
+    // void**, because the header stays free of Windows types: a HANDLE is a void*.
+    size_t appendCancelEvents(void** waits, size_t count) const;
+
     std::string m_name;
     winhandle_t m_pipe;
-    scl2::bytearray m_read_buffer;  // Internal read buffer
+    winhandle_t m_cancel_event;         // set by cancel()
+    scl2::bytearray m_read_buffer;      // Internal read buffer
     bool m_broken = false;
+    bool m_throw_on_broken = false;
+    bool m_message_incomplete = false;  // the buffer holds only the start of a message
     mode m_mode = mode::Byte; // updated by connect() via GetNamedPipeInfo
 
-    size_t buffer_size = 4_Ki;
+    size_t m_buffer_size = 4_Ki;
 };
 
 

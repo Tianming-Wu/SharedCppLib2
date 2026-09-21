@@ -135,6 +135,7 @@ add_library(uri STATIC src/uri.cpp)
 # 所以源文件在那边编成空对象（静态库在两边都存在，方便写可移植代码）。
 add_library(pipe STATIC src/pipe.cpp)
 target_link_libraries(pipe PUBLIC basic)
+target_link_libraries(pipe PRIVATE platform)
 
 add_library(network_core STATIC src/network.cpp)
 add_library(network_dns STATIC src/dns.cpp)

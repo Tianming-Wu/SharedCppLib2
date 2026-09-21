@@ -2,12 +2,18 @@
 
 #if SCL2_PIPE_SUPPORTED
 
+#include "platform.hpp"
+
 #include <accctrl.h>
 #include <aclapi.h>
 
 #include <thread>
 #include <chrono>
 #include <algorithm>
+#include <cstring>
+#include <memory>
+#include <stdexcept>
+#include <utility>
 
 namespace scl2::pipe {
 
@@ -23,6 +29,130 @@ inline bool is_open(winhandle_t h) noexcept { return h != nullptr && H(h) != INV
 
 // m_overlapped_connect is a void* in the header, for the same reason.
 inline OVERLAPPED* ov(void* p) noexcept { return static_cast<OVERLAPPED*>(p); }
+
+// A connection can be asked to stop waiting in two ways: by itself (cancel()) and by its server
+// (stop() signals the event every connection it handed out holds a copy of). Both are just
+// events, so one wait can cover the I/O and both of them at once.
+//
+// The waits in this file are at most three objects long, and callers pass an array of three.
+DWORD append_cancel_events(winhandle_t own, winhandle_t shared, HANDLE* waits, DWORD count) noexcept
+{
+    if (is_open(own)) {
+        waits[count++] = H(own);
+    }
+    if (is_open(shared)) {
+        waits[count++] = H(shared);
+    }
+    return count;
+}
+
+// Whether either cancel event is signalled. For the paths that poll instead of waiting.
+bool cancel_signalled(winhandle_t own, winhandle_t shared) noexcept
+{
+    return (is_open(own) && WaitForSingleObject(H(own), 0) == WAIT_OBJECT_0)
+        || (is_open(shared) && WaitForSingleObject(H(shared), 0) == WAIT_OBJECT_0);
+}
+
+// FlushFileBuffers does not return until the other end of the pipe has read everything this
+// end has written, and it takes no timeout and cannot be cancelled. A timeout therefore needs
+// a helper thread: the handle is duplicated first, so that the worker still holds a valid
+// handle when the caller gives up, and so that the connection going away is what releases it.
+struct flush_job {
+    HANDLE pipe = INVALID_HANDLE_VALUE;
+    HANDLE finished = nullptr;
+    BOOL ok = FALSE;
+    DWORD error = 0;
+
+    ~flush_job() { if (finished) CloseHandle(finished); }
+};
+
+// True when the peer has read everything written so far. A negative timeout waits it out on
+// this thread instead, which needs no helper and - a blocking call being uncancellable - cannot
+// be stopped by a cancel either. `error` is filled in only when the flush actually ran and
+// failed; a timeout or a cancel leaves it at 0.
+bool flush_pipe(winhandle_t pipe, std::chrono::milliseconds timeout,
+                winhandle_t cancel_event, winhandle_t shared_cancel_event, DWORD* error)
+{
+    if (timeout.count() < 0) {
+        const BOOL ok = FlushFileBuffers(H(pipe));
+        if (!ok && error) {
+            *error = GetLastError();
+        }
+        return ok != 0;
+    }
+
+    HANDLE duplicate = nullptr;
+    if (!DuplicateHandle(GetCurrentProcess(), H(pipe), GetCurrentProcess(), &duplicate,
+                         0, FALSE, DUPLICATE_SAME_ACCESS)) {
+        if (error) {
+            *error = GetLastError();
+        }
+        return false;
+    }
+
+    auto job = std::make_shared<flush_job>();
+    job->pipe = duplicate;
+    job->finished = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+    if (!job->finished) {
+        CloseHandle(duplicate);
+        return false;
+    }
+
+    // The worker keeps a reference to the job, so the job outlives this call when the flush
+    // is left waiting: an unanswered one ends when the peer reads, or when the pipe is gone.
+    std::thread([job] {
+        job->ok = FlushFileBuffers(job->pipe);
+        if (!job->ok) {
+            job->error = GetLastError();
+        }
+        CloseHandle(job->pipe);
+        job->pipe = INVALID_HANDLE_VALUE;
+        SetEvent(job->finished);
+    }).detach();
+
+    // Giving up here does not stop that work: the flush itself has no way to be cancelled, so
+    // the helper thread keeps waiting and ends when the peer reads or the connection closes.
+    HANDLE waits[3] = { job->finished, nullptr, nullptr };
+    const DWORD wait_count = append_cancel_events(cancel_event, shared_cancel_event, waits, 1);
+
+    const DWORD waited = WaitForMultipleObjects(wait_count, waits, FALSE,
+                                               static_cast<DWORD>(timeout.count()));
+    if (waited != WAIT_OBJECT_0) {
+        return false;
+    }
+
+    if (!job->ok && error) {
+        *error = job->error;
+    }
+    return job->ok != 0;
+}
+
+// The exception message: what went wrong, in the system's own words. platform already owns the
+// FormatMessage plumbing, so this is only the pipe-specific framing around it.
+std::string errorText(DWORD error)
+{
+    if (!error) {
+        return "pipe connection broken";
+    }
+
+    std::string text = "pipe connection broken (error " + std::to_string(error) + ")";
+    const std::string message = platform::windows::TranslateError(error);
+    if (!message.empty()) {
+        text += ": ";
+        text += message;
+    }
+    return text;
+}
+
+// Records that the connection is gone. Throwing is opt-in, and this is the only place that
+// decides it, so both classes behave the same way.
+void mark_broken(bool& broken, bool throw_on_broken, DWORD error)
+{
+    broken = true;
+    if (throw_on_broken) {
+        throw connection_broken(errorText(error));
+    }
+}
 
 } // namespace
 
@@ -56,28 +186,53 @@ static inline bool applyPipeReadMode(winhandle_t hpipe, mode pipe_mode)
     return SetNamedPipeHandleState(H(hpipe), &readMode, nullptr, nullptr) != 0;
 }
 
-server_client::server_client(winhandle_t hpipe, size_t buffer_size, mode pipe_mode)
-    : m_pipe(hpipe), buffer_size(buffer_size), m_mode(pipe_mode)
+server_client::server_client(winhandle_t hpipe, size_t buffer_size, mode pipe_mode,
+                             winhandle_t cancel_event)
+    : m_pipe(hpipe),
+      m_cancel_event(as_winhandle(CreateEventA(nullptr, TRUE, FALSE, nullptr))),
+      m_shared_cancel_event(cancel_event),
+      m_mode(pipe_mode),
+      m_buffer_size(buffer_size)
 {
 }
 
 server_client::~server_client()
 {
-    cleanup();
+    reset();
 }
 
 server_client::server_client(server_client&& another)
-    : m_pipe(another.m_pipe), buffer_size(another.buffer_size)
+    : m_pipe(another.m_pipe),
+      m_cancel_event(another.m_cancel_event),
+      m_shared_cancel_event(another.m_shared_cancel_event),
+      m_read_buffer(std::move(another.m_read_buffer)),
+      m_broken(another.m_broken),
+      m_throw_on_broken(another.m_throw_on_broken),
+      m_message_incomplete(another.m_message_incomplete),
+      m_mode(another.m_mode),
+      m_buffer_size(another.m_buffer_size)
 {
     another.m_pipe = nullptr;
+    another.m_cancel_event = nullptr;
+    another.m_shared_cancel_event = nullptr;
 }
 
 server_client& server_client::operator=(server_client&& another)
 {
     if (this != &another) {
-        cleanup();
+        reset();
         m_pipe = another.m_pipe;
+        m_cancel_event = another.m_cancel_event;
+        m_shared_cancel_event = another.m_shared_cancel_event;
+        m_read_buffer = std::move(another.m_read_buffer);
+        m_broken = another.m_broken;
+        m_throw_on_broken = another.m_throw_on_broken;
+        m_message_incomplete = another.m_message_incomplete;
+        m_mode = another.m_mode;
+        m_buffer_size = another.m_buffer_size;
         another.m_pipe = nullptr;
+        another.m_cancel_event = nullptr;
+        another.m_shared_cancel_event = nullptr;
     }
     return *this;
 }
@@ -126,14 +281,19 @@ void *permissions::getSecurityDescriptor() const
         PSECURITY_DESCRIPTOR sd = nullptr;
 
         if (SetEntriesInAcl(1, &ea, nullptr, &acl) == ERROR_SUCCESS) {
-            sd = (PSECURITY_DESCRIPTOR)LocalAlloc(LPTR, SECURITY_DESCRIPTOR_MIN_LENGTH);
+            // The DACL goes into the same block as the descriptor, right after it (20 bytes,
+            // still DWORD aligned), so that the caller only has to free what it is given.
+            // SetEntriesInAcl allocates the ACL separately, and a descriptor only points at
+            // its DACL - freeing the descriptor alone would leave that block behind.
+            const DWORD aclSize = acl->AclSize;
+            sd = (PSECURITY_DESCRIPTOR)LocalAlloc(LPTR, SECURITY_DESCRIPTOR_MIN_LENGTH + aclSize);
             if (sd) {
+                PACL embedded = (PACL)((BYTE*)sd + SECURITY_DESCRIPTOR_MIN_LENGTH);
+                memcpy(embedded, acl, aclSize);
                 if (InitializeSecurityDescriptor(sd, SECURITY_DESCRIPTOR_REVISION) &&
-                    SetSecurityDescriptorDacl(sd, TRUE, acl, FALSE)) {
+                    SetSecurityDescriptorDacl(sd, TRUE, embedded, FALSE)) {
                     FreeSid(pEveryoneSid);
-                    // Note: acl is now owned by sd; caller must LocalFree(sd) then LocalFree(acl)
-                    // but since we embed acl into sd here, callers LocalFree(sd) is sufficient
-                    // for the descriptor itself. acl is freed below only on failure paths.
+                    LocalFree(acl);
                     return sd;
                 }
                 LocalFree(sd);
@@ -159,12 +319,48 @@ bool server_client::broken() const
     return m_broken;
 }
 
+void server_client::setThrowOnBroken(bool enabled)
+{
+    m_throw_on_broken = enabled;
+}
+
+bool server_client::throwOnBroken() const
+{
+    return m_throw_on_broken;
+}
+
+void server_client::cancel()
+{
+    if (is_open(m_cancel_event)) {
+        SetEvent(H(m_cancel_event));
+    }
+}
+
+bool server_client::cancelled() const
+{
+    return cancel_signalled(m_cancel_event, m_shared_cancel_event);
+}
+
+size_t server_client::appendCancelEvents(void** waits, size_t count) const
+{
+    // The server's stop event is a second way to be cancelled: server::stop() signals the one
+    // copy every connection it handed out holds.
+    return append_cancel_events(m_cancel_event, m_shared_cancel_event, waits, static_cast<DWORD>(count));
+}
+
 size_t server_client::available()
 {
     // Return buffered data + pipe data
     DWORD bytesAvailable = 0;
     if (PeekNamedPipe(H(m_pipe), nullptr, 0, nullptr, &bytesAvailable, nullptr)) {
         return m_read_buffer.size() + bytesAvailable;
+    }
+
+    // The only reason this can fail is that the connection is gone, so even a plain look
+    // records it.
+    const DWORD error = GetLastError();
+    if (isBrokenError(error)) {
+        mark_broken(m_broken, m_throw_on_broken, error);
     }
     return m_read_buffer.size();
 }
@@ -206,7 +402,7 @@ scl2::bytearray server_client::read(size_t bytes)
     buffer.resize(bytes);
 
     if (!ReadFile(H(m_pipe), buffer.data(), static_cast<DWORD>(bytes), &bytesRead, nullptr)) {
-        if (isBrokenError(GetLastError())) m_broken = true;
+        if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
         return result;
     }
     
@@ -229,23 +425,35 @@ scl2::bytearray server_client::readAll()
     }
 
     if (m_mode == mode::Message || m_mode == mode::MessageChunk) {
+        // A wait may have pulled a whole message in already, and then there is nothing left to
+        // read - reading on would block until the next message arrives.
+        if (!result.empty() && !m_message_incomplete) {
+            return result;
+        }
+
         // In message mode, ReadFile returns ERROR_MORE_DATA when the buffer is smaller
         // than the message. Loop until one complete message is read (ReadFile returns TRUE)
         // or a real error occurs. Do NOT use PeekNamedPipe here; its bytesAvailable only
         // reflects the first chunk and would cause us to loop endlessly on large messages.
         while (true) {
             scl2::bytearray chunk;
-            chunk.resize(buffer_size);
+            chunk.resize(m_buffer_size);
             DWORD bytesRead = 0;
-            BOOL ok = ReadFile(H(m_pipe), chunk.data(), static_cast<DWORD>(buffer_size), &bytesRead, nullptr);
+            BOOL ok = ReadFile(H(m_pipe), chunk.data(), static_cast<DWORD>(m_buffer_size), &bytesRead, nullptr);
             if (bytesRead > 0) {
                 chunk.resize(bytesRead);
                 result.append(chunk.data(), bytesRead);
             }
-            if (ok) break; // complete message consumed
+            if (ok) {
+                m_message_incomplete = false;
+                break; // complete message consumed
+            }
             DWORD err = GetLastError();
-            if (err == ERROR_MORE_DATA) continue; // more chunks of this message remain
-            if (isBrokenError(err)) m_broken = true;
+            if (err == ERROR_MORE_DATA) {
+                m_message_incomplete = true;
+                continue; // more chunks of this message remain
+            }
+            if (isBrokenError(err)) mark_broken(m_broken, m_throw_on_broken, err);
             break;
         }
         return result;
@@ -254,22 +462,24 @@ scl2::bytearray server_client::readAll()
     // Byte mode: drain all currently available data
     DWORD bytesAvailable = 0;
     if (!PeekNamedPipe(H(m_pipe), nullptr, 0, nullptr, &bytesAvailable, nullptr)) {
-        if (isBrokenError(GetLastError())) m_broken = true;
+        if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
         return result;
     }
 
     while (bytesAvailable > 0) {
-        DWORD toRead = static_cast<DWORD>((bytesAvailable > buffer_size) ? buffer_size : bytesAvailable);
+        DWORD toRead = static_cast<DWORD>((bytesAvailable > m_buffer_size) ? m_buffer_size : bytesAvailable);
         scl2::bytearray buffer;
         buffer.resize(toRead);
         DWORD bytesRead = 0;
         
         if (!ReadFile(H(m_pipe), buffer.data(), toRead, &bytesRead, nullptr)) {
-            if (isBrokenError(GetLastError())) m_broken = true;
+            if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
             break;
         }
 
         if (bytesRead == 0) {
+            // A blocking read that answers with nothing means the other end closed.
+            mark_broken(m_broken, m_throw_on_broken, ERROR_BROKEN_PIPE);
             break;
         }
 
@@ -277,7 +487,7 @@ scl2::bytearray server_client::readAll()
         result.append(buffer.data(), bytesRead);
 
         if (!PeekNamedPipe(H(m_pipe), nullptr, 0, nullptr, &bytesAvailable, nullptr)) {
-            if (isBrokenError(GetLastError())) m_broken = true;
+            if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
             break;
         }
     }
@@ -296,6 +506,12 @@ bool server_client::waitForReadyRead(std::chrono::milliseconds timeout)
         return false;
     }
 
+    // Being asked to stop wins over data that is already waiting: a cancelled connection is on
+    // its way out, and the caller is not going to handle what is left.
+    if (cancelled()) {
+        return false;
+    }
+
     // Quick check: if buffer already has data, return immediately
     if (!m_read_buffer.empty()) {
         return true;
@@ -307,39 +523,14 @@ bool server_client::waitForReadyRead(std::chrono::milliseconds timeout)
         if (bytesAvailable > 0) {
             return true;
         }
+    } else if (isBrokenError(GetLastError())) {
+        mark_broken(m_broken, m_throw_on_broken, GetLastError());
+        return false;
     }
 
-    // In message-based modes, wait without consuming data to preserve strict
-    // one-message-per-readAll semantics.
-    if (m_mode == mode::Message || m_mode == mode::MessageChunk) {
-        const bool infiniteWait = (timeout.count() < 0);
-        auto deadline = std::chrono::steady_clock::now() + timeout;
-        constexpr auto pollInterval = std::chrono::milliseconds(5);
-
-        while (true) {
-            bytesAvailable = 0;
-            if (PeekNamedPipe(H(m_pipe), nullptr, 0, nullptr, &bytesAvailable, nullptr)) {
-                if (bytesAvailable > 0) {
-                    return true;
-                }
-            } else {
-                DWORD err = GetLastError();
-                if (isBrokenError(err)) m_broken = true;
-                return false;
-            }
-
-            if (!infiniteWait) {
-                auto now = std::chrono::steady_clock::now();
-                if (now >= deadline) {
-                    return false;
-                }
-                auto remain = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now);
-                std::this_thread::sleep_for((std::min)(pollInterval, remain));
-            } else {
-                std::this_thread::sleep_for(pollInterval);
-            }
-        }
-    }
+    // One path for both modes: an overlapped read brings the data into the buffer, and the wait
+    // covers the timeout and both cancel events. Message mode used to poll every 5 ms instead so
+    // that it never touched the pipe - readAll() reassembles from the buffer, so it may.
 
     // Create an event for overlapped read
     HANDLE hEvent = CreateEventA(nullptr, TRUE, FALSE, nullptr);
@@ -353,19 +544,24 @@ bool server_client::waitForReadyRead(std::chrono::milliseconds timeout)
 
     // Prepare buffer for reading
     scl2::bytearray tempBuffer;
-    tempBuffer.resize(buffer_size);
+    tempBuffer.resize(m_buffer_size);
     DWORD bytesRead = 0;
 
     // Initiate overlapped read
-    BOOL readResult = ReadFile(H(m_pipe), tempBuffer.data(), static_cast<DWORD>(buffer_size), &bytesRead, &overlapped);
+    BOOL readResult = ReadFile(H(m_pipe), tempBuffer.data(), static_cast<DWORD>(m_buffer_size), &bytesRead, &overlapped);
     
+    // Wait for the read to complete, or for this connection to be cancelled. A cancel and a
+    // timeout land in the same place below: the operation is dropped and false is answered.
+    HANDLE waits[3] = { hEvent, nullptr, nullptr };
+    const DWORD wait_count = static_cast<DWORD>(appendCancelEvents(waits, 1));
+
     DWORD dwTimeout = (timeout.count() < 0) ? INFINITE : static_cast<DWORD>(timeout.count());
     
     if (!readResult) {
         DWORD dwError = GetLastError();
         if (dwError == ERROR_IO_PENDING) {
             // Operation is pending, wait for it
-            DWORD dwWaitResult = WaitForSingleObject(hEvent, dwTimeout);
+            DWORD dwWaitResult = WaitForMultipleObjects(wait_count, waits, FALSE, dwTimeout);
             
             if (dwWaitResult == WAIT_OBJECT_0) {
                 // Get the result
@@ -380,21 +576,35 @@ bool server_client::waitForReadyRead(std::chrono::milliseconds timeout)
                 if (bytesRead > 0 && (gorErr == 0 || gorErr == ERROR_MORE_DATA)) {
                     tempBuffer.resize(bytesRead);
                     m_read_buffer.append(tempBuffer.data(), bytesRead);
+                    m_message_incomplete = (gorErr == ERROR_MORE_DATA);
                     CloseHandle(hEvent);
                     return true;
                 }
                 if (gorErr != 0 && gorErr != ERROR_MORE_DATA) {
-                    if (isBrokenError(gorErr)) m_broken = true;
+                    if (isBrokenError(gorErr)) mark_broken(m_broken, m_throw_on_broken, gorErr);
                 }
             }
             
-            // Timeout or error - cancel the operation
+            // Giving up does not throw away what arrived: the read may have completed just
+            // before, and those bytes are already out of the pipe.
+            DWORD arrived = 0;
+            DWORD arrivalError = 0;
+            if (!GetOverlappedResult(H(m_pipe), &overlapped, &arrived, FALSE)) {
+                arrivalError = GetLastError();
+            }
+            if (arrived > 0 && (arrivalError == 0 || arrivalError == ERROR_MORE_DATA)) {
+                tempBuffer.resize(arrived);
+                m_read_buffer.append(tempBuffer.data(), arrived);
+                m_message_incomplete = (arrivalError == ERROR_MORE_DATA);
+            }
+
+            // Timeout, cancel or error - the read is dropped either way.
             CancelIoEx(H(m_pipe), &overlapped);
             CloseHandle(hEvent);
             return false;
         } else {
             // Immediate error
-            if (isBrokenError(dwError)) m_broken = true;
+            if (isBrokenError(dwError)) mark_broken(m_broken, m_throw_on_broken, dwError);
             CloseHandle(hEvent);
             return false;
         }
@@ -410,11 +620,12 @@ bool server_client::waitForReadyRead(std::chrono::milliseconds timeout)
         if (bytesRead > 0 && (gorErr == 0 || gorErr == ERROR_MORE_DATA)) {
             tempBuffer.resize(bytesRead);
             m_read_buffer.append(tempBuffer.data(), bytesRead);
+            m_message_incomplete = (gorErr == ERROR_MORE_DATA);
             CloseHandle(hEvent);
             return true;
         }
         if (gorErr != 0 && gorErr != ERROR_MORE_DATA) {
-            if (isBrokenError(gorErr)) m_broken = true;
+            if (isBrokenError(gorErr)) mark_broken(m_broken, m_throw_on_broken, gorErr);
         }
     }
     
@@ -426,11 +637,30 @@ size_t server_client::write(const scl2::bytearray &data)
 {
     DWORD bytesWritten;
     if (!WriteFile(H(m_pipe), data.data(), DWORD(data.size()), &bytesWritten, nullptr)) {
-        if (isBrokenError(GetLastError())) m_broken = true;
+        if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
         return 0;
     }
     return bytesWritten;
 }
+
+bool server_client::waitForFinished(std::chrono::milliseconds timeout)
+{
+    if (!is_open(m_pipe)) {
+        return false;
+    }
+
+    DWORD error = 0;
+    const bool finished = flush_pipe(m_pipe, timeout, m_cancel_event, m_shared_cancel_event, &error);
+    if (isBrokenError(error)) {
+        mark_broken(m_broken, m_throw_on_broken, error);
+    }
+    return finished;
+}
+
+#if defined(_MSC_VER)
+    #pragma warning(push)
+    #pragma warning(disable: 4996)  // the acknowledge helpers are deprecated
+#endif
 
 bool server_client::acknowledge()
 {
@@ -449,35 +679,48 @@ bool server_client::waitForAcknowledged(std::chrono::milliseconds timeout)
     return data.size() == 1 && data.data()[0] == acknowledge_token;
 }
 
+#if defined(_MSC_VER)
+    #pragma warning(pop)
+#endif
+
 bool server_client::close()
 {
-    if(is_open(m_pipe)) {
-        DisconnectNamedPipe(H(m_pipe));
-        CloseHandle(H(m_pipe));
-        m_pipe = nullptr;
-        return true;
-    }
-    return false;
+    const bool was_open = is_open(m_pipe);
+    reset();
+    return was_open;
 }
 
-bool server_client::cleanup()
+bool server_client::reset()
 {
-    if(is_open(m_pipe)) {
-        DisconnectNamedPipe(H(m_pipe));
-        CloseHandle(H(m_pipe));
-        m_pipe = nullptr;
-        return true;
+    if (!is_open(m_pipe)) {
+        return true;    // already reset is not a failure
     }
-    return false;
+
+    DisconnectNamedPipe(H(m_pipe));
+    CloseHandle(H(m_pipe));
+    m_pipe = nullptr;
+
+    // The cancel events belong to this connection, and a released one is of no use to anyone.
+    if (is_open(m_cancel_event)) {
+        CloseHandle(H(m_cancel_event));
+        m_cancel_event = nullptr;
+    }
+    if (is_open(m_shared_cancel_event)) {
+        CloseHandle(H(m_shared_cancel_event));
+        m_shared_cancel_event = nullptr;
+    }
+
+    m_message_incomplete = false;   // a released connection has no message in progress
+    return true;
 }
 
 size_t server_client::bufferSize() const
 {
-    return buffer_size;
+    return m_buffer_size;
 }
 
 server::server(const std::string &name, const permissions &permissions)
-    : m_name(name), m_permissions(permissions), m_pipe(nullptr), m_completion_port(nullptr), 
+    : m_name(name), m_permissions(permissions), m_pipe(nullptr),
       m_connect_event(nullptr), m_stop_event(nullptr), m_overlapped_connect(nullptr)
 {
 }
@@ -490,6 +733,10 @@ server::~server()
 
 bool server::start()
 {
+    // Starting from any state replaces whatever was there: a second start() used to overwrite
+    // the handles instead of closing them.
+    cleanup();
+
     m_stopped = false; // We do allow restarting a stopped server, so reset the flag here.
     
     // Create stop event for clean shutdown
@@ -498,21 +745,11 @@ bool server::start()
         return false;
     }
 
-    // Create completion port for async I/O notification
-    m_completion_port = as_winhandle(CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1));
-    if (!is_open(m_completion_port)) {
-        CloseHandle(H(m_stop_event));
-        m_stop_event = nullptr;
-        return false;
-    }
-
     // Create event for connect notification
     m_connect_event = as_winhandle(CreateEventA(nullptr, TRUE, FALSE, nullptr));
     if (!is_open(m_connect_event)) {
         CloseHandle(H(m_stop_event));
         m_stop_event = nullptr;
-        CloseHandle(H(m_completion_port));
-        m_completion_port = nullptr;
         return false;
     }
 
@@ -523,8 +760,6 @@ bool server::start()
         m_stop_event = nullptr;
         CloseHandle(H(m_connect_event));
         m_connect_event = nullptr;
-        CloseHandle(H(m_completion_port));
-        m_completion_port = nullptr;
         return false;
     }
 
@@ -542,8 +777,8 @@ bool server::start()
         m_name.c_str(),
         PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,  // Enable overlapped I/O
         pipeModeFlags(m_mode),
-        max_clients + 1,
-        static_cast<DWORD>(buffer_size), static_cast<DWORD>(buffer_size),
+        m_client_limit + 1,
+        static_cast<DWORD>(m_buffer_size), static_cast<DWORD>(m_buffer_size),
         NMPWAIT_USE_DEFAULT_WAIT,
         sd ? &sa : nullptr
     ));
@@ -557,24 +792,6 @@ bool server::start()
         m_overlapped_connect = nullptr;
         CloseHandle(H(m_connect_event));
         m_connect_event = nullptr;
-        CloseHandle(H(m_completion_port));
-        m_completion_port = nullptr;
-        CloseHandle(H(m_stop_event));
-        m_stop_event = nullptr;
-        return false;
-    }
-
-    // Associate pipe with completion port
-    HANDLE hResult = CreateIoCompletionPort(H(m_pipe), H(m_completion_port), (ULONG_PTR)H(m_pipe), 1);
-    if (!hResult) {
-        CloseHandle(H(m_pipe));
-        m_pipe = nullptr;
-        delete ov(m_overlapped_connect);
-        m_overlapped_connect = nullptr;
-        CloseHandle(H(m_connect_event));
-        m_connect_event = nullptr;
-        CloseHandle(H(m_completion_port));
-        m_completion_port = nullptr;
         CloseHandle(H(m_stop_event));
         m_stop_event = nullptr;
         return false;
@@ -591,8 +808,6 @@ bool server::start()
             m_overlapped_connect = nullptr;
             CloseHandle(H(m_connect_event));
             m_connect_event = nullptr;
-            CloseHandle(H(m_completion_port));
-            m_completion_port = nullptr;
             CloseHandle(H(m_stop_event));
             m_stop_event = nullptr;
             return false;
@@ -607,7 +822,7 @@ bool server::start()
 server_client server::queryNextConnection()
 {
     if (!is_open(m_connect_event)) {
-        return server_client(as_winhandle(INVALID_HANDLE_VALUE), buffer_size, m_mode);
+        return server_client(as_winhandle(INVALID_HANDLE_VALUE), m_buffer_size, m_mode, nullptr);
     }
 
     // Check if the connect event is signaled (connection completed)
@@ -615,11 +830,23 @@ server_client server::queryNextConnection()
     
     if (dwWaitResult != WAIT_OBJECT_0) {
         // No pending connection ready
-        return server_client(nullptr, buffer_size, m_mode);
+        return server_client(nullptr, m_buffer_size, m_mode, nullptr);
     }
 
     // Connection is ready - prepare to return it to caller
     winhandle_t hConnectedPipe = m_pipe;
+
+    // The connection gets its own handle to the stop event, so that stop() reaches every worker
+    // that is waiting on a connection this server handed out - without the server keeping a
+    // registry of them, and without a worker outliving the server's own handle.
+    winhandle_t cancel_event = nullptr;
+    if (is_open(m_stop_event)) {
+        HANDLE duplicate = nullptr;
+        if (DuplicateHandle(GetCurrentProcess(), H(m_stop_event), GetCurrentProcess(), &duplicate,
+                            0, FALSE, DUPLICATE_SAME_ACCESS)) {
+            cancel_event = as_winhandle(duplicate);
+        }
+    }
 
     // Create new pipe instance for next connection
     ResetEvent(H(m_connect_event));
@@ -634,8 +861,8 @@ server_client server::queryNextConnection()
         m_name.c_str(),
         PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
         pipeModeFlags(m_mode),
-        max_clients + 1,
-        static_cast<DWORD>(buffer_size), static_cast<DWORD>(buffer_size),
+        m_client_limit + 1,
+        static_cast<DWORD>(m_buffer_size), static_cast<DWORD>(m_buffer_size),
         NMPWAIT_USE_DEFAULT_WAIT,
         sd ? &sa : nullptr
     ));
@@ -645,15 +872,7 @@ server_client server::queryNextConnection()
     }
 
     if (!is_open(m_pipe)) {
-        return server_client(hConnectedPipe, buffer_size, m_mode);
-    }
-
-    // Associate new pipe with completion port
-    HANDLE hResult = CreateIoCompletionPort(H(m_pipe), H(m_completion_port), (ULONG_PTR)H(m_pipe), 1);
-    if (!hResult) {
-        CloseHandle(H(m_pipe));
-        m_pipe = nullptr;
-        return server_client(hConnectedPipe, buffer_size, m_mode);
+        return server_client(hConnectedPipe, m_buffer_size, m_mode, cancel_event);
     }
 
     // Initiate async connect on new pipe instance
@@ -665,7 +884,7 @@ server_client server::queryNextConnection()
         }
     }
 
-    return server_client(hConnectedPipe, buffer_size, m_mode);
+    return server_client(hConnectedPipe, m_buffer_size, m_mode, cancel_event);
 }
 
 bool server::hasPendingConnection() const
@@ -703,12 +922,12 @@ void server::setBufferSize(size_t size)
     if(is_open(m_pipe)) {
         throw std::runtime_error("Cannot change buffer size while server is active");
     }
-    buffer_size = size;
+    m_buffer_size = size;
 }
 
 size_t server::bufferSize() const
 {
-    return buffer_size;
+    return m_buffer_size;
 }
 
 void server::setPermissions(const permissions &permissions)
@@ -737,32 +956,33 @@ mode server::getPipeMode() const
     return m_mode;
 }
 
-void server::setMaxClients(int maxClients)
+void server::setClientLimit(int limit)
 {
     if(is_open(m_pipe)) {
-        throw std::runtime_error("Cannot change max clients while server is active");
+        throw std::runtime_error("Cannot change the client limit while server is active");
     }
 
-    // Clamp to [1, 254]. The extra +1 slot is reserved for the brief overlap during
-    // queryNextConnection(), where both the just-accepted handle and the new listening
-    // handle exist simultaneously. unlimitedClients (255) maps to the full Windows limit.
-    if (maxClients <= 0 || maxClients >= unlimitedClients) {
-        max_clients = unlimitedClients;
-    } else {
-        max_clients = maxClients;
+    // The extra +1 slot is reserved for the brief overlap during queryNextConnection(), where
+    // the just-accepted handle and the new listening handle exist at the same time, so
+    // maximumClientLimit is the largest limit that still fits in Windows' 255 instances.
+    if (limit <= 0 || limit > maximumClientLimit) {
+        throw std::out_of_range("Client limit must be between 1 and maximumClientLimit (254)");
     }
+
+    m_client_limit = limit;
 }
 
-int server::getMaxClients() const
+int server::clientLimit() const
 {
-    return max_clients;
+    return m_client_limit;
 }
 
 bool server::stop()
 {
     m_stopped = true;
 
-    // Signal stop event to unblock waiting threads
+    // Signal the stop event to unblock waiting threads, and to release the connections this
+    // server handed out: they hold a copy of this event and watch it while they wait.
     if (is_open(m_stop_event)) {
         SetEvent(m_stop_event);
     }
@@ -777,12 +997,6 @@ bool server::stop()
 
 bool server::cleanup()
 {
-    // Close all client connections
-    for (auto& client : m_clients) {
-        client.cleanup();
-    }
-    m_clients.clear();
-
     // Cancel pending operations and close main pipe
     if (is_open(m_pipe)) {
         CancelIoEx(H(m_pipe), nullptr);
@@ -808,12 +1022,6 @@ bool server::cleanup()
         m_stop_event = nullptr;
     }
 
-    // Close completion port
-    if (is_open(m_completion_port)) {
-        CloseHandle(H(m_completion_port));
-        m_completion_port = nullptr;
-    }
-
     return true;
 }
 
@@ -827,39 +1035,55 @@ bool server::stopped() const
     return m_stopped;
 }
 
-int server::clientCount() const
-{
-    return static_cast<int>(m_clients.size());
-}
-
-
-
 // Client
 
 client::client(const std::string& name)
-    : m_name(name), m_pipe(nullptr)
+    : m_name(name),
+      m_pipe(nullptr),
+      m_cancel_event(as_winhandle(CreateEventA(nullptr, TRUE, FALSE, nullptr)))
 {
 }
 
 client::~client()
 {
-    cleanup();
+    reset();
+
+    if (is_open(m_cancel_event)) {
+        CloseHandle(H(m_cancel_event));
+        m_cancel_event = nullptr;
+    }
 }
 
 client::client(client&& another)
-    : m_name(another.m_name), m_pipe(another.m_pipe), m_mode(another.m_mode)
+    : m_name(another.m_name),
+      m_pipe(another.m_pipe),
+      m_cancel_event(another.m_cancel_event),
+      m_read_buffer(std::move(another.m_read_buffer)),
+      m_broken(another.m_broken),
+      m_throw_on_broken(another.m_throw_on_broken),
+      m_message_incomplete(another.m_message_incomplete),
+      m_mode(another.m_mode),
+      m_buffer_size(another.m_buffer_size)
 {
     another.m_pipe = nullptr;
+    another.m_cancel_event = nullptr;
 }
 
 client& client::operator=(client&& another)
 {
     if (this != &another) {
-        cleanup();
+        reset();
         m_name = another.m_name;
         m_pipe = another.m_pipe;
+        m_cancel_event = another.m_cancel_event;
+        m_read_buffer = std::move(another.m_read_buffer);
+        m_broken = another.m_broken;
+        m_throw_on_broken = another.m_throw_on_broken;
+        m_message_incomplete = another.m_message_incomplete;
         m_mode = another.m_mode;
+        m_buffer_size = another.m_buffer_size;
         another.m_pipe = nullptr;
+        another.m_cancel_event = nullptr;
     }
     return *this;
 }
@@ -876,6 +1100,10 @@ bool client::connect(std::chrono::milliseconds timeout)
 
     // Loop until timeout, trying to connect
     while (true) {
+        if (cancelled()) {
+            return false;
+        }
+
         // Try to open the pipe
         m_pipe = as_winhandle(CreateFileA(
             m_name.c_str(),
@@ -995,6 +1223,33 @@ bool client::broken() const
     return m_broken;
 }
 
+void client::setThrowOnBroken(bool enabled)
+{
+    m_throw_on_broken = enabled;
+}
+
+bool client::throwOnBroken() const
+{
+    return m_throw_on_broken;
+}
+
+void client::cancel()
+{
+    if (is_open(m_cancel_event)) {
+        SetEvent(H(m_cancel_event));
+    }
+}
+
+bool client::cancelled() const
+{
+    return cancel_signalled(m_cancel_event, nullptr);
+}
+
+size_t client::appendCancelEvents(void** waits, size_t count) const
+{
+    return append_cancel_events(m_cancel_event, nullptr, waits, static_cast<DWORD>(count));
+}
+
 bool client::readyRead()
 {
     return available() > 0;
@@ -1003,6 +1258,11 @@ bool client::readyRead()
 bool client::waitForReadyRead(std::chrono::milliseconds timeout)
 {
     if (!is_open(m_pipe)) {
+        return false;
+    }
+
+    // Being asked to stop wins over data that is already waiting.
+    if (cancelled()) {
         return false;
     }
 
@@ -1017,39 +1277,14 @@ bool client::waitForReadyRead(std::chrono::milliseconds timeout)
         if (bytesAvailable > 0) {
             return true;
         }
+    } else if (isBrokenError(GetLastError())) {
+        mark_broken(m_broken, m_throw_on_broken, GetLastError());
+        return false;
     }
 
-    // In message-based modes, wait without consuming data to preserve strict
-    // one-message-per-readAll semantics.
-    if (m_mode == mode::Message || m_mode == mode::MessageChunk) {
-        const bool infiniteWait = (timeout.count() < 0);
-        auto deadline = std::chrono::steady_clock::now() + timeout;
-        constexpr auto pollInterval = std::chrono::milliseconds(5);
-
-        while (true) {
-            bytesAvailable = 0;
-            if (PeekNamedPipe(H(m_pipe), nullptr, 0, nullptr, &bytesAvailable, nullptr)) {
-                if (bytesAvailable > 0) {
-                    return true;
-                }
-            } else {
-                DWORD err = GetLastError();
-                if (isBrokenError(err)) m_broken = true;
-                return false;
-            }
-
-            if (!infiniteWait) {
-                auto now = std::chrono::steady_clock::now();
-                if (now >= deadline) {
-                    return false;
-                }
-                auto remain = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now);
-                std::this_thread::sleep_for((std::min)(pollInterval, remain));
-            } else {
-                std::this_thread::sleep_for(pollInterval);
-            }
-        }
-    }
+    // One path for both modes: an overlapped read brings the data into the buffer, and the wait
+    // covers the timeout and both cancel events. Message mode used to poll every 5 ms instead so
+    // that it never touched the pipe - readAll() reassembles from the buffer, so it may.
 
     // Create an event for overlapped read
     HANDLE hEvent = CreateEventA(nullptr, TRUE, FALSE, nullptr);
@@ -1063,19 +1298,24 @@ bool client::waitForReadyRead(std::chrono::milliseconds timeout)
 
     // Prepare buffer for reading
     scl2::bytearray tempBuffer;
-    tempBuffer.resize(buffer_size);
+    tempBuffer.resize(m_buffer_size);
     DWORD bytesRead = 0;
 
     // Initiate overlapped read
-    BOOL readResult = ReadFile(H(m_pipe), tempBuffer.data(), static_cast<DWORD>(buffer_size), &bytesRead, &overlapped);
+    BOOL readResult = ReadFile(H(m_pipe), tempBuffer.data(), static_cast<DWORD>(m_buffer_size), &bytesRead, &overlapped);
     
+    // Wait for the read to complete, or for this connection to be cancelled. A cancel and a
+    // timeout land in the same place below: the operation is dropped and false is answered.
+    HANDLE waits[3] = { hEvent, nullptr, nullptr };
+    const DWORD wait_count = static_cast<DWORD>(appendCancelEvents(waits, 1));
+
     DWORD dwTimeout = (timeout.count() < 0) ? INFINITE : static_cast<DWORD>(timeout.count());
     
     if (!readResult) {
         DWORD dwError = GetLastError();
         if (dwError == ERROR_IO_PENDING) {
             // Operation is pending, wait for it
-            DWORD dwWaitResult = WaitForSingleObject(hEvent, dwTimeout);
+            DWORD dwWaitResult = WaitForMultipleObjects(wait_count, waits, FALSE, dwTimeout);
             
             if (dwWaitResult == WAIT_OBJECT_0) {
                 // Get the result
@@ -1089,21 +1329,35 @@ bool client::waitForReadyRead(std::chrono::milliseconds timeout)
                 if (bytesRead > 0 && (gorErr == 0 || gorErr == ERROR_MORE_DATA)) {
                     tempBuffer.resize(bytesRead);
                     m_read_buffer.append(tempBuffer.data(), bytesRead);
+                    m_message_incomplete = (gorErr == ERROR_MORE_DATA);
                     CloseHandle(hEvent);
                     return true;
                 }
                 if (gorErr != 0 && gorErr != ERROR_MORE_DATA) {
-                    if (isBrokenError(gorErr)) m_broken = true;
+                    if (isBrokenError(gorErr)) mark_broken(m_broken, m_throw_on_broken, gorErr);
                 }
             }
             
-            // Timeout or error - cancel the operation
+            // Giving up does not throw away what arrived: the read may have completed just
+            // before, and those bytes are already out of the pipe.
+            DWORD arrived = 0;
+            DWORD arrivalError = 0;
+            if (!GetOverlappedResult(H(m_pipe), &overlapped, &arrived, FALSE)) {
+                arrivalError = GetLastError();
+            }
+            if (arrived > 0 && (arrivalError == 0 || arrivalError == ERROR_MORE_DATA)) {
+                tempBuffer.resize(arrived);
+                m_read_buffer.append(tempBuffer.data(), arrived);
+                m_message_incomplete = (arrivalError == ERROR_MORE_DATA);
+            }
+
+            // Timeout, cancel or error - the read is dropped either way.
             CancelIoEx(H(m_pipe), &overlapped);
             CloseHandle(hEvent);
             return false;
         } else {
             // Immediate error
-            if (isBrokenError(dwError)) m_broken = true;
+            if (isBrokenError(dwError)) mark_broken(m_broken, m_throw_on_broken, dwError);
             CloseHandle(hEvent);
             return false;
         }
@@ -1119,11 +1373,12 @@ bool client::waitForReadyRead(std::chrono::milliseconds timeout)
         if (bytesRead > 0 && (gorErr == 0 || gorErr == ERROR_MORE_DATA)) {
             tempBuffer.resize(bytesRead);
             m_read_buffer.append(tempBuffer.data(), bytesRead);
+            m_message_incomplete = (gorErr == ERROR_MORE_DATA);
             CloseHandle(hEvent);
             return true;
         }
         if (gorErr != 0 && gorErr != ERROR_MORE_DATA) {
-            if (isBrokenError(gorErr)) m_broken = true;
+            if (isBrokenError(gorErr)) mark_broken(m_broken, m_throw_on_broken, gorErr);
         }
     }
     
@@ -1140,6 +1395,13 @@ size_t client::available()
     DWORD bytesAvailable = 0;
     if (PeekNamedPipe(H(m_pipe), nullptr, 0, nullptr, &bytesAvailable, nullptr)) {
         return m_read_buffer.size() + bytesAvailable;
+    }
+
+    // The only reason this can fail is that the connection is gone, so even a plain look
+    // records it.
+    const DWORD error = GetLastError();
+    if (isBrokenError(error)) {
+        mark_broken(m_broken, m_throw_on_broken, error);
     }
     return m_read_buffer.size();
 }
@@ -1185,7 +1447,7 @@ scl2::bytearray client::read(size_t bytes)
     buffer.resize(bytes);
 
     if (!ReadFile(H(m_pipe), buffer.data(), static_cast<DWORD>(bytes), &bytesRead, nullptr)) {
-        if (isBrokenError(GetLastError())) m_broken = true;
+        if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
         return result;
     }
 
@@ -1214,20 +1476,32 @@ scl2::bytearray client::readAll()
     }
 
     if (m_mode == mode::Message || m_mode == mode::MessageChunk) {
+        // A wait may have pulled a whole message in already, and then there is nothing left to
+        // read - reading on would block until the next message arrives.
+        if (!result.empty() && !m_message_incomplete) {
+            return result;
+        }
+
         // Loop until one complete message is consumed
         while (true) {
             scl2::bytearray chunk;
-            chunk.resize(buffer_size);
+            chunk.resize(m_buffer_size);
             DWORD bytesRead = 0;
-            BOOL ok = ReadFile(H(m_pipe), chunk.data(), static_cast<DWORD>(buffer_size), &bytesRead, nullptr);
+            BOOL ok = ReadFile(H(m_pipe), chunk.data(), static_cast<DWORD>(m_buffer_size), &bytesRead, nullptr);
             if (bytesRead > 0) {
                 chunk.resize(bytesRead);
                 result.append(chunk.data(), bytesRead);
             }
-            if (ok) break;
+            if (ok) {
+                m_message_incomplete = false;
+                break;
+            }
             DWORD err = GetLastError();
-            if (err == ERROR_MORE_DATA) continue;
-            if (isBrokenError(err)) m_broken = true;
+            if (err == ERROR_MORE_DATA) {
+                m_message_incomplete = true;
+                continue;
+            }
+            if (isBrokenError(err)) mark_broken(m_broken, m_throw_on_broken, err);
             break;
         }
         return result;
@@ -1236,22 +1510,24 @@ scl2::bytearray client::readAll()
     // Byte mode: drain all currently available data
     DWORD bytesAvailable = 0;
     if (!PeekNamedPipe(H(m_pipe), nullptr, 0, nullptr, &bytesAvailable, nullptr)) {
-        if (isBrokenError(GetLastError())) m_broken = true;
+        if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
         return result;
     }
 
     while (bytesAvailable > 0) {
-        DWORD toRead = static_cast<DWORD>((bytesAvailable > buffer_size) ? buffer_size : bytesAvailable);
+        DWORD toRead = static_cast<DWORD>((bytesAvailable > m_buffer_size) ? m_buffer_size : bytesAvailable);
         scl2::bytearray buffer;
         buffer.resize(toRead);
         DWORD bytesRead = 0;
         
         if (!ReadFile(H(m_pipe), buffer.data(), toRead, &bytesRead, nullptr)) {
-            if (isBrokenError(GetLastError())) m_broken = true;
+            if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
             break;
         }
 
         if (bytesRead == 0) {
+            // A blocking read that answers with nothing means the other end closed.
+            mark_broken(m_broken, m_throw_on_broken, ERROR_BROKEN_PIPE);
             break;
         }
 
@@ -1259,7 +1535,7 @@ scl2::bytearray client::readAll()
         result.append(buffer.data(), bytesRead);
 
         if (!PeekNamedPipe(H(m_pipe), nullptr, 0, nullptr, &bytesAvailable, nullptr)) {
-            if (isBrokenError(GetLastError())) m_broken = true;
+            if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
             break;
         }
     }
@@ -1275,12 +1551,31 @@ size_t client::write(const scl2::bytearray& data)
 
     DWORD bytesWritten = 0;
     if (!WriteFile(H(m_pipe), data.data(), DWORD(data.size()), &bytesWritten, nullptr)) {
-        if (isBrokenError(GetLastError())) m_broken = true;
+        if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
         return 0;
     }
 
     return bytesWritten;
 }
+
+bool client::waitForFinished(std::chrono::milliseconds timeout)
+{
+    if (!is_open(m_pipe)) {
+        return false;
+    }
+
+    DWORD error = 0;
+    const bool finished = flush_pipe(m_pipe, timeout, m_cancel_event, nullptr, &error);
+    if (isBrokenError(error)) {
+        mark_broken(m_broken, m_throw_on_broken, error);
+    }
+    return finished;
+}
+
+#if defined(_MSC_VER)
+    #pragma warning(push)
+    #pragma warning(disable: 4996)  // the acknowledge helpers are deprecated
+#endif
 
 bool client::acknowledge()
 {
@@ -1299,24 +1594,32 @@ bool client::waitForAcknowledged(std::chrono::milliseconds timeout)
     return data.size() == 1 && data.data()[0] == acknowledge_token;
 }
 
+#if defined(_MSC_VER)
+    #pragma warning(pop)
+#endif
+
 bool client::close()
 {
-    if (is_open(m_pipe)) {
-        CloseHandle(H(m_pipe));
-        m_pipe = nullptr;
-        return true;
-    }
-    return false;
+    const bool was_open = is_open(m_pipe);
+    reset();
+    return was_open;
 }
 
-bool client::cleanup()
+bool client::reset()
 {
     if (is_open(m_pipe)) {
         CloseHandle(H(m_pipe));
         m_pipe = nullptr;
-        return true;
     }
-    return false;
+
+    // A cancel belongs to the connection, so dropping the connection drops it too. The event
+    // itself stays: a client can connect again after a reset.
+    if (is_open(m_cancel_event)) {
+        ResetEvent(H(m_cancel_event));
+    }
+
+    m_message_incomplete = false;   // a released connection has no message in progress
+    return true;
 }
 
 } // namespace scl2::pipe
