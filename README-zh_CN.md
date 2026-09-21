@@ -53,6 +53,7 @@ Other languages: [English](README.md)
 - **`platform`** - 跨平台工具和抽象层
 - **[`process`](doc/zh_CN/process.md)** - 子进程管理与管道标准流读写（参考 QProcess）
 - **[`unixsocket`](doc/zh_CN/unixsocket.md)** - 本地（AF_UNIX）套接字，仅限 POSIX
+- **[`pipe`](doc/zh_CN/pipe.md)** - 命名管道：一个服务端、多个客户端，仅限 Windows
 - **`xml`** - XML 解析和序列化库（开发中）（警告：虽然模块基本功能正常，但某些函数尚不安全，可能导致崩溃。）
 - **[`bitmap`](doc/zh_CN/bitmap.md)** - 像素位图容器与绘制支持（BMP 读写）
 - **[`qrcode`](doc/zh_CN/qrcode.md)** - 二维码编码器（Reed-Solomon 纠错）

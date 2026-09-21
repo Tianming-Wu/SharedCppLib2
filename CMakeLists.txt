@@ -131,6 +131,11 @@ add_library(file STATIC src/file.cpp)
 add_library(filepack STATIC src/filepack.cpp)
 add_library(uri STATIC src/uri.cpp)
 
+# pipe 是 Windows 命名管道的封装；POSIX 上它什么都不定义，只发一条提示，
+# 所以源文件在那边编成空对象（静态库在两边都存在，方便写可移植代码）。
+add_library(pipe STATIC src/pipe.cpp)
+target_link_libraries(pipe PUBLIC basic)
+
 add_library(network_core STATIC src/network.cpp)
 add_library(network_dns STATIC src/dns.cpp)
 add_library(network_tcp STATIC src/tcpclient.cpp src/tcpserver.cpp)
@@ -218,7 +223,7 @@ set(TARGET_LIST
     sha256 sha512 sha1 crc32 basic indexer regexfilter
     logt logc platform perm process arguments ini abstract xml xml2 debug
     console aes keydb types condition filesystem datauri json toml i18n yaml
-    fileio file filepack uri
+    fileio file filepack uri pipe
     network_core network_dns network_tcp network_udp network_http network_io
     bitmap qrcode zlib png
 )

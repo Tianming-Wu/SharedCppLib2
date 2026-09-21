@@ -54,6 +54,7 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **`platform`** - Cross-platform utilities and abstractions
 - **[`process`](doc/process.md)** - Child process management with pipe-based stdio (QProcess-inspired)
 - **[`unixsocket`](doc/unixsocket.md)** - Local (AF_UNIX) sockets, POSIX only
+- **[`pipe`](doc/pipe.md)** - Named pipes: one server, many clients, Windows only
 - **`xml`** - XML parsing and serialization library (in development) (Warning: Though the module is basically functional, some functions are yet unsafe and cause crashes.)
 - **[`bitmap`](doc/bitmap.md)** - Pixel bitmap container with drawing support (BMP I/O)
 - **[`qrcode`](doc/qrcode.md)** - QR Code encoder (Reed-Solomon error correction)
