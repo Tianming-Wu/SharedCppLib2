@@ -306,11 +306,15 @@ void *permissions::getSecurityDescriptor() const
     }
     case permission_preset::Administrators: {
         // D:(A;;GA;;;BA)(A;;GA;;;SY) - Administrators and LocalSystem, and nobody else.
-        // Build it once and keep it: the caller does not free what this returns, so a fresh
-        // descriptor per pipe instance would be a leak per instance. If it cannot be built,
-        // the nullptr return drops the caller back onto the process default descriptor, so a
-        // server that needs this preset for isolation must check the peer as well.
-        static PSECURITY_DESCRIPTOR sd = []() -> PSECURITY_DESCRIPTOR {
+        //
+        // The SDDL is converted once and kept as a prototype, but what the caller gets is a
+        // copy: the caller owns what it is given and frees it with LocalFree (both call sites
+        // do), and a descriptor a pipe was created from has to stay alive for as long as that
+        // pipe does. Handing out the prototype itself meant the first free left a dangling
+        // pointer behind and the next one freed the same block twice - which is what took the
+        // service down on its first control-channel connection, in release builds only,
+        // because that is the only configuration where this preset is used.
+        static PSECURITY_DESCRIPTOR prototype = []() -> PSECURITY_DESCRIPTOR {
             PSECURITY_DESCRIPTOR descriptor = nullptr;
             if (!ConvertStringSecurityDescriptorToSecurityDescriptorA(
                     "D:(A;;GA;;;BA)(A;;GA;;;SY)", SDDL_REVISION_1, &descriptor, nullptr)) {
@@ -318,7 +322,20 @@ void *permissions::getSecurityDescriptor() const
             }
             return descriptor;
         }();
-        return sd;
+
+        if (prototype == nullptr) {
+            return nullptr;
+        }
+
+        // A self-relative descriptor, so its length covers the ACL it carries as well.
+        const DWORD size = GetSecurityDescriptorLength(prototype);
+        void* copy = LocalAlloc(LPTR, size);
+        if (copy == nullptr) {
+            return nullptr;
+        }
+
+        memcpy(copy, prototype, size);
+        return copy;
     }
     case permission_preset::None:
     default:

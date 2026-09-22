@@ -95,6 +95,10 @@ public:
 
 protected:
     friend class server;
+    /// The security descriptor to create a pipe with, or nullptr to let Windows use the process
+    /// default. What is returned belongs to the caller and has to be released with LocalFree():
+    /// every preset hands out its own block, because a descriptor a pipe was created from has to
+    /// outlive the call that created it.
     void* getSecurityDescriptor() const;
 
 private:
