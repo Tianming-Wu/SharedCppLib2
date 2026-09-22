@@ -2,7 +2,7 @@
 
 + Name: QRCode
 + Namespace: `scl2::qrcode`
-+ Document Version: `3.3.0`
++ Document Version: `1.0.0`
 
 ## CMake Info
 
