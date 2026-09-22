@@ -2,7 +2,7 @@
 
 + Name: PNG
 + Namespace: `scl2`
-+ Document Version: `3.5.0`
++ Document Version: `1.0.0`
 
 ## CMake Info
 
