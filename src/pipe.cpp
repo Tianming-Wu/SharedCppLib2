@@ -795,9 +795,13 @@ bool server::start()
     sa.lpSecurityDescriptor = sd;
     sa.bInheritHandle = FALSE;
 
+    // FILE_FLAG_FIRST_PIPE_INSTANCE: this is the create that claims the name. A second server
+    // - in this process or in another one - fails right here instead of quietly adding
+    // instances to a name that is already being served. The instances created later, for the
+    // next connection, must not carry the flag: by then the name exists because of this one.
     m_pipe = as_winhandle(CreateNamedPipeA(
         m_name.c_str(),
-        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,  // Enable overlapped I/O
+        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,  // Enable overlapped I/O
         pipeModeFlags(m_mode),
         m_client_limit + 1,
         static_cast<DWORD>(m_buffer_size), static_cast<DWORD>(m_buffer_size),

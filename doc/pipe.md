@@ -2,7 +2,7 @@
 
 + Name: pipe
 + Namespace: `scl2::pipe`
-+ Document Version: `1.1.0`
++ Document Version: `1.2.0`
 
 ## CMake Info
 
@@ -202,6 +202,17 @@ large message to you.
 | `Everyone` | Anyone who can reach the name |
 | `SameSID` | The user the server runs as |
 | `Administrators` | Administrators and LocalSystem, through `D:(A;;GA;;;BA)(A;;GA;;;SY)`. For a privileged channel that the processes the ordinary channel serves must not reach |
+
+## One server per name
+
+`start()` creates its first pipe instance with `FILE_FLAG_FIRST_PIPE_INSTANCE`, so a name that
+is already being served - by another server in this process, or by a server in another one -
+makes it fail. `start()` answers `false` and `GetLastError()` is `ERROR_ACCESS_DENIED` (5).
+
+The instances created afterwards, for the next connection, do not carry the flag: by then the
+name exists because of the server that claimed it. Two processes serving one name would mean
+the operating system decides which of them a client reaches, which is not what either side
+asked for.
 
 ## Broken connections
 

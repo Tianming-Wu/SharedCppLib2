@@ -2,7 +2,7 @@
 
 + Name: pipe
 + Namespace: `scl2::pipe`
-+ 文档版本: `1.1.0`
++ 文档版本: `1.2.0`
 
 ## CMake Info
 
@@ -193,6 +193,15 @@ client.close();
 | `Everyone` | 任何能到达这个名字的进程 |
 | `SameSID` | 服务端运行所处的用户 |
 | `Administrators` | 仅管理员与 LocalSystem，用 `D:(A;;GA;;;BA)(A;;GA;;;SY)`。用于普通通道所服务的那些进程不该够得着的特权通道 |
+
+## 一个名字只允许一个服务端
+
+`start()` 创建第一个管道实例时带上 `FILE_FLAG_FIRST_PIPE_INSTANCE`：如果这个名字已经被
+别人服务着（同一进程里的另一个 server，或另一个进程），它就会失败 —— `start()` 返回
+`false`，`GetLastError()` 为 `ERROR_ACCESS_DENIED` (5)。
+
+之后为下一条连接创建的实例不带这个标志：那时名字已经是它的了。两个进程服务同一个名字，
+意味着由操作系统决定客户端连到哪一个，这不是任何一边想要的。
 
 ## 连接断了
 
