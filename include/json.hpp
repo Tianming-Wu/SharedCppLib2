@@ -13,7 +13,7 @@
     Also check jbt if you want some even more compact storage of json data.
 
     [SCL_STANDALONE_MODULE]
-    version: 1.10.0
+    version: 1.11.0
     cpp_generation: cxx17 - cxx23
 */
 
@@ -290,7 +290,7 @@ public:
     static json fromString(const std::wstring& wstr) { return fromString(json_value::json_wtoa(wstr)); }
 
     std::string toString() const;
-    std::string toCompatString() const;
+    std::string toCompactString() const;
     std::wstring toWString() const { return json_value::json_atow(toString()); }
 
     // This uses the default format. If you want anything else, do it yourself.
@@ -359,11 +359,11 @@ public:
     static json_exporter inline_exporter();
 
     std::string exportToString(const json& j);
-    std::string exportToCompatString(const json& j);
+    std::string exportToCompactString(const json& j);
 
     // just let user directly set these flags if needed.
     // We aren't multi-threading anyway.
-    bool isCompat = false;
+    bool isCompact = false;
     bool isInline = false;
     bool escapeNonAscii = false;  // escape non-ASCII UTF-8 as \uXXXX for max portability
     indent_style indentStyle = indent_style::space4;

@@ -2,7 +2,7 @@
 
 + 名称: json
 + 命名空间: `scl2`
-+ 文档版本: `1.1.0`
++ 文档版本: `1.2.0`
 
 ## CMake 配置信息
 
@@ -101,7 +101,7 @@ j["version"] = scl2::json_value(static_cast<int64_t>(2));
 j["debug"]   = scl2::json_value(true);
 
 std::string formatted = j.toString();        // 格式化输出（带缩进）
-std::string compact   = j.toCompatString();  // 紧凑输出（无多余空白）
+std::string compact   = j.toCompactString();  // 紧凑输出（无多余空白）
 
 // 文件 I/O
 scl2::json cfg = scl2::json::fromFile("config.json");
@@ -139,7 +139,7 @@ std::string output = exporter.exportToString(j);
 }
 ```
 
-**紧凑（`isCompat = true`）：**
+**紧凑（`isCompact = true`）：**
 ```json
 {"debug":false,"person":{"name":"Bob","scores":[95,87]}}
 ```
@@ -178,7 +178,7 @@ std::string output = exporter.exportToString(j);
 ```
 
 > [!TIP]
-> 紧凑格式可直接使用 `json::toCompatString()`。其他格式请配置 `json_exporter` 实例后调用 `exportToString()`。
+> 紧凑格式可直接使用 `json::toCompactString()`。其他格式请配置 `json_exporter` 实例后调用 `exportToString()`。
 
 ## 核心 API
 
@@ -254,7 +254,7 @@ static json fromFile(const std::string& filename);
 
 // 导出
 std::string toString() const;          // 格式化输出
-std::string toCompatString() const;    // 紧凑输出（无多余空白）
+std::string toCompactString() const;    // 紧凑输出（无多余空白）
 std::string toFile(const std::string& filename) const;
 ```
 
@@ -266,17 +266,17 @@ std::string toFile(const std::string& filename) const;
 enum class indent_style { none, space2, space4, tab };
 
 // 工厂辅助方法
-static json_exporter compact_exporter();   // isCompat + escapeNonAscii + none indent
+static json_exporter compact_exporter();   // isCompact + escapeNonAscii + none indent
 static json_exporter inline_exporter();    // isInline + none indent
 
 // 公开字段 — 在调用 exportToString() 前直接设置即可
-bool isCompat;             // 紧凑输出（无多余空白）
+bool isCompact;             // 紧凑输出（无多余空白）
 bool isInline;             // 内联格式（换行替换为空格）
 bool escapeNonAscii;       // 将非 ASCII 的 UTF-8 转义为 \uXXXX（最大化可移植性）
 indent_style indentStyle;  // 缩进风格（默认：space4）
 
 std::string exportToString(const json& j);
-std::string exportToCompatString(const json& j);
+std::string exportToCompactString(const json& j);
 ```
 
 > [!NOTE]

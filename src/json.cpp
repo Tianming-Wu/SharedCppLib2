@@ -519,10 +519,10 @@ std::string json::toString() const
     return exporter.exportToString(*this);
 }
 
-std::string json::toCompatString() const
+std::string json::toCompactString() const
 {
     json_exporter exporter;
-    exporter.isCompat = true;
+    exporter.isCompact = true;
     return exporter.exportToString(*this);
 }
 
@@ -959,7 +959,7 @@ bool json_parser::jisdigit(char c) const
 json_exporter json_exporter::compact_exporter()
 {
     json_exporter exporter;
-    exporter.isCompat = true;
+    exporter.isCompact = true;
     exporter.escapeNonAscii = true;
     exporter.indentStyle = indent_style::none;
     return exporter;
@@ -980,10 +980,10 @@ std::string json_exporter::exportToString(const json &j)
     return result_str;
 }
 
-std::string json_exporter::exportToCompatString(const json &j)
+std::string json_exporter::exportToCompactString(const json &j)
 {
     result_str.clear();
-    isCompat = true;
+    isCompact = true;
     exportValue(j, 0);
     return result_str;
 }
@@ -1098,7 +1098,7 @@ void json_exporter::exportKey(const std::string &value, size_t indentLevel)
     jindent(indentLevel);
     result_str += std::string(
         jquote(escapeJsonString(value)) +
-        (isCompat ? ":" : ": ")
+        (isCompact ? ":" : ": ")
     );
 }
 
@@ -1180,7 +1180,7 @@ void json_exporter::exportNumber(const json_value &value, size_t indentLevel)
 
 void json_exporter::jindent(size_t indentLevel)
 {
-    if (isCompat || isInline) return;
+    if (isCompact || isInline) return;
     result_str += [this, indentLevel]() {
         switch (indentStyle) {
             case indent_style::none:
@@ -1199,7 +1199,7 @@ void json_exporter::jindent(size_t indentLevel)
 
 void json_exporter::jnline()
 {
-    if (isCompat) return;
+    if (isCompact) return;
     if (isInline) { result_str += " "; return; }
     result_str += "\n";
 }
