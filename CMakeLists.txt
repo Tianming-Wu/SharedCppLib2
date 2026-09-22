@@ -127,6 +127,9 @@ add_library(qrcode STATIC src/qrcode.cpp)
 # png 依赖 bitmap（像素容器）、zlib（IDAT 就是 zlib 流）、crc32（块校验）
 add_library(png STATIC src/png.cpp)
 
+# xkeydb 是 keydb 的另一个实现：值用 variant，尺寸用固定 64 位，文件可加密 / 压缩 / 校验
+add_library(xkeydb STATIC src/xkeydb.cpp)
+
 add_library(fileio STATIC src/fileio.cpp)
 add_library(file STATIC src/file.cpp)
 add_library(filepack STATIC src/filepack.cpp)
@@ -191,7 +194,7 @@ foreach(target
     regexfilter logc sha256 sha512 sha1 crc32 arguments ini abstract
     xml keydb perm condition datauri json toml i18n yaml aes
     fileio file filepack uri zlib
-    bitmap qrcode png
+    bitmap qrcode png xkeydb
 )
     target_link_libraries(${target} PUBLIC basic)
 endforeach()
@@ -201,6 +204,11 @@ target_link_libraries(qrcode PUBLIC bitmap)
 
 # png 在 bitmap 上工作，并且自己调 zlib / crc32
 target_link_libraries(png PUBLIC bitmap zlib crc32)
+
+# xkeydb 用 aes 加解密，用 sha256 + hmac 做 tag / 密钥校验，用 crc32 做无密钥校验，
+# 用 compression 选定 / 注册压缩算法（内置的 zlib 通过它用），并用 fileio 整读整写文件
+# （Windows 的 flush 走 kernel32 的 FlushFileBuffers，不需要额外 link）
+target_link_libraries(xkeydb PUBLIC aes sha256 hmac crc32 zlib fileio compression)
 
 # file 额外依赖 fileio
 target_link_libraries(file PUBLIC fileio)
@@ -229,7 +237,7 @@ set(TARGET_LIST
     console aes keydb types condition filesystem datauri json toml i18n yaml
     fileio file filepack uri pipe
     network_core network_dns network_tcp network_udp network_http network_io
-    bitmap qrcode zlib png
+    bitmap qrcode zlib png xkeydb
 )
 
 # 安装目标
