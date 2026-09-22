@@ -48,12 +48,13 @@ add_library(api INTERFACE include/api.hpp)
 
 # Header-only modules (INTERFACE targets)
 set(INTERFACE_TARGET_LIST
-    hmac logh rerr bits cache exexception engineering multindex percentage RAII singleinst
+    hmac compression logh rerr bits cache exexception engineering multindex percentage RAII singleinst
     structural_binding typemask
     network base64 unixsocket
 )
 
 add_library(hmac INTERFACE include/hmac.hpp)
+add_library(compression INTERFACE include/compression.hpp)
 add_library(logh INTERFACE include/logh.hpp)
 add_library(rerr INTERFACE include/rerr.hpp)
 add_library(bits INTERFACE include/bits.hpp)
@@ -168,6 +169,8 @@ endif()
 # 库依赖关系
 target_link_libraries(logc PUBLIC logt)
 target_link_libraries(hmac INTERFACE api basic)
+# compression 的内容均为 header-only（provider 的类型擦除层），只依赖 basic
+target_link_libraries(compression INTERFACE api basic)
 
 # 平台依赖
 target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要平台相关支持
