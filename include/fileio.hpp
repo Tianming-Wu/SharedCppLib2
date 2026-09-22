@@ -78,51 +78,68 @@ private:
 };
 
 
+/// @brief Push everything written for `path` out to the disk.
+/// @note Writing a file normally only hands the bytes to the operating system, which keeps
+///       them in a cache and writes them back later. If the machine loses power before
+///       that happens, the file can end up empty or half written even though the write
+///       call returned successfully. Call this when the file has to survive that, for
+///       instance before renaming it over another file. Throws if the flush fails.
+void flushFile(const fs::path& path);
+
 // This is the truly powerful part of SharedCppLib2's new generic api.
 // A single line i/o! How cool is that!
 
 // Genaric Single-line Call for Types that support generic_serialize protocol.
 template<typename T>
 requires ::scl2::has_generic_serialize<T>
-size_t writeFile(const fs::path& path, const T& data) {
-    std::ofstream ofs(path, std::ios::binary);
-    if (!ofs) {
-        throw std::runtime_error("Failed to open file for writing: " + path.string());
-    }
+size_t writeFile(const fs::path& path, const T& data, bool flush = false) {
     std::string sei = scl2::generic_serialize(data);
-    ofs << sei;
+    {
+        std::ofstream ofs(path, std::ios::binary);
+        if (!ofs) {
+            throw std::runtime_error("Failed to open file for writing: " + path.string());
+        }
+        ofs << sei;
+    }
+    if (flush) scl2::flushFile(path);
     return sei.size();
 }
 
 // Generic Single-line Call for Types that support generic_dump protocol.
 template<typename T>
 requires ::scl2::has_generic_dump<T>
-size_t writeFile(const fs::path& path, const T& data) {
-    std::ofstream ofs(path, std::ios::binary);
-    if (!ofs) {
-        throw std::runtime_error("Failed to open file for writing: " + path.string());
-    }
+size_t writeFile(const fs::path& path, const T& data, bool flush = false) {
     scl2::bytearray ba = scl2::generic_dump(data);
-    ofs << ba;
+    {
+        std::ofstream ofs(path, std::ios::binary);
+        if (!ofs) {
+            throw std::runtime_error("Failed to open file for writing: " + path.string());
+        }
+        ofs << ba;
+    }
+    if (flush) scl2::flushFile(path);
     return ba.size();
 }
 
 template<typename T>
 requires std::is_trivially_assignable<T, T>::value && std::is_trivially_copyable<T>::value
-size_t writeAs(const fs::path& path, const T& data) {
-    std::ofstream ofs(path, std::ios::binary);
-    if (!ofs) {
-        throw std::runtime_error("Failed to open file for writing: " + path.string());
+size_t writeAs(const fs::path& path, const T& data, bool flush = false) {
+    {
+        std::ofstream ofs(path, std::ios::binary);
+        if (!ofs) {
+            throw std::runtime_error("Failed to open file for writing: " + path.string());
+        }
+        ofs.write(reinterpret_cast<const char*>(&data), sizeof(T));
     }
-    ofs.write(reinterpret_cast<const char*>(&data), sizeof(T));
+    if (flush) scl2::flushFile(path);
     return sizeof(T);
 }
 
 // Single-line Call for writing a bytearray to file.
-size_t writeFile(const fs::path& path, const scl2::bytearray& data);
+size_t writeFile(const fs::path& path, const scl2::bytearray& data, bool flush = false);
 
 // Single-line Call for writing a string to file.
-size_t writeFile(const fs::path& path, const std::string& data);
+size_t writeFile(const fs::path& path, const std::string& data, bool flush = false);
 
 template<typename T>
 requires ::scl2::has_generic_load<T>
@@ -148,6 +165,9 @@ T readAs(const fs::path& path) {
 }
 
 scl2::bytearray readFile(const fs::path& path);
+
+// Read a range of bytes from a file. If length is -1, read until the end of the file.
+scl2::bytearray readFileRange(const fs::path& path, size_t offset = 0, size_t length = -1);
 
 scl2::string readFileAsString(const fs::path& path);
 
