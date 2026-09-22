@@ -6,6 +6,7 @@
 
 #include <accctrl.h>
 #include <aclapi.h>
+#include <sddl.h>
 
 #include <thread>
 #include <chrono>
@@ -302,6 +303,22 @@ void *permissions::getSecurityDescriptor() const
         }
         FreeSid(pEveryoneSid);
         return nullptr;
+    }
+    case permission_preset::Administrators: {
+        // D:(A;;GA;;;BA)(A;;GA;;;SY) - Administrators and LocalSystem, and nobody else.
+        // Build it once and keep it: the caller does not free what this returns, so a fresh
+        // descriptor per pipe instance would be a leak per instance. If it cannot be built,
+        // the nullptr return drops the caller back onto the process default descriptor, so a
+        // server that needs this preset for isolation must check the peer as well.
+        static PSECURITY_DESCRIPTOR sd = []() -> PSECURITY_DESCRIPTOR {
+            PSECURITY_DESCRIPTOR descriptor = nullptr;
+            if (!ConvertStringSecurityDescriptorToSecurityDescriptorA(
+                    "D:(A;;GA;;;BA)(A;;GA;;;SY)", SDDL_REVISION_1, &descriptor, nullptr)) {
+                return nullptr;
+            }
+            return descriptor;
+        }();
+        return sd;
     }
     case permission_preset::None:
     default:
@@ -717,6 +734,11 @@ bool server_client::reset()
 size_t server_client::bufferSize() const
 {
     return m_buffer_size;
+}
+
+void *server_client::nativeHandle() const
+{
+    return H(m_pipe);
 }
 
 server::server(const std::string &name, const permissions &permissions)

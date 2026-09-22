@@ -2,7 +2,7 @@
 
 + Name: pipe
 + Namespace: `scl2::pipe`
-+ Document Version: `1.0.0`
++ 文档版本: `1.1.0`
 
 ## CMake Info
 
@@ -153,6 +153,7 @@ client.close();
 | `close()` | 结束这个连接；本来就没连接时返回 `false`。对象之后仍可用，只是变成一个无效客户端 |
 | `reset()` | 流接口里用来丢弃连接的名字：释放句柄、回到无效状态。本来就没东西可释放也返回 `true` |
 | `bufferSize()` | 该连接使用的缓冲区；跟随服务端，不可单独设置 |
+| `nativeHandle()` | 这条连接背后的原生句柄，以 `void*` 给出。句柄归连接所有：只能用来查看对端，不要关闭它。`GetNamedPipeClientProcessId()` 读它，`ImpersonateNamedPipeClient()` 借它的用户身份行事、记得配对 `RevertToSelf()` |
 
 ### client
 
@@ -191,6 +192,7 @@ client.close();
 | `Default` | 与 `None` 相同：交给 Windows 为进程设定的默认描述符，通常意味着管理员 |
 | `Everyone` | 任何能到达这个名字的进程 |
 | `SameSID` | 服务端运行所处的用户 |
+| `Administrators` | 仅管理员与 LocalSystem，用 `D:(A;;GA;;;BA)(A;;GA;;;SY)`。用于普通通道所服务的那些进程不该够得着的特权通道 |
 
 ## 连接断了
 

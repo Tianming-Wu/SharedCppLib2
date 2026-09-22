@@ -2,7 +2,7 @@
 
 + Name: pipe
 + Namespace: `scl2::pipe`
-+ Document Version: `1.0.0`
++ Document Version: `1.1.0`
 
 ## CMake Info
 
@@ -161,6 +161,7 @@ so they can only be set before `start()`.
 | `close()` | End this connection; `false` when there was nothing left to end. The object stays usable as an invalid client |
 | `reset()` | The stream interface name for dropping the connection: release the handle and return to an invalid state. Answers `true` even when there was nothing to release |
 | `bufferSize()` | The buffer this connection uses; it follows the server, and is not settable |
+| `nativeHandle()` | The native handle behind this connection, as a `void*`. The connection owns it: peer inspection only, never close it. `GetNamedPipeClientProcessId()` reads it, `ImpersonateNamedPipeClient()` acts as its user and needs a matching `RevertToSelf()` |
 
 ### client
 
@@ -200,6 +201,7 @@ large message to you.
 | `Default` | The same as `None`: Windows' default descriptor for the process, which usually means administrators |
 | `Everyone` | Anyone who can reach the name |
 | `SameSID` | The user the server runs as |
+| `Administrators` | Administrators and LocalSystem, through `D:(A;;GA;;;BA)(A;;GA;;;SY)`. For a privileged channel that the processes the ordinary channel serves must not reach |
 
 ## Broken connections
 

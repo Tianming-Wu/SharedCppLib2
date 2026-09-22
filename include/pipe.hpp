@@ -59,10 +59,12 @@ enum class mode {
 
 /// @brief Which security descriptor the server creates the pipe with.
 enum class permission_preset {
-    None,     // Do not use the preset
-    Default,  // Default, which is usually Administrator.
-    Everyone, // Allow everyone to access the pipe.
-    SameSID,  // Allow current user to access the pipe.
+    None,           // Do not use the preset
+    Default,        // Default, which is usually Administrator.
+    Everyone,       // Allow everyone to access the pipe.
+    SameSID,        // Allow current user to access the pipe.
+    Administrators, // Allow Administrators and LocalSystem only. For a privileged channel that
+                    //   the processes the ordinary channel serves must not be able to reach.
 };
 
 /// @brief The token acknowledge() sends.
@@ -163,6 +165,14 @@ public:
 
     // This buffer size is not settable, it keeps the same as the server.
     size_t bufferSize() const;
+
+    /// The native handle behind this connection: a HANDLE on Windows, hence a void* here, as
+    /// elsewhere in this header. The connection owns it - never close it - and it stays valid
+    /// until the connection is reset. It is what peer inspection needs:
+    /// GetNamedPipeClientProcessId() to find out which process is on the other end, and
+    /// ImpersonateNamedPipeClient() to act as its user, which the caller must pair with
+    /// RevertToSelf().
+    void* nativeHandle() const;
 
 private:
     // Adds this connection's cancel events to a wait array, for the waits in the implementation.
