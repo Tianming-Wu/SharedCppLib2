@@ -1,5 +1,25 @@
 # Changelog
 
+### v3.6.0
+- New: `scl2::pipe` in `pipe` — Windows named pipes: a server with a client limit and a choice of security descriptor, one handle per connection, message mode, and a clean report when a connection breaks. On POSIX the header defines nothing and says so.
+- New: `unixsocket` — local AF_UNIX sockets, POSIX only.
+- New: `scl2::xkeydb` in `xkeydb` — a key-value database that lives in one file; the values are `scl2::variant`. The payload can be compressed, checked (crc32 / sha256 / hmac-sha256) and encrypted (AES-CBC-128/256), and the choice is recorded in the file. Integrity is separate from encryption: `lock(secret, cipher_algo::none)` authenticates without hiding the data. Saves are atomic.
+- New: `compression` — a named compression algorithm and a provider that pairs a compressor with its decompressor, so a file can record which algorithm it used instead of fixing one at compile time; applications can register their own.
+- New: `scl2::zlib` in `zlib` — a self-contained DEFLATE / zlib (RFC 1950) codec.
+- New: `xml2` — a lossless XML module.
+- New: `perm` — Windows elevation (SID / token queries, `ShellExecuteEx`); the module is part of the build now.
+- New: `png` — a PNG codec on top of `bitmap`.
+- New: `bytearray::wipe()` and `secure_bytearray`, a bytearray that erases its contents when it is destroyed.
+- New: `fileio` can push what it wrote out to the disk (`flushFile()`, and a `flush` argument on `writeFile()` / `writeAs()`); `readFileRange()` reads a range of bytes.
+- New: `variant` type-specific interface and `load` / `dump` serialization; `value::assign_to(T&)` in `json` / `yaml` / `toml`.
+- New: `i18n::set_lang_folder()` and the CMake helper `i18n_copy_lang()` for deploying translation files.
+- New: `platform::TranslateErrorW()` / `TranslateLastErrorW()`; `bitmap::row()` / `data()`; the `bytearray` helpers `rp_guard()` / `randomarray()`.
+- New: the `api` compression / decompression protocol (`compress` / `decompress` and their streamed variants).
+- Changed: `process` is usable — it is a `scl2::basic_iostream`, channels can be torn off, and the Unix side exists (not verified on real hardware yet).
+- Changed: `logt` converts wide strings with the library's own UTF-8 conversion; `std::wstring_convert` / `codecvt_utf8` are deprecated in C++17 and removed in C++26.
+- Fixed: the `bytearray::fromBase64` tail block length; the missing return in `variant`'s `load()`; the defaulted assignment of `network`'s server client handler; HTTP chunked transfer-encoding decoding.
+- Removed: the unused `html` module, and `doc/migrate.md`.
+
 ### v3.5.0
 - New: `scl2::toml` in `toml` — a TOML parser/serializer. A document is always a table of key/value pairs; values can be string / integer / floating / boolean / date-time / array / table (no null). Supports dotted keys, `[table]` / `[[array-of-tables]]` headers, arrays, inline tables (incl. multi-line), basic/literal strings (incl. multi-line), comments, and verbatim date-times. Verified against Minecraft `META-INF/neoforge.mods.toml`.
 

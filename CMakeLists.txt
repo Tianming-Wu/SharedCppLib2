@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.10)
 # endif()
 
 project(SharedCppLib2
-    VERSION 3.5.0
+    VERSION 3.6.0
     LANGUAGES CXX
 )
 
