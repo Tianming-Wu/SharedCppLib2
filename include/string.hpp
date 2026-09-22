@@ -53,6 +53,8 @@ public:
 
     /// @brief Remove whitespace from the beginning and end of the string.
     scl2::basic_string<CharT> trim();
+
+    void find_and_replace(const scl2::basic_string<CharT>& target, const scl2::basic_string<CharT>& replace);
 };
 
 extern template class basic_string<char>;

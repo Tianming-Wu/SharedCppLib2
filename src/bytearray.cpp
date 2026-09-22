@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <limits>
 #include <iomanip>
+#include <random>
 
 namespace scl2 {
 
@@ -43,6 +44,16 @@ void bytearray::copy_to(void* raw, size_t sz) const {
     if (!raw) throw std::invalid_argument("bytearray::copy_to: null pointer");
     if (sz > this->size()) throw std::invalid_argument("bytearray::copy_to: size exceeds data");
     std::memcpy(raw, this->data(), sz);
+}
+
+void bytearray::wipe() noexcept
+{
+    // Through a volatile pointer on purpose: a plain loop over a buffer that is about to
+    // be freed can be dropped as a dead store, and that is exactly the case this is for
+    // (a secure_bytearray wiping itself from its destructor).
+    volatile std::byte* p = this->data();
+    for (size_t i = 0, n = this->size(); i < n; ++i)
+        p[i] = std::byte{0};
 }
 
 std::string bytearray::toString() const {
@@ -122,9 +133,13 @@ std::string bytearray::toBase64() const {
 
 bytearray bytearray::fromBase64(const std::string& s){
     if(s.empty())return{};
-    size_t len=s.size(),pad=0;
-    if(len>0&&s[len-1]=='='){++pad;--len;} if(len>0&&s[len-1]=='='){++pad;--len;}
-    size_t outLen=(len/4)*3; if(pad==1)++outLen; else if(pad==2)outLen+=2;
+    size_t len=s.size();
+    if(len>0&&s[len-1]=='='){--len;} if(len>0&&s[len-1]=='='){--len;}
+    // 去掉 '=' 后的有效字符数决定尾部字节数：整 4 组 → 0 字节余数、
+    // 2 个有效字符 → 1 字节、3 个有效字符 → 2 字节；1 个为非法长度。
+    const size_t rem=len%4;
+    if(rem==1) throw std::invalid_argument("bytearray::fromBase64: invalid length");
+    size_t outLen=(len/4)*3 + (rem==3?2:(rem==2?1:0));
     bytearray r(outLen); size_t oi=0;
     for(size_t i=0;i<len;i+=4){
         int i0=b64_idx(s[i]),i1=b64_idx(s[i+1]),i2=(i+2<len)?b64_idx(s[i+2]):0,i3=(i+3<len)?b64_idx(s[i+3]):0;
@@ -345,7 +360,24 @@ bytearray bytearray::fromPointer(const void* p){ if(!p)return{}; return bytearra
 bytearray bytearray::fromUtf8(const std::u8string& s){ return bytearray(reinterpret_cast<const std::byte*>(s.data()),s.size()); }
 bytearray bytearray::fromUtf16(const std::u16string& s){ return bytearray(reinterpret_cast<const std::byte*>(s.data()),s.size()*sizeof(char16_t)); }
 bytearray bytearray::fromUtf32(const std::u32string& s){ return bytearray(reinterpret_cast<const std::byte*>(s.data()),s.size()*sizeof(char32_t)); }
+scl2::bytearray bytearray::randomarray(size_t sz) {
+    bytearray out(sz);
+    if (sz == 0) return out;
 
+    // Take every byte from the platform entropy source rather than seeding a PRNG,
+    // so the result is not reproducible and can be used for keys / IVs / nonces.
+    // The cost is one random_device call per four bytes, which is slower than a PRNG
+    // for large buffers.
+    std::random_device rd;
+    std::byte* p = out.data();
+    for (size_t i = 0; i < sz;) {
+        const unsigned int v = rd();
+        for (int k = 0; k < 4 && i < sz; ++k, ++i) {
+            p[i] = static_cast<std::byte>(static_cast<unsigned char>(v >> (8 * k)));
+        }
+    }
+    return out;
+}
 bytearray bytearray_view::subarr(size_t begin, size_t n) const {
     if(begin>=size_)return{}; size_t end=(n==bytearray::seek_end)?size_:std::min(size_,begin+n);
     return bytearray(data_+begin,end-begin);

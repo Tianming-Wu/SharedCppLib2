@@ -52,8 +52,17 @@ fs::path findExecutableInPath(const std::string& name);
 // platform::windows
 namespace windows {
 
+/// @brief Translate a Win32 error code into its system message (narrow).
+/// @note Backed by FormatMessageA, so the text is encoded in the system ANSI
+///       code page. Use TranslateErrorW when non-ASCII text must survive.
 std::string TranslateError(DWORD errorCode);
 inline std::string TranslateLastError() { return TranslateError(GetLastError()); }
+
+/// @brief Wide (UTF-16) version of TranslateError, backed by FormatMessageW.
+/// @note Prefer this one for display / logging: it is not limited by the ANSI
+///       code page.
+std::wstring TranslateErrorW(DWORD errorCode);
+inline std::wstring TranslateLastErrorW() { return TranslateErrorW(GetLastError()); }
 
 // Get Argument in WinMain(), only Unicode is supported
 // because Windows only provided unicode api for the required

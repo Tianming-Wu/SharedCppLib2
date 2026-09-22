@@ -36,6 +36,7 @@
 // what a long list of includes
 
 #include "basics.hpp" // for disable_copy, disable_move
+#include "string.hpp"  // for wstr_to_str
 
 // Enable wide character support if UNICODE is defined
 #ifdef UNICODE
@@ -43,10 +44,7 @@
 #endif
 
 // Include additional headers for wide character support
-// May switch to methods provided by basics.hpp later
 #ifdef LOGT_WCHAR_SUPPORT
-    #include <locale>
-    #include <codecvt>
     #include <type_traits>
 #endif
 
@@ -195,9 +193,7 @@ public:
 
 #ifdef LOGT_WCHAR_SUPPORT
     logt_sso& operator<<(const std::wstring& value) {
-        // 宽字符串转多字节字符串
-        std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-        ss_ << converter.to_bytes(value);
+        ss_ << scl2::wstr_to_str(value);
         return *this;
     }
 #endif

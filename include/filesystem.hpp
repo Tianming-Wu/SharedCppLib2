@@ -29,11 +29,14 @@
 #pragma once
 
 #include <filesystem>
-#include <generator>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+
+#ifdef __cpp_lib_generator
+#   include <generator>
+#endif
 
 #include "platform.hpp"
 #include "macros.hpp"
@@ -48,7 +51,9 @@ namespace scl2::filesystem {
 
 using path = std::filesystem::path;
 
-std::generator<path> fast_directory_iterator();
+#ifdef __cpp_lib_generator
+    std::generator<path> fast_directory_iterator();
+#endif
 
 #ifdef OS_WINDOWS
 

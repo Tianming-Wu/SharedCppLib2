@@ -1,6 +1,11 @@
 #include "fileio.hpp"
+#include "platform.hpp"
 
 #include <iomanip>
+
+#ifndef OS_WINDOWS
+#include <fcntl.h> // ::open, used by flushFile
+#endif
 
 namespace scl2 {
 
@@ -62,22 +67,57 @@ void fileio::close()
 
 
 
-size_t writeFile(const fs::path& path, const scl2::bytearray& data) {
-    std::ofstream ofs(path, std::ios::binary);
-    if(!ofs) {
-        throw std::runtime_error("Failed to open file for writing: " + path.string());
+void flushFile(const fs::path& path)
+{
+    // A std::ofstream does not expose its file descriptor, so the file is opened a second
+    // time just to flush it. Flushing needs no more than a handle to the same file.
+#ifdef OS_WINDOWS
+    const HANDLE handle = CreateFileW(path.c_str(), GENERIC_WRITE,
+                                      FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                                      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (handle == INVALID_HANDLE_VALUE)
+        throw std::runtime_error("Failed to open file for flushing: " + path.string());
+
+    const BOOL ok = FlushFileBuffers(handle);
+    CloseHandle(handle);
+
+    if (!ok)
+        throw std::runtime_error("Failed to flush file: " + path.string());
+#else
+    const int fd = ::open(path.c_str(), O_RDONLY);
+    if (fd < 0)
+        throw std::runtime_error("Failed to open file for flushing: " + path.string());
+
+    const int result = ::fsync(fd);
+    ::close(fd);
+
+    if (result != 0)
+        throw std::runtime_error("Failed to flush file: " + path.string());
+#endif
+}
+
+size_t writeFile(const fs::path& path, const scl2::bytearray& data, bool flush) {
+    {
+        std::ofstream ofs(path, std::ios::binary);
+        if(!ofs) {
+            throw std::runtime_error("Failed to open file for writing: " + path.string());
+        }
+        ofs << data;
     }
-    ofs << data;
+    if (flush) flushFile(path);
     return data.size();
 }
 
-size_t writeFile(const fs::path &path, const std::string &data)
+size_t writeFile(const fs::path &path, const std::string &data, bool flush)
 {
-    std::ofstream ofs(path);
-    if (!ofs) {
-        throw std::runtime_error("Failed to open file for writing: " + path.string());
+    {
+        std::ofstream ofs(path);
+        if (!ofs) {
+            throw std::runtime_error("Failed to open file for writing: " + path.string());
+        }
+        ofs << data;
     }
-    ofs << data;
+    if (flush) flushFile(path);
     return data.size();
 }
 
@@ -89,6 +129,24 @@ scl2::bytearray readFile(const fs::path &path)
     }
     scl2::bytearray ba;
     ba.readAllFromStream(ifs);
+    return ba;
+}
+
+scl2::bytearray readFileRange(const fs::path &path, size_t offset, size_t length)
+{
+    std::ifstream ifs(path, std::ios::binary);
+    if(!ifs) {
+        throw std::runtime_error("Failed to open file for reading: " + path.string());
+    }
+    scl2::bytearray ba;
+
+    ifs.seekg(offset, std::ios::beg);
+    if(length == static_cast<size_t>(-1)) {
+        ba.readAllFromStream(ifs);
+    } else {
+        ba.readFromStream(ifs, length);
+    }
+
     return ba;
 }
 

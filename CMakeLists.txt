@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.10)
 # endif()
 
 project(SharedCppLib2
-    VERSION 3.3.0
+    VERSION 3.6.0
     LANGUAGES CXX
 )
 
@@ -48,12 +48,13 @@ add_library(api INTERFACE include/api.hpp)
 
 # Header-only modules (INTERFACE targets)
 set(INTERFACE_TARGET_LIST
-    hmac logh rerr bits cache exexception engineering multindex percentage RAII singleinst
+    hmac compression logh rerr bits cache exexception engineering multindex percentage RAII singleinst
     structural_binding typemask
-    network base64
+    network base64 unixsocket
 )
 
 add_library(hmac INTERFACE include/hmac.hpp)
+add_library(compression INTERFACE include/compression.hpp)
 add_library(logh INTERFACE include/logh.hpp)
 add_library(rerr INTERFACE include/rerr.hpp)
 add_library(bits INTERFACE include/bits.hpp)
@@ -66,11 +67,16 @@ add_library(RAII INTERFACE include/RAII.hpp)
 add_library(singleinst INTERFACE include/singleinst.hpp)
 add_library(structural_binding INTERFACE include/structural_binding.hpp)
 add_library(typemask INTERFACE include/typemask.hpp)
+# unixsocket 是 POSIX 专有的头文件模块（AF_UNIX）；在 Windows 上它什么都不定义，只是发一条
+# 警告，所以做成 INTERFACE 目标，不需要（也不能有）对应的源文件。
+add_library(unixsocket INTERFACE include/unixsocket.hpp)
+target_link_libraries(unixsocket INTERFACE basic)
 
 # 定义所有库
 add_library(basic STATIC
     src/bytearray.cpp src/ansiio.cpp src/color.cpp src/stringlist.cpp
     src/stringlist_regex.cpp src/basics.cpp src/string.cpp src/xstring.cpp
+    src/variant.cpp src/stream.cpp
 )
 # Propagate generated header dir for add_subdirectory consumers
 target_include_directories(basic PUBLIC
@@ -81,6 +87,7 @@ add_library(sha256 STATIC src/sha256.cpp)
 add_library(sha512 STATIC src/sha512.cpp)
 add_library(sha1 STATIC src/sha1.cpp)
 add_library(crc32 STATIC src/crc32.cpp)
+add_library(zlib STATIC src/zlib.cpp)
 add_library(indexer STATIC src/indexer.cpp)
 add_library(regexfilter STATIC src/regexfilter.cpp)
 add_library(logt STATIC src/logt.cpp)
@@ -88,13 +95,22 @@ add_library(logc STATIC src/logc.cpp)
 add_library(base64 INTERFACE)
 target_link_libraries(base64 INTERFACE basic)
 add_library(platform STATIC src/platform.cpp)
-# add_library(process STATIC src/process.cpp) # A major update in progress, not ready to use
+# perm 只链接 basic（stringlist / str_to_wstr）；
+# platform 对它是**头依赖**（只用 OS_* 宏与 fs 别名，不调用 platform 的函数，故不 link）。
+# Windows 下另需 Advapi32（SID / token）与 Shell32（ShellExecuteEx）。
+add_library(perm STATIC src/perm.cpp)
+# process 两个平台都有实现（Windows 走匿名管道 + WaitForMultipleObjects，Unix 走 pipe/fork
+# + poll），头文件本身平台无关：native handle 以 std::intptr_t 传递，不引入 windows.h。
+# 它用 platform::windows::TranslateErrorW 把 Win32 错误码转成文本，故私有链接 platform。
+add_library(process STATIC src/process.cpp)
+target_link_libraries(process PUBLIC basic PRIVATE platform)
 add_library(arguments STATIC src/arguments.cpp)
 add_library(ini STATIC src/ini.cpp)
 add_library(xml STATIC src/xml.cpp)
+# xml2 是保真 XML 模块，标准库自包含（不依赖 basic）
+add_library(xml2 STATIC src/xml2.cpp)
 add_library(abstract STATIC src/abstract.cpp)
 add_library(debug STATIC src/debug.cpp)
-add_library(stream STATIC src/stream.cpp)
 add_library(console STATIC src/console.cpp)
 add_library(aes STATIC src/aes.cpp)
 add_library(keydb STATIC src/keydb.cpp)
@@ -103,15 +119,27 @@ add_library(condition STATIC src/condition.cpp src/condition_parser.cpp)
 add_library(filesystem STATIC src/filesystem.cpp)
 add_library(datauri STATIC src/datauri.cpp)
 add_library(json STATIC src/json.cpp)
+add_library(toml STATIC src/toml.cpp)
 add_library(i18n STATIC src/i18n.cpp)
 add_library(yaml STATIC src/yaml.cpp)
 add_library(bitmap STATIC src/bitmap.cpp)
 add_library(qrcode STATIC src/qrcode.cpp)
+# png 依赖 bitmap（像素容器）、zlib（IDAT 就是 zlib 流）、crc32（块校验）
+add_library(png STATIC src/png.cpp)
+
+# xkeydb 是 keydb 的另一个实现：值用 variant，尺寸用固定 64 位，文件可加密 / 压缩 / 校验
+add_library(xkeydb STATIC src/xkeydb.cpp)
 
 add_library(fileio STATIC src/fileio.cpp)
 add_library(file STATIC src/file.cpp)
 add_library(filepack STATIC src/filepack.cpp)
 add_library(uri STATIC src/uri.cpp)
+
+# pipe 是 Windows 命名管道的封装；POSIX 上它什么都不定义，只发一条提示，
+# 所以源文件在那边编成空对象（静态库在两边都存在，方便写可移植代码）。
+add_library(pipe STATIC src/pipe.cpp)
+target_link_libraries(pipe PUBLIC basic)
+target_link_libraries(pipe PRIVATE platform)
 
 add_library(network_core STATIC src/network.cpp)
 add_library(network_dns STATIC src/dns.cpp)
@@ -123,11 +151,17 @@ add_library(network_http STATIC
     src/httpserver.cpp
     src/httpclient.cpp
 )
+# httpclient/httpserver 基于 tcp::client/server（network_tcp）与 transport_interface
+# （basic）；依赖声明为 PUBLIC，find_package 消费方才能自动带上这些库
+target_link_libraries(network_http PUBLIC basic network_core network_tcp)
+
+add_library(network_io STATIC src/network_io.cpp)
+target_link_libraries(network_io PUBLIC network_http network_tcp uri fileio basic)
 
 # Aggregate target — link this to get all network functionality
 add_library(network INTERFACE)
 target_link_libraries(network INTERFACE
-    network_core network_dns network_tcp network_udp network_http
+    network_core network_dns network_tcp network_udp network_http network_io
 )
 
 # 禁用 MSVC 的显式模板实例化警告
@@ -138,6 +172,8 @@ endif()
 # 库依赖关系
 target_link_libraries(logc PUBLIC logt)
 target_link_libraries(hmac INTERFACE api basic)
+# compression 的内容均为 header-only（provider 的类型擦除层），只依赖 basic
+target_link_libraries(compression INTERFACE api basic)
 
 # 平台依赖
 target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要平台相关支持
@@ -149,15 +185,16 @@ target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要
 # datauri 依赖
 target_link_libraries(datauri PUBLIC basic)
 
-# network_tcp uses stream for basic_sclistream/basic_sclostream
-target_link_libraries(network_tcp PUBLIC stream)
+# network_tcp uses basic for the virtual stream interface (basic_istream/basic_ostream)
+# and depends on network_core/dns for addresses and name resolution
+target_link_libraries(network_tcp PUBLIC basic network_core network_dns)
 
 # basic 库依赖关系
 foreach(target
     regexfilter logc sha256 sha512 sha1 crc32 arguments ini abstract
-    xml keydb condition datauri json i18n yaml aes
-    fileio file filepack uri
-    bitmap qrcode
+    xml keydb perm condition datauri json toml i18n yaml aes
+    fileio file filepack uri zlib
+    bitmap qrcode png xkeydb
 )
     target_link_libraries(${target} PUBLIC basic)
 endforeach()
@@ -165,8 +202,21 @@ endforeach()
 # qrcode 依赖 bitmap（调用 bitmap<bool> 的成员实现）
 target_link_libraries(qrcode PUBLIC bitmap)
 
+# png 在 bitmap 上工作，并且自己调 zlib / crc32
+target_link_libraries(png PUBLIC bitmap zlib crc32)
+
+# xkeydb 用 aes 加解密，用 sha256 + hmac 做 tag / 密钥校验，用 crc32 做无密钥校验，
+# 用 compression 选定 / 注册压缩算法（内置的 zlib 通过它用），并用 fileio 整读整写文件
+# （Windows 的 flush 走 kernel32 的 FlushFileBuffers，不需要额外 link）
+target_link_libraries(xkeydb PUBLIC aes sha256 hmac crc32 zlib fileio compression)
+
 # file 额外依赖 fileio
 target_link_libraries(file PUBLIC fileio)
+
+# perm 在 Windows 上使用 SID / token 查询（Advapi32）与 ShellExecuteEx 提权（Shell32）
+if(WIN32)
+    target_link_libraries(perm PRIVATE advapi32 shell32)
+endif()
 
 # json 额外依赖
 target_link_libraries(json PUBLIC datauri)
@@ -183,11 +233,11 @@ target_compile_definitions(json PUBLIC
 # 库列表
 set(TARGET_LIST
     sha256 sha512 sha1 crc32 basic indexer regexfilter
-    logt logc platform arguments ini abstract xml debug stream
-    console aes keydb types condition filesystem datauri json i18n yaml
-    fileio file filepack uri
-    network_core network_dns network_tcp network_udp network_http
-    bitmap qrcode
+    logt logc platform perm process arguments ini abstract xml xml2 debug
+    console aes keydb types condition filesystem datauri json toml i18n yaml
+    fileio file filepack uri pipe
+    network_core network_dns network_tcp network_udp network_http network_io
+    bitmap qrcode zlib png xkeydb
 )
 
 # 安装目标
@@ -264,6 +314,12 @@ configure_package_config_file(
 # 安装配置文件
 install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/SharedCppLib2Config.cmake  # 安装生成的配置文件
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
+)
+
+# 安装便捷 CMake 脚本（由 Config.cmake 引入，例如 i18n_copy_lang）
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/i18n.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
 )
 

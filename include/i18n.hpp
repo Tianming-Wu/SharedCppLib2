@@ -27,6 +27,7 @@
 
 #pragma once
 
+#include <filesystem>
 #include <map>
 #include <vector>
 
@@ -80,6 +81,17 @@ public:
     // You can also use system_locale() to get the system locale, and work with the config.
     void autoLoad();
 
+    /// @brief Set the folder that holds translation files.
+    /// Translations are looked up as "<folder>/<lang_code>.json"; the default is
+    /// "lang", i.e. a "lang" directory relative to the current working directory.
+    /// An absolute path is allowed too, so it can point at the executable's own
+    /// directory (see the i18n_copy_lang CMake helper for getting the files there).
+    /// @note Global setting (i18n is a singleton); affects subsequent load() calls.
+    static void set_lang_folder(const std::filesystem::path& folder);
+
+    /// @brief The folder currently used for translation lookup.
+    static const std::filesystem::path& lang_folder();
+
     // Load translation file based on language code, e.g. "en-US", "zh-CN", etc.
     // This does not need to be a valid system language code, as long as the corresponding translation file exists.
     /// @return true if the file was loaded successfully, false if not found or parse error.
@@ -117,6 +129,8 @@ public:
 
 private:
     static i18n* trInstance;
+    static std::filesystem::path langFolder;   // where "<lang_code>.json" lives
+
     bool m_valid = false;
     std::map<std::wstring, tr_entry> entries;
 

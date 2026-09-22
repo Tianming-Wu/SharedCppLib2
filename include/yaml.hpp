@@ -6,11 +6,12 @@
     FULL_FEATURED: NO
 
     [SCL_STANDALONE_MODULE]
-    version: 0.1.0
+    version: 0.2.0
 */
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <map>
@@ -22,6 +23,8 @@
 #ifdef __cpp_lib_generator
     #include <generator>
 #endif
+
+using std::nullptr_t;
 
 namespace scl2::yaml {
 
@@ -164,6 +167,29 @@ public:
     bool operator==(const value& other) const;
     bool operator!=(const value& other) const { return !(*this == other); }
 
+    // ---- assign into a user variable ----
+    /// @brief Write this value into @p dest, converting to @p dest's type.
+    ///        Works with concrete targets and with std::variant targets (picks
+    ///        the matching alternative). @throw std::runtime_error on mismatch.
+    template<typename T>
+    void assign_to(T& dest) const {
+        std::visit([&](const auto& src) {
+            using SRC = std::decay_t<decltype(src)>;
+            constexpr bool string_exact = std::is_same_v<T, std::string> && std::is_same_v<SRC, std::string>;
+            constexpr bool bool_exact   = std::is_same_v<T, bool> && std::is_same_v<SRC, bool>;
+            if constexpr (string_exact || bool_exact) {
+                dest = src;
+            } else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, bool>) {
+                // never allow narrowing like int -> char (string::operator=(char)) or int -> bool
+                throw std::runtime_error("yaml: assign_to: value type is not assignable to the target");
+            } else if constexpr (std::is_assignable_v<T&, const SRC&>) {
+                dest = src;
+            } else {
+                throw std::runtime_error("yaml: assign_to: value type is not assignable to the target");
+            }
+        }, _value);
+    }
+
     // alias
 
     const value& resolve() const;
@@ -190,7 +216,9 @@ public:
         bool compact = false; // minimal whitespace between top-level items
     };
 
-    std::string toString(const value& v, config cfg = {});
+    static const config default_conf;
+
+    std::string toString(const value& v, config cfg = default_conf);
 
 private:
     void writeValue(const value& v, int level);

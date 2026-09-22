@@ -3,8 +3,9 @@
 
     Provides a pixel-templated bitmap container:
 
-      bitmap<Pixel>  generic color bitmap (any pixel type, e.g. scl2::color
-                     for RGB / RGBA / CMYK).
+      bitmap<Pixel>  generic bitmap for any pixel type. For colour images the
+                     pixel type is scl2::rgba8 (dense 4-byte RGBA, no type tag);
+                     see color.hpp for why scl2::color is a poor per-pixel type.
       bitmap<bool>   (alias bitmap_1c) 1-bit packed monochrome with BMP I/O,
                      and configurable row alignment (byte / 32-bit rows) for
                      MCU / framebuffer use.
@@ -17,22 +18,26 @@
     (see drawer.hpp) render onto any of these surfaces without knowing the
     concrete pixel storage.
 
-    File support: BMP (1-bit). png, jpg, jpeg, and gif are not supported yet.
+    File support: BMP (1-bit, 8-bit, 24-bit, 32-bit). PNG lives in the
+    separate png module (see doc/png.md). jpg, jpeg, and gif are not supported.
 */
 
 #pragma once
 
 #include <algorithm>
 #include <array>
+#include <concepts>
 #include <cstdint>
-#include <vector>
 #include <functional>
+#include <span>
 #include <stdexcept>
+#include <vector>
 
 #include "basics.hpp"
 #include "scldefs.hpp"
 #include "bytearray.hpp"
 #include "bits.hpp"
+#include "color.hpp"
 
 namespace scl2 {
 
@@ -105,6 +110,37 @@ public:
 
     std::pair<size_t, size_t> getSize() const { return { m_width, m_height }; }
     size_t pixelCount() const { return m_width * m_height; }
+
+    // ── Raw row / buffer access ──────────────────────────────────────
+    //
+    // For bulk fills (image codecs, loaders). Walking set_pixel()/get_pixel()
+    // pays a bounds check and a virtual call per pixel; a span pays one bounds
+    // check per row and then plain pointer arithmetic.
+    //
+    // std::span is a non-owning (pointer, length) view — the same cost as a raw
+    // pointer, but it carries the length, supports range-for, and
+    // std::as_writable_bytes(row(y)) yields a std::byte view for free.
+    //
+    // Caveat: spans are views, not containers. row(y)[width()] silently reads
+    // into the next row (it is only out of bounds on the last row).
+
+    /// @brief Row `y` as a writable view of `width()` pixels.
+    /// @throws std::out_of_range if y >= height().
+    std::span<Pixel> row(size_t y) {
+        __check_row(y);
+        return std::span<Pixel>(m_data).subspan(y * m_width, m_width);
+    }
+    /// @brief Row `y` as a read-only view of `width()` pixels.
+    /// @throws std::out_of_range if y >= height().
+    std::span<const Pixel> row(size_t y) const {
+        __check_row(y);
+        return std::span<const Pixel>(m_data).subspan(y * m_width, m_width);
+    }
+
+    /// @brief The whole pixel buffer, row-major, `width() * height()` pixels.
+    std::span<Pixel> data() { return std::span<Pixel>(m_data); }
+    /// @brief The whole pixel buffer, read-only.
+    std::span<const Pixel> data() const { return std::span<const Pixel>(m_data); }
 
     /// @brief Resize, discarding existing pixel data.
     void resize(size_t width, size_t height) {
@@ -208,11 +244,22 @@ public:
         return result;
     }
 
+    /// @brief Parse a color BMP (8/24/32-bit) into an rgba8 bitmap.
+    /// @note Only meaningful for Pixel == rgba8; other Pixel types fail to
+    /// compile (use bitmap<bool>::fromBmp for 1-bit).
+    static bitmap fromBmp(const scl2::bytearray& data);
+
 protected:
     // Throws std::out_of_range if (x, y) is out of bounds.
     void __access_check(size_t x, size_t y) const {
         if (x >= m_width || y >= m_height)
             throw std::out_of_range("bitmap: pixel coordinates out of bounds");
+    }
+
+    // Throws std::out_of_range if y is out of bounds.
+    void __check_row(size_t y) const {
+        if (y >= m_height)
+            throw std::out_of_range("bitmap: row index out of bounds");
     }
 
     // Copy src content into dst (dst already sized) honoring alignment.
@@ -476,5 +523,96 @@ private:
     std::array<std::byte, byte_count> m_data{};
 };
 
+// ---- non-1-bit BMP loading (Pixel == rgba8) ----
 
+/// @brief Parse a color BMP (8/24/32-bit, BI_RGB) into an rgba8 bitmap.
+/// Handles top-down / bottom-up rows, DWORD-aligned rows, and the 8-bit
+/// palette. BMP stores pixels as BGR / BGRA; rgba8 stores R,G,B,A, so the
+/// red and blue channels are swapped on load.
+template <typename Pixel>
+bitmap<Pixel> bitmap<Pixel>::fromBmp(const scl2::bytearray& data)
+{
+    static_assert(std::same_as<Pixel, rgba8>,
+        "bitmap::fromBmp for color supports only Pixel == rgba8; "
+        "use bitmap<bool>::fromBmp for 1-bit BMP");
+    if (data.size() < 14 + 40) {
+        throw std::invalid_argument("fromBmp: data too small for a BMP header");
+    }
+    const auto rd_u16 = [&](size_t off) -> uint16_t {
+        return static_cast<uint16_t>(static_cast<uint8_t>(data[off]))
+             | static_cast<uint16_t>(static_cast<uint8_t>(data[off + 1])) << 8;
+    };
+    const auto rd_u32 = [&](size_t off) -> uint32_t {
+        uint32_t v = 0;
+        for (int i = 0; i < 4; ++i)
+            v |= static_cast<uint32_t>(static_cast<uint8_t>(data[off + i])) << (8 * i);
+        return v;
+    };
+
+    if (rd_u16(0) != 0x4D42) throw std::invalid_argument("fromBmp: not a BMP file (bad signature)");
+    const uint32_t off_bits = rd_u32(10);
+    const uint32_t info_size = rd_u32(14);
+    const int32_t bi_width  = static_cast<int32_t>(rd_u32(18));
+    const int32_t bi_height = static_cast<int32_t>(rd_u32(22));
+    const uint16_t planes   = rd_u16(26);
+    const uint16_t bpp      = rd_u16(28);
+    const uint32_t compression = rd_u32(30);
+
+    if (info_size < 40)   throw std::invalid_argument("fromBmp: unsupported info header");
+    if (bi_width <= 0)    throw std::invalid_argument("fromBmp: invalid width");
+    if (bi_height == 0)   throw std::invalid_argument("fromBmp: invalid height");
+    if (planes != 1)      throw std::invalid_argument("fromBmp: only 1-plane BMP supported");
+    if (bpp != 8 && bpp != 24 && bpp != 32)
+        throw std::invalid_argument("fromBmp: unsupported bit depth (8/24/32)");
+    if (compression != 0) throw std::invalid_argument("fromBmp: only uncompressed BMP supported");
+
+    const size_t w = static_cast<size_t>(bi_width);
+    const size_t h = static_cast<size_t>(bi_height < 0
+                        ? -static_cast<int64_t>(bi_height)
+                        : static_cast<int64_t>(bi_height));
+    const bool top_down = bi_height < 0;
+    const size_t bytes_pp = bpp / 8;
+    const size_t padded_row = ((w * bytes_pp + 3) / 4) * 4;
+    if (off_bits + padded_row * h > data.size()) {
+        throw std::invalid_argument("fromBmp: pixel data truncated");
+    }
+
+    // Palette (8-bit): BGRA entries located right after the info header.
+    std::array<rgba8, 256> palette{};
+    if (bpp == 8) {
+        const size_t pal = 14 + info_size;
+        for (size_t i = 0; i < 256 && pal + i * 4 + 3 < off_bits; ++i) {
+            palette[i] = rgba8(static_cast<uint8_t>(data[pal + i * 4 + 2]),
+                               static_cast<uint8_t>(data[pal + i * 4 + 1]),
+                               static_cast<uint8_t>(data[pal + i * 4 + 0]),
+                               255);
+        }
+    }
+
+    bitmap result(w, h);
+    for (size_t y = 0; y < h; ++y) {
+        const size_t src_y = top_down ? y : (h - 1 - y);
+        const size_t row_off = off_bits + src_y * padded_row;
+        for (size_t x = 0; x < w; ++x) {
+            const size_t p = row_off + x * bytes_pp;
+            rgba8 px;
+            if (bpp == 8) {
+                px = palette[static_cast<uint8_t>(data[p])];
+            } else if (bpp == 24) {
+                px = rgba8(static_cast<uint8_t>(data[p + 2]),   // R
+                           static_cast<uint8_t>(data[p + 1]),   // G
+                           static_cast<uint8_t>(data[p]),       // B
+                           255);
+            } else { // 32
+                px = rgba8(static_cast<uint8_t>(data[p + 2]),   // R
+                           static_cast<uint8_t>(data[p + 1]),   // G
+                           static_cast<uint8_t>(data[p]),       // B
+                           static_cast<uint8_t>(data[p + 3]));  // A
+            }
+            result.set_pixel(x, y, px);
+        }
+    }
+    return result;
 }
+
+} // namespace scl2

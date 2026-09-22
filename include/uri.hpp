@@ -14,6 +14,7 @@
 
 #include <string>
 #include <optional>
+#include <cstdint>
 
 typedef std::optional<std::string> opt_string;
 

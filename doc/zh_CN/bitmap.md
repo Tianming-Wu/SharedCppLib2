@@ -21,14 +21,14 @@ target_link_libraries(target SharedCppLib2::bitmap)
 
 像素模板位图容器，附带一套轻量的光栅化工具：
 
-- `bitmap<Pixel>` — 通用位图，支持任意像素类型（`scl2::color`、`scl2::rgba8` 等）。
+- `bitmap<Pixel>` — 通用位图，支持任意像素类型；彩色图用密集的 4 字节 RGBA 存储类型 `scl2::rgba8`。
 - `bitmap<bool>`（别名 `bitmap_1c`）— 1 位打包单色位图，支持 BMP 读写和可配置的行对齐（字节 / 32 位行），适用于 MCU / 帧缓冲场景。
 - `drawer<Pixel>` — 光栅化原语（线 / 矩形 / 圆）、抗锯齿，以及 `pen` / `brush` 样式（位于 `drawer.hpp`）。
 - `bitmap_pattern<W,H>` — 便于硬编码固定图案（如二维码定位符、字形等）的 constexpr 友好单色栅格。
 
 抽象接口 `draw_target<Pixel>` 让 `drawer` 可以在不了解具体像素存储的情况下渲染到任意表面。
 
-文件支持：BMP（1 位）。尚不支持 PNG / JPG / GIF。
+文件支持：BMP（1 位、8 位、24 位、32 位）。PNG 由独立的 [`png`](png.md) 模块处理。尚不支持 JPG / GIF。
 
 ## 快速开始
 
@@ -92,6 +92,8 @@ auto tile = bm.fit_into(100, 80, scl2::Stretch::Tile);    // 平铺
 |--------|-------------|
 | `bitmap(w, h, init)` | 用填充值构造 |
 | `set_pixel(x, y, v)` / `get_pixel` | 访问像素（越界抛出异常） |
+| `row(y)` | 取一整行为 `std::span`，跳过逐像素边界检查 |
+| `data()` | 取整个像素缓冲为 `std::span` |
 | `width()` / `height()` / `getSize()` | 尺寸 |
 | `resize(w, h)` | 丢弃内容并调整大小 |
 | `resize(w, h, align)` | 保留内容并按对齐方式调整大小 |

@@ -1,7 +1,5 @@
 /*
     Basic utilities and definitions for SharedCppLib2.
-    types:
-        std::rect
     link target:
         SharedCppLib2::basic
 */
@@ -14,15 +12,7 @@
 
 #include "version.hpp"
 
-namespace std {
-
-// Deprecated: use scl2::Rect in scltypes.hpp instead.
-// Will be removed in future versions.
-struct rect {
-    int x, y, w, h;
-    rect() {}
-    rect(int x, int y, int w, int h) : x(x), y(y), w(w), h(h) {}
-};
+namespace scl2 {
 
 template<typename T>
 requires requires(const T& t, std::stringstream& test_ss) { test_ss << t; }
@@ -31,8 +21,6 @@ std::string streamed_to_string(const T& value) {
     ss_ << value;
     return ss_.str();
 }
-
-#ifndef lower
 
 inline std::string lower(const std::string& orig) {
     constexpr int offset = 'a' - 'A';
@@ -52,10 +40,6 @@ inline std::wstring lower(const std::wstring& orig) {
     return result;
 }
 
-#endif // lower
-
-#ifndef upper
-
 inline std::string upper(const std::string& orig) {
     constexpr int offset = 'A' - 'a';
     std::string result = orig;
@@ -73,8 +57,6 @@ inline std::wstring upper(const std::wstring& orig) {
     }
     return result;
 }
-
-#endif // upper
 
 // Return true if the character c is in the string ms, otherwise return false.
 inline bool charmatch(char c, std::string ms) {
@@ -102,7 +84,15 @@ inline size_t numberof(wchar_t c, std::wstring ms) {
     return result;
 }
 
-}; // namespace std
+/// Get the version string of SharedCppLib2
+/// @return Version in format "major.minor.patch"
+std::string version();
+
+/// Get detailed information about SharedCppLib2
+/// @return Detailed version and build information
+std::string about();
+
+}; // namespace scl2
 
 
 #ifdef ENABLE_RUNONCE_X
@@ -165,15 +155,3 @@ std::wstring prettySizeW(size_t bytes, bool isi = false);
 #define enable_move_only(CLASS) \
     disable_copy(CLASS) \
     enable_move(CLASS)
-
-namespace scl2 {
-
-    /// Get the version string of SharedCppLib2
-/// @return Version in format "major.minor.patch"
-std::string version();
-
-/// Get detailed information about SharedCppLib2
-/// @return Detailed version and build information
-std::string about();
-
-} // namespace scl2

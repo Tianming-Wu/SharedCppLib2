@@ -7,7 +7,7 @@
 #include <functional>
 #include <sstream>
 
-namespace xml
+namespace scl2::xml
 {
 
 node node::create_comment(const std::string& text) {

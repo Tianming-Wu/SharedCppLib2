@@ -239,6 +239,8 @@ std::generator<std::pair<const std::string&, const json_value&>> object_members(
 size_t size() const;       // 数组/对象大小、字符串长度，或 0
 void clear();              // 重置为 null
 json_value_type type() const;
+
+template<typename T> void assign_to(T& dest) const;  // 写入用户变量（具体类型或 std::variant）
 ```
 
 ### json（继承自 json_value）

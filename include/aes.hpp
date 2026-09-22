@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "encryption_api.hpp"
 #include "bytearray.hpp"
+#include "encryption_api.hpp"
 
 namespace scl2 { inline namespace crypto {
 

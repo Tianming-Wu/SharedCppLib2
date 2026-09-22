@@ -1,7 +1,8 @@
 #include "ansiio.hpp"
 #include <unordered_map>
 
-namespace scl2::ansi {
+namespace scl2 {
+inline namespace ansi {
 
 
 int map_system_color(const color& c, bool is_background) {
@@ -51,6 +52,7 @@ std::string to_ansi_code(const color& c, const color& b) {
                 break;
             case ColorType::Style:
                 throw std::invalid_argument("Style colors cannot be converted to ANSI codes.");
+            default: break;  
         }
     }
 
@@ -68,6 +70,7 @@ std::string to_ansi_code(const color& c, const color& b) {
                 break;
             case ColorType::Style:
                 throw std::invalid_argument("Style colors cannot be converted to ANSI codes.");
+            default: break;
         }
     }
 
@@ -274,6 +277,7 @@ std::string style_to_sgr(const text_style& style)
                 add(std::to_string(map_system_color(style.text_color, false))); break;
             case ColorType::Style:
                 throw std::invalid_argument("Style colors cannot be converted to ANSI codes.");
+            default: break;
         }
     }
 
@@ -290,6 +294,7 @@ std::string style_to_sgr(const text_style& style)
                 add(std::to_string(map_system_color(style.background_color, true))); break;
             case ColorType::Style:
                 throw std::invalid_argument("Style colors cannot be converted to ANSI codes.");
+            default: break;
         }
     }
 
@@ -371,4 +376,5 @@ void progress_bar_texted(int current, int all, int length) {
     std::flush(std::cout); // 刷新输出
 }
 
-} // namespace scl2::ansi
+} // namespace ansi
+} // namespace scl2

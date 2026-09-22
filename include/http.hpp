@@ -3,8 +3,9 @@
     Tianming Wu <https://github.com/Tianming-Wu> 2026.2.9
 
     Supports HTTP/1.0 and HTTP/1.1, with basic request parsing and serialization.
-    Future versions may add support for HTTP/2 and HTTP/3, as well as more
-    advanced features like chunked transfer encoding, content negotiation, etc.
+    Response bodies may be framed by Content-Length, by Transfer-Encoding:
+    chunked (decoded transparently in network::http::client), or read until
+    the connection closes. Future versions may add support for HTTP/2 and HTTP/3.
 
 */
 

@@ -424,7 +424,7 @@ bool database::writePolicy(policy p) const
     if(m_file.is_open()) {
         std::streampos old_pos = m_file.tellp();
 
-        m_file.seekp(offsetof(header, header::pol)); // directly write to policy part of header
+        m_file.seekp(offsetof(header, pol)); // directly write to policy part of header
         m_file.write((char*)&lp, sizeof(lp));
         m_file.flush();
 
@@ -442,7 +442,7 @@ policy database::readPolicy() const
     if(m_file.is_open()) {
         std::streampos old_pos = m_file.tellg();
 
-        m_file.seekg(offsetof(header, header::pol)); // directly read from policy part of header
+        m_file.seekg(offsetof(header, pol)); // directly read from policy part of header
         libpolicy lp;
         m_file.read((char*)&lp, sizeof(lp));
 

@@ -2,7 +2,7 @@
     Drawer module for SharedCppLib2.
 
     Rasterization primitives (pixel / line / rectangle / circle) that render
-    onto any draw_target<Pixel> surface (e.g. bitmap_1c, bitmap<scl2::color>,
+    onto any draw_target<Pixel> surface (e.g. bitmap_1c, bitmap<scl2::rgba8>,
     or any custom surface implementing draw_target<Pixel>).
 
     The circle algorithm is ported from the CBitmap project: instead of the

@@ -14,19 +14,28 @@
 namespace scl2 {
 
 /*
-    Alignment enum for SharedCppLib2.
+    Filesystem segment
+*/
 
-    This enum defines various alignment options that can be used
-    in different contexts, such as text alignment, image alignment,
-    or UI element alignment.
+enum FileWriteOptions : uint8_t {
+    FW_Null = 0,
+    Append = 1,
+    NeverOverride = 2,
+    AlwaysOverride = 3,
+};
 
-    #Capacity : 5 / 8 bits
 
+/*
+    UI related segment
+*/
+
+/*
+    5 of 8 bits used.
     May change in the future version to be more compact and efficient.
     The current implementation wastes some bits, and can have self-conflicting values.
 */
 enum Alignment : uint8_t {
-    Null = 0,
+    None = 0,
 
     Left = 1,
     Right = 1 << 1,
@@ -47,21 +56,18 @@ enum Alignment : uint8_t {
 scl2_enum_bitopex(Alignment)
 
 /*
-    Image scaling / fill modes, used when placing an image onto a region of a
-    different size — WPF Stretch-style naming, extended with wallpaper modes:
-
-      - Fill    : stretch to fill the region exactly (distorts aspect ratio)
-      - Cover   : scale to cover the region, keeping aspect ratio (crops overflow)
-      - Contain : scale to fit inside the region, keeping aspect ratio (letterboxes)
-      - Center  : keep the original size, centered in the region
-      - Tile    : repeat the original image in a grid
+    - Fill    : stretch to fill the region exactly (distorts aspect ratio)
+    - Cover   : scale to cover the region, keeping aspect ratio (crops overflow)
+    - Contain : scale to fit inside the region, keeping aspect ratio (letterboxes)
+    - Center  : keep the original size, centered in the region
+    - Tile    : repeat the original image in a grid
 */
 enum class Stretch : uint8_t {
-    Fill,
-    Cover,
-    Contain,
-    Center,
-    Tile,
+    Fill = 0,
+    Cover = 1,
+    Contain = 2,
+    Center = 3,
+    Tile = 4,
 };
 
 } // namespace scl2

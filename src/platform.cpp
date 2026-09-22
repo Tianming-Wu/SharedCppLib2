@@ -97,6 +97,58 @@ fs::path findExecutableInPath(const std::string &name)
 #ifdef OS_WINDOWS
 namespace windows {
 
+namespace {
+
+/// FormatMessage 的结果尾部带换行，统一去掉
+void trimTrailingCrLf(std::string& s) {
+    while (!s.empty() && (s.back() == '\n' || s.back() == '\r')) {
+        s.pop_back();
+    }
+}
+
+void trimTrailingCrLf(std::wstring& s) {
+    while (!s.empty() && (s.back() == L'\n' || s.back() == L'\r')) {
+        s.pop_back();
+    }
+}
+
+} // namespace
+
+std::wstring TranslateErrorW(DWORD errorCode) {
+    if (errorCode == 0) {
+        return std::wstring();
+    }
+
+    LPWSTR messageBuffer = nullptr;
+
+    // FORMAT_MESSAGE_ALLOCATE_BUFFER 要求把「缓冲区指针的地址」当作 LPWSTR 传入，
+    // 因此这里的 reinterpret_cast 是 API 约定，不是笔误。
+    DWORD size = FormatMessageW(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        nullptr,
+        errorCode,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        reinterpret_cast<LPWSTR>(&messageBuffer),
+        0,
+        nullptr
+    );
+
+    std::wstring result;
+
+    if (size > 0 && messageBuffer != nullptr) {
+        result.assign(messageBuffer, size);
+        trimTrailingCrLf(result);
+    }
+
+    if (messageBuffer != nullptr) {
+        LocalFree(messageBuffer);
+    }
+
+    return result;   // 获取失败则返回空字符串
+}
+
 std::string TranslateError(DWORD errorCode) {
     if (errorCode == 0) {
         return "";
@@ -121,12 +173,7 @@ std::string TranslateError(DWORD errorCode) {
     if (size > 0 && messageBuffer != nullptr) {
         // 直接使用系统返回的消息，只移除换行符
         result.assign(messageBuffer, size);
-        
-        // 移除尾部换行符
-        while (!result.empty() && 
-               (result.back() == '\n' || result.back() == '\r')) {
-            result.pop_back();
-        }
+        trimTrailingCrLf(result);
     } else {
         result = "";  // 获取失败返回空字符串
     }

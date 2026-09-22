@@ -55,6 +55,9 @@
 
 #pragma once
 
+#include <cstdint>
+#include <cstddef>
+
 #include "scalable.hpp"
 #include "structural_binding.hpp"
 

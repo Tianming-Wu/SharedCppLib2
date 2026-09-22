@@ -7,7 +7,7 @@
     - A single socket can communicate with multiple peers
     - Datagrams may be lost, duplicated, or arrive out of order
 
-    The UDP socket implements basic_sclstream so it can be used as a
+    The UDP socket implements scl2::basic_iostream so it can be used as a
     generic stream, but with UDP-specific semantics:
     - read(n)  reads at most n bytes from one datagram (rest is discarded)
     - readAll() reads one complete datagram
@@ -64,7 +64,7 @@ struct datagram {
 ///   sock.write(scl2::bytearray("hello"));
 ///   auto reply = sock.readAll();
 /// @endcode
-class socket : public basic_sclstream
+class socket : public scl2::basic_iostream
 {
 public:
     socket();
@@ -114,7 +114,7 @@ public:
     /// @return The received datagram. data.empty() on timeout.
     datagram receiveFrom(std::chrono::milliseconds timeout);
 
-    // ---- basic_sclstream interface ----
+    // ---- basic_iostream interface ----
 
     /// @brief Check if the socket is valid (bound or connected)
     bool valid() override;

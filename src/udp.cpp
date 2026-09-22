@@ -277,7 +277,7 @@ datagram socket::receiveFrom(std::chrono::milliseconds timeout)
     return dg;
 }
 
-// ---- basic_sclstream ----
+// ---- basic_iostream ----
 
 bool socket::valid()
 {

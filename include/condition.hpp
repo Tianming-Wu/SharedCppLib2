@@ -17,6 +17,7 @@
 #include <set>
 #include <vector>
 #include <map>
+#include <memory>
 
 #include "bytearray.hpp"
 #include "api.hpp"

@@ -90,7 +90,7 @@ auto maybeEnabled = cfg.getValueAsBoolOptional("Feature", "Enable");
 ## `stringlist` and `bytearray` support
 
 - `getValueAsStringList(...)` / `getValueAsStringListOptional(...)`: parse stringlist formats produced by `stringlist::pack()`.
-- `getValueAsByteArray(...)` / `getValueAsByteArrayOptional(...)`: parse hex-encoded byte arrays produced by `scl2::bytearray::tohex()`.
+- `getValueAsByteArray(...)` / `getValueAsByteArrayOptional(...)`: parse hex-encoded byte arrays produced by `scl2::bytearray::toHex()`.
 
 Example:
 ```cpp
