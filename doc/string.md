@@ -2,7 +2,7 @@
 
 + Name: string
 + Namespace: `scl2`
-+ Document Version: `1.0.0`
++ Document Version: `1.1.0`
 
 ## CMake Info
 
@@ -124,6 +124,10 @@ std::string  scl2::wstr_to_str(const std::wstring& wstr);
 |----------|---------------|
 | Windows | `MultiByteToWideChar` / `WideCharToMultiByte` with `CP_UTF8` |
 | Unix | Hand-rolled UTF-8 ↔ UTF-32 (no deprecated `<codecvt>`) |
+
+> [!NOTE]
+> Invalid UTF-8 (a truncated sequence, a stray continuation byte) and wide code units that
+> are not Unicode scalar values are converted to `U+FFFD` instead of being rejected.
 
 **Example:**
 ```cpp

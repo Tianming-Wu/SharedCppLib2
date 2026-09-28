@@ -73,6 +73,68 @@ template class basic_string<wchar_t>;
 
 // --- String conversion utilities ---
 
+namespace {
+
+// Append one Unicode code point to a UTF-8 string.
+// Code points that are not Unicode scalar values become U+FFFD.
+// (The standalone json module carries its own copy of these two helpers,
+//  since it must not depend on this module.)
+void append_utf8(std::string& out, uint32_t codepoint)
+{
+    if (codepoint > 0x10FFFF || (codepoint >= 0xD800 && codepoint <= 0xDFFF))
+        codepoint = 0xFFFD;
+
+    if (codepoint <= 0x7F) {
+        out += static_cast<char>(codepoint);
+    } else if (codepoint <= 0x7FF) {
+        out += static_cast<char>(0xC0 | (codepoint >> 6));
+        out += static_cast<char>(0x80 | (codepoint & 0x3F));
+    } else if (codepoint <= 0xFFFF) {
+        out += static_cast<char>(0xE0 | (codepoint >> 12));
+        out += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (codepoint & 0x3F));
+    } else {
+        out += static_cast<char>(0xF0 | (codepoint >> 18));
+        out += static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F));
+        out += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (codepoint & 0x3F));
+    }
+}
+
+// Decode one UTF-8 sequence and advance p past it.
+// Truncated or invalid input yields U+FFFD and consumes one byte, so the
+// caller never reads past the end and never sees a partial sequence.
+uint32_t next_utf8(const uint8_t*& p, const uint8_t* end)
+{
+    const uint8_t b = *p++;
+    if (b < 0x80) return b;
+
+    int extra = 0;
+    uint32_t codepoint = 0;
+    if      ((b & 0xE0) == 0xC0) { extra = 1; codepoint = b & 0x1F; }
+    else if ((b & 0xF0) == 0xE0) { extra = 2; codepoint = b & 0x0F; }
+    else if ((b & 0xF8) == 0xF0) { extra = 3; codepoint = b & 0x07; }
+    else return 0xFFFD;
+
+    for (int i = 0; i < extra; ++i) {
+        if (p >= end) return 0xFFFD;
+        const uint8_t nb = *p;
+        if ((nb & 0xC0) != 0x80) return 0xFFFD;
+        ++p;
+        codepoint = (codepoint << 6) | (nb & 0x3F);
+    }
+
+    // Only the shortest form is valid UTF-8.
+    static constexpr uint32_t minimum[4] = { 0x00, 0x80, 0x800, 0x10000 };
+    if (codepoint < minimum[extra]) return 0xFFFD;
+
+    if (codepoint > 0x10FFFF || (codepoint >= 0xD800 && codepoint <= 0xDFFF))
+        return 0xFFFD;
+    return codepoint;
+}
+
+} // namespace
+
 std::wstring str_to_wstr(const std::string& str)
 {
 #ifdef OS_WINDOWS
@@ -82,29 +144,13 @@ std::wstring str_to_wstr(const std::string& str)
     MultiByteToWideChar(CP_UTF8, 0, str.data(), (int)str.size(), result.data(), len);
     return result;
 #else
-    if (str.empty()) return {};
+    // wchar_t is a Unicode scalar value on these platforms.
     std::wstring result;
     result.reserve(str.size());
     const auto* p = reinterpret_cast<const uint8_t*>(str.data());
     const auto* end = p + str.size();
     while (p < end) {
-        wchar_t cp;
-        if (*p < 0x80) {
-            cp = *p++;
-        } else if (*p < 0xE0) {
-            cp = static_cast<wchar_t>(*p++ & 0x1F) << 6;
-            cp |= (*p++ & 0x3F);
-        } else if (*p < 0xF0) {
-            cp = static_cast<wchar_t>(*p++ & 0x0F) << 12;
-            cp |= static_cast<wchar_t>(*p++ & 0x3F) << 6;
-            cp |= (*p++ & 0x3F);
-        } else {
-            cp = static_cast<wchar_t>(*p++ & 0x07) << 18;
-            cp |= static_cast<wchar_t>(*p++ & 0x3F) << 12;
-            cp |= static_cast<wchar_t>(*p++ & 0x3F) << 6;
-            cp |= (*p++ & 0x3F);
-        }
-        result += cp;
+        result += static_cast<wchar_t>(next_utf8(p, end));
     }
     return result;
 #endif
@@ -119,25 +165,10 @@ std::string wstr_to_str(const std::wstring& wstr)
     WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int)wstr.size(), result.data(), len, nullptr, nullptr);
     return result;
 #else
-    if (wstr.empty()) return {};
     std::string result;
     result.reserve(wstr.size() * 3);
-    for (wchar_t cp : wstr) {
-        if (cp < 0x80) {
-            result += static_cast<char>(cp);
-        } else if (cp < 0x800) {
-            result += static_cast<char>(0xC0 | (cp >> 6));
-            result += static_cast<char>(0x80 | (cp & 0x3F));
-        } else if (cp < 0x10000) {
-            result += static_cast<char>(0xE0 | (cp >> 12));
-            result += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-            result += static_cast<char>(0x80 | (cp & 0x3F));
-        } else {
-            result += static_cast<char>(0xF0 | (cp >> 18));
-            result += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
-            result += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-            result += static_cast<char>(0x80 | (cp & 0x3F));
-        }
+    for (wchar_t wc : wstr) {
+        append_utf8(result, static_cast<uint32_t>(wc));
     }
     return result;
 #endif
