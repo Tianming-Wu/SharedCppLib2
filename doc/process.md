@@ -1,13 +1,24 @@
-# Process
+# process - Subprocess management
 
-`scl2::process` starts an external program and talks to its standard streams through
-pipes. The interface follows Qt's `QProcess`, adapted to this library's synchronous,
-event-loop-free style.
++ Name: process
++ Namespace: `scl2::process`
++ Document Version: `1.0.0`
 
-* header: `process.hpp` &nbsp;·&nbsp; source: `process.cpp`
-* link target: `SharedCppLib2::process`
-* namespaces: `scl2::process`, `scl2::process_stream`
-* platforms: Windows and Unix (Linux / macOS)
+## CMake Info
+
+| Item | Value |
+|---------|---------|
+| Namespace | `SharedCppLib2` |
+| Library | `process` |
+| Dependencies | `basic`; `platform` on Windows |
+
+> [!NOTE]
+> The interface follows Qt's `QProcess`, adapted to this library's synchronous,
+> event-loop-free style: there are no signals and no callbacks, so **the blocking
+> functions are what move data** (`waitForFinished` / `waitForReadyRead`), not an event
+> loop.
+
+To include:
 
 ```cmake
 find_package(SharedCppLib2 REQUIRED)
@@ -18,14 +29,26 @@ target_link_libraries(target SharedCppLib2::process)
 #include <SharedCppLib2/process.hpp>
 ```
 
-> **Note:** the Unix side was written together with the Windows one but has not been
-> verified on real hardware yet. The API and the documented behaviour are the same on
-> both; treat places where the two diverge (`terminate`, `detach`, `startDetached`) as
-> provisional until that check has happened.
+## Description
 
----
+`scl2::process` starts an external program and talks to its standard streams through pipes.
 
-## Quick start
+- header: `process.hpp`; source: `process.cpp`
+- `scl2::process` itself inherits `scl2::basic_iostream`: reading takes from the **current
+  read channel** (stdout by default), writing goes to stdin
+- every pipe is carried by a `scl2::process_stream`, which can be **torn off** and held
+  directly
+- platforms: Windows and Unix (Linux / macOS)
+- dependencies: `basic` (`stringlist` / `bytearray` / `str_to_wstr`); on Windows
+  additionally `platform` (`TranslateErrorW`)
+
+> [!WARNING]
+> The Unix side was written together with the Windows one but has **not been verified on
+> real hardware** yet. The API and the documented behaviour are the same on both; until
+> that check has happened, treat the places where the two diverge (`terminate`, `detach`,
+> `startDetached`) as provisional.
+
+## Quick Start
 
 ```cpp
 #include <SharedCppLib2/process.hpp>
@@ -46,9 +69,7 @@ scl2::bytearray raw = p.readAllStandardOutput();
 std::string hash(reinterpret_cast<const char*>(raw.data()), raw.size());
 ```
 
----
-
-## The model
+## The Model
 
 ### `process` *is* a stream
 
@@ -84,14 +105,12 @@ A channel stream can be **torn off**: `detachStdError()` (and the stdout / stdin
 hands the `shared_ptr` over to you. The process then stops owning that channel, which
 means it is
 
-* no longer drained by `pump()`,
-* no longer waited on by `waitForFinished()` / `waitForReadyRead()`,
-* no longer closed by us.
+- no longer drained by `pump()`,
+- no longer waited on by `waitForFinished()` / `waitForReadyRead()`,
+- no longer closed by us.
 
 The process keeps a `weak_ptr`, so `stderrStream()` reports `nullptr` once you drop it,
 and `attached(channel)` answers whether the process is still in charge of a channel.
-
----
 
 ## Reference
 
@@ -159,7 +178,6 @@ Both drain **both** output channels while they wait, so a chatty child can never
 on a full pipe. There is no event loop and no signal: poll with these, or with
 `readyRead()`.
 
----
 
 ## Buffering
 
@@ -172,15 +190,13 @@ The consequence worth knowing: **while the process owns a channel it also buffer
 Reading from `stdoutStream()` by hand therefore competes with `readAllStandardOutput()`
 for the same bytes. Pick one:
 
-* use the process-level read functions, or
-* `detachStdOutput()` first, and then drive the stream yourself.
+- use the process-level read functions, or
+- `detachStdOutput()` first, and then drive the stream yourself.
 
 `available()` and `readyRead()` pull from the pipes into the buffer first, so plain
 polling works without calling a wait function.
 
----
-
-## Error handling
+## Error Handling
 
 `start()` and the wait functions report failure through `error()` rather than exceptions:
 
@@ -197,9 +213,7 @@ polling works without calling a wait function.
 `errorString()` carries the platform's own message (a Win32 error text on Windows,
 `strerror` text on Unix).
 
----
-
-## Platform notes
+## Platform Notes
 
 | operation | Windows | Unix |
 |---|---|---|
@@ -212,35 +226,35 @@ polling works without calling a wait function.
 | `detach()` | closing our handles leaves the child running | nobody reaps the child any more, so it becomes a zombie once it exits — keep `processId()` and wait for it yourself if that matters |
 | SIGPIPE | does not exist | blocked around every write, so a child that closed its stdin cannot kill us |
 
----
+## Notes
 
-## Things to watch out for
-
-* `write()` blocks when the child's stdin pipe is full (about 64KB). There is no
+- `write()` blocks when the child's stdin pipe is full (about 64KB). There is no
   asynchronous write; a child that never reads its input will stall the caller.
-* After `detach()` the child can no longer be waited for, read from or terminated.
+- After `detach()` the child can no longer be waited for, read from or terminated.
   Its exit code is out of reach.
-* `readAll()` on the process drains the current read channel only — that is why the
+- `readAll()` on the process drains the current read channel only — that is why the
   per-channel accessors exist.
-* The moved-from object of a moved `process` is inert: it reports no pid, is neither
+- The moved-from object of a moved `process` is inert: it reports no pid, is neither
   running nor finished, and will not touch the child when it is destroyed.
 
----
+## Limits / Roadmap
 
-## Limits / roadmap
-
-* No callbacks or signals; there is no event loop to deliver them from.
-* No `setEnvironment()`, no output redirection to a file, no channel forwarding
+- No callbacks or signals; there is no event loop to deliver them from.
+- No `setEnvironment()`, no output redirection to a file, no channel forwarding
   (a child sharing our console/stdout verbatim).
-* `exitcode()` does not distinguish "killed by a signal" from "not exited yet" — both
+- `exitcode()` does not distinguish "killed by a signal" from "not exited yet" — both
   are `-1` on Unix.
-* Unix support still needs its first run on real hardware.
+- Unix support still needs its first run on real hardware.
 
----
-
-## Standalone usage
+## Standalone Usage
 
 `process` is a normal library target, not a `[SCL_STANDALONE_MODULE]`: it depends on
 `basic` (`stringlist`, `bytearray`, `str_to_wstr`) and, on Windows, on `platform` for
 `TranslateErrorW`. Copy `process.hpp` / `process.cpp` into a project that already has
 those, or just link the target.
+
+## See Also
+
+- [bytearray](bytearray.md) — what `read()` / `write()` move
+- [stringlist](stringlist.md) — argument lists, and the `pack()` / `unpack()` used to build a command line on Windows
+- [standalone_module](standalone_module.md) — what a standalone module is; `process` is not one

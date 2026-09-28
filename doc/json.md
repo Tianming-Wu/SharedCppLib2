@@ -2,7 +2,7 @@
 
 + Name: json
 + Namespace: `scl2`
-+ Document Version: `1.1.0`
++ Document Version: `1.2.0`
 
 ## CMake Info
 
@@ -101,7 +101,7 @@ j["version"] = scl2::json_value(static_cast<int64_t>(2));
 j["debug"]   = scl2::json_value(true);
 
 std::string formatted = j.toString();        // Pretty-printed with indentation
-std::string compact   = j.toCompatString();  // Compact, no extra whitespace
+std::string compact   = j.toCompactString();  // Compact, no extra whitespace
 
 // File I/O
 scl2::json cfg = scl2::json::fromFile("config.json");
@@ -139,7 +139,7 @@ The same JSON structure exported with different exporter settings:
 }
 ```
 
-**Compact (`isCompat = true`):**
+**Compact (`isCompact = true`):**
 ```json
 {"debug":false,"person":{"name":"Bob","scores":[95,87]}}
 ```
@@ -178,7 +178,7 @@ The same JSON structure exported with different exporter settings:
 ```
 
 > [!TIP]
-> Use `json::toCompatString()` for the compact format. For other styles, configure a `json_exporter` instance and call `exportToString()`.
+> Use `json::toCompactString()` for the compact format. For other styles, configure a `json_exporter` instance and call `exportToString()`.
 
 ## Core API
 
@@ -254,7 +254,7 @@ static json fromFile(const std::string& filename);
 
 // Export
 std::string toString() const;          // Pretty-printed
-std::string toCompatString() const;    // Compact (no extra whitespace)
+std::string toCompactString() const;    // Compact (no extra whitespace)
 std::string toFile(const std::string& filename) const;
 ```
 
@@ -266,17 +266,17 @@ Controls the output format of `json::toString()`. All public members can be set 
 enum class indent_style { none, space2, space4, tab };
 
 // Factory helpers
-static json_exporter compact_exporter();   // isCompat + escapeNonAscii + none indent
+static json_exporter compact_exporter();   // isCompact + escapeNonAscii + none indent
 static json_exporter inline_exporter();    // isInline + none indent
 
 // Public fields — set these directly before calling exportToString()
-bool isCompat;             // compact output (no extra whitespace)
+bool isCompact;             // compact output (no extra whitespace)
 bool isInline;             // inline format (newlines replaced with spaces)
 bool escapeNonAscii;       // escape non-ASCII UTF-8 as \uXXXX for max portability
 indent_style indentStyle;  // indent style (default: space4)
 
 std::string exportToString(const json& j);
-std::string exportToCompatString(const json& j);
+std::string exportToCompactString(const json& j);
 ```
 
 > [!NOTE]

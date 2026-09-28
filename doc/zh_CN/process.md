@@ -224,3 +224,9 @@ process 侧只保留一个 `weak_ptr`，因此你一旦丢掉它，`stderrStream
 + 没有 `setEnvironment()`，不能把输出重定向到文件，也不支持通道转发（让子进程直接共用我们的控制台）。
 + `exitcode()` 区分不了"被信号杀死"和"尚未退出" —— Unix 上两者都是 `-1`。
 + Unix 侧还等着第一次真机验证。
+
+## 相关模块
+
+- [bytearray](bytearray.md) —— `read()` / `write()` 搬运的东西
+- [stringlist](stringlist.md) —— 参数列表，以及 Windows 下拼命令行用的 `pack()` / `unpack()`
+- [standalone_module](standalone_module.md) —— 独立模块是什么；`process` 不是

@@ -6,6 +6,7 @@
 
 #include <accctrl.h>
 #include <aclapi.h>
+#include <sddl.h>
 
 #include <thread>
 #include <chrono>
@@ -302,6 +303,39 @@ void *permissions::getSecurityDescriptor() const
         }
         FreeSid(pEveryoneSid);
         return nullptr;
+    }
+    case permission_preset::Administrators: {
+        // D:(A;;GA;;;BA)(A;;GA;;;SY) - Administrators and LocalSystem, and nobody else.
+        //
+        // The SDDL is converted once and kept as a prototype, but what the caller gets is a
+        // copy: the caller owns what it is given and frees it with LocalFree (both call sites
+        // do), and a descriptor a pipe was created from has to stay alive for as long as that
+        // pipe does. Handing out the prototype itself meant the first free left a dangling
+        // pointer behind and the next one freed the same block twice - which is what took the
+        // service down on its first control-channel connection, in release builds only,
+        // because that is the only configuration where this preset is used.
+        static PSECURITY_DESCRIPTOR prototype = []() -> PSECURITY_DESCRIPTOR {
+            PSECURITY_DESCRIPTOR descriptor = nullptr;
+            if (!ConvertStringSecurityDescriptorToSecurityDescriptorA(
+                    "D:(A;;GA;;;BA)(A;;GA;;;SY)", SDDL_REVISION_1, &descriptor, nullptr)) {
+                return nullptr;
+            }
+            return descriptor;
+        }();
+
+        if (prototype == nullptr) {
+            return nullptr;
+        }
+
+        // A self-relative descriptor, so its length covers the ACL it carries as well.
+        const DWORD size = GetSecurityDescriptorLength(prototype);
+        void* copy = LocalAlloc(LPTR, size);
+        if (copy == nullptr) {
+            return nullptr;
+        }
+
+        memcpy(copy, prototype, size);
+        return copy;
     }
     case permission_preset::None:
     default:
@@ -719,6 +753,11 @@ size_t server_client::bufferSize() const
     return m_buffer_size;
 }
 
+void *server_client::nativeHandle() const
+{
+    return H(m_pipe);
+}
+
 server::server(const std::string &name, const permissions &permissions)
     : m_name(name), m_permissions(permissions), m_pipe(nullptr),
       m_connect_event(nullptr), m_stop_event(nullptr), m_overlapped_connect(nullptr)
@@ -773,9 +812,13 @@ bool server::start()
     sa.lpSecurityDescriptor = sd;
     sa.bInheritHandle = FALSE;
 
+    // FILE_FLAG_FIRST_PIPE_INSTANCE: this is the create that claims the name. A second server
+    // - in this process or in another one - fails right here instead of quietly adding
+    // instances to a name that is already being served. The instances created later, for the
+    // next connection, must not carry the flag: by then the name exists because of this one.
     m_pipe = as_winhandle(CreateNamedPipeA(
         m_name.c_str(),
-        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,  // Enable overlapped I/O
+        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,  // Enable overlapped I/O
         pipeModeFlags(m_mode),
         m_client_limit + 1,
         static_cast<DWORD>(m_buffer_size), static_cast<DWORD>(m_buffer_size),

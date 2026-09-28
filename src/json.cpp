@@ -1,6 +1,6 @@
 /*
     [SCL_STANDALONE_MODULE]
-    version: 1.9.0
+    version: 1.12.0
     cpp_generation: cxx17 - cxx23 
 */
 #include "json.hpp"
@@ -15,6 +15,54 @@
 #endif
 
 namespace scl2 {
+
+// ── internal helpers ────────────────────────────────────────────────────
+// json is a [SCL_STANDALONE_MODULE]: it may not depend on other modules, so
+// the UTF-8 conversion lives here instead of using scl2::wstr_to_str /
+// scl2::str_to_wstr from the string module.
+namespace {
+
+// Append one Unicode code point to a UTF-8 string.
+// Code points that are not Unicode scalar values become U+FFFD.
+void append_utf8(std::string& out, uint32_t codepoint)
+{
+    if (codepoint > 0x10FFFF || (codepoint >= 0xD800 && codepoint <= 0xDFFF))
+        codepoint = 0xFFFD;
+
+    if (codepoint <= 0x7F) {
+        out += static_cast<char>(codepoint);
+    } else if (codepoint <= 0x7FF) {
+        out += static_cast<char>(0xC0 | (codepoint >> 6));
+        out += static_cast<char>(0x80 | (codepoint & 0x3F));
+    } else if (codepoint <= 0xFFFF) {
+        out += static_cast<char>(0xE0 | (codepoint >> 12));
+        out += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (codepoint & 0x3F));
+    } else {
+        out += static_cast<char>(0xF0 | (codepoint >> 18));
+        out += static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F));
+        out += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (codepoint & 0x3F));
+    }
+}
+
+// Read exactly 4 hex digits, as used by \uXXXX escapes.
+uint32_t parse_hex4(const char* p)
+{
+    uint32_t value = 0;
+    for (int i = 0; i < 4; ++i) {
+        const char c = p[i];
+        uint32_t digit;
+        if      (c >= '0' && c <= '9') digit = static_cast<uint32_t>(c - '0');
+        else if (c >= 'a' && c <= 'f') digit = static_cast<uint32_t>(c - 'a' + 10);
+        else if (c >= 'A' && c <= 'F') digit = static_cast<uint32_t>(c - 'A' + 10);
+        else throw std::runtime_error("Invalid hex digit in \\u escape in JSON string");
+        value = (value << 4) | digit;
+    }
+    return value;
+}
+
+} // namespace
 
 json_pointer::json_pointer(const std::string& pointer_str)
     : pointer_str(pointer_str)
@@ -519,10 +567,10 @@ std::string json::toString() const
     return exporter.exportToString(*this);
 }
 
-std::string json::toCompatString() const
+std::string json::toCompactString() const
 {
     json_exporter exporter;
-    exporter.isCompat = true;
+    exporter.isCompact = true;
     return exporter.exportToString(*this);
 }
 
@@ -632,24 +680,29 @@ std::string json_parser::parseJsonString()
             case 'r':  result += '\r'; break;
             case 't':  result += '\t'; break;
             case 'u': {
-                // \uXXXX
+                // \uXXXX - the four hex digits follow the 'u'.
                 if (pos + 4 >= json_str.size()) {
                     throw std::runtime_error("Incomplete Unicode escape in JSON string");
                 }
-                std::string hex = json_str.substr(pos + 1, 4);
-                uint32_t codepoint = std::stoul(hex, nullptr, 16);
-                // Encode as UTF-8
-                if (codepoint <= 0x7F) {
-                    result += static_cast<char>(codepoint);
-                } else if (codepoint <= 0x7FF) {
-                    result += static_cast<char>(0xC0 | (codepoint >> 6));
-                    result += static_cast<char>(0x80 | (codepoint & 0x3F));
-                } else {
-                    result += static_cast<char>(0xE0 | (codepoint >> 12));
-                    result += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
-                    result += static_cast<char>(0x80 | (codepoint & 0x3F));
-                }
+                uint32_t codepoint = parse_hex4(json_str.data() + pos + 1);
                 pos += 4;
+
+                // A high surrogate followed by a low surrogate escape is one code point.
+                if (codepoint >= 0xD800 && codepoint <= 0xDBFF) {
+                    uint32_t low = 0;
+                    if (pos + 6 < json_str.size() &&
+                        json_str[pos + 1] == '\\' && json_str[pos + 2] == 'u') {
+                        low = parse_hex4(json_str.data() + pos + 3);
+                    }
+                    if (low >= 0xDC00 && low <= 0xDFFF) {
+                        codepoint = 0x10000 + ((codepoint - 0xD800) << 10) + (low - 0xDC00);
+                        pos += 6;
+                    } else {
+                        codepoint = 0xFFFD; // half of a surrogate pair on its own
+                    }
+                }
+
+                append_utf8(result, codepoint);
                 break;
             }
 #ifdef SCL2_JSON_ENABLE_EXTENSIONS
@@ -959,7 +1012,7 @@ bool json_parser::jisdigit(char c) const
 json_exporter json_exporter::compact_exporter()
 {
     json_exporter exporter;
-    exporter.isCompat = true;
+    exporter.isCompact = true;
     exporter.escapeNonAscii = true;
     exporter.indentStyle = indent_style::none;
     return exporter;
@@ -980,10 +1033,10 @@ std::string json_exporter::exportToString(const json &j)
     return result_str;
 }
 
-std::string json_exporter::exportToCompatString(const json &j)
+std::string json_exporter::exportToCompactString(const json &j)
 {
     result_str.clear();
-    isCompat = true;
+    isCompact = true;
     exportValue(j, 0);
     return result_str;
 }
@@ -1064,6 +1117,10 @@ std::string json_exporter::escapeJsonString(const std::string &str)
             };
             int cp = decode_utf8(i);
             if (cp >= 0) {
+                // Not a Unicode scalar value (a surrogate or out of range):
+                // write U+FFFD, the same as the parser does for such input.
+                if (cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) cp = 0xFFFD;
+
                 if (cp > 0xFFFF) {
                     // Surrogate pair for code points > U+FFFF
                     cp -= 0x10000;
@@ -1076,14 +1133,13 @@ std::string json_exporter::escapeJsonString(const std::string &str)
                     std::snprintf(buf, sizeof(buf), "\\u%04x", cp);
                     escaped += buf;
                 }
-                ++i; // decode_utf8 advanced i to the last byte
             } else {
                 // Invalid UTF-8 - escape the single byte
                 char buf[7];
                 std::snprintf(buf, sizeof(buf), "\\u%04x", c);
                 escaped += buf;
             }
-            ++i;
+            ++i; // decode_utf8 left i on the last byte of the sequence
         } else {
             // Pass through UTF-8 bytes unchanged
             escaped += static_cast<char>(c);
@@ -1097,8 +1153,8 @@ void json_exporter::exportKey(const std::string &value, size_t indentLevel)
 {
     jindent(indentLevel);
     result_str += std::string(
-        jquote(escapeJsonString(value)) +
-        (isCompat ? ":" : ": ")
+        jquote(value) + // jquote already escapes
+        (isCompact ? ":" : ": ")
     );
 }
 
@@ -1165,7 +1221,7 @@ void json_exporter::exportArray(const json_value& value, size_t indentLevel)
 void json_exporter::exportString(const json_value& value, size_t indentLevel)
 {
     (void)indentLevel;
-    result_str += jquote(escapeJsonString(value.as_string()));
+    result_str += jquote(value.as_string()); // jquote already escapes
 }
 
 void json_exporter::exportNumber(const json_value &value, size_t indentLevel)
@@ -1180,7 +1236,7 @@ void json_exporter::exportNumber(const json_value &value, size_t indentLevel)
 
 void json_exporter::jindent(size_t indentLevel)
 {
-    if (isCompat || isInline) return;
+    if (isCompact || isInline) return;
     result_str += [this, indentLevel]() {
         switch (indentStyle) {
             case indent_style::none:
@@ -1199,7 +1255,7 @@ void json_exporter::jindent(size_t indentLevel)
 
 void json_exporter::jnline()
 {
-    if (isCompat) return;
+    if (isCompact) return;
     if (isInline) { result_str += " "; return; }
     result_str += "\n";
 }
@@ -1209,6 +1265,47 @@ std::string json_exporter::jquote(const std::string &str)
     return std::string("\"" + escapeJsonString(str) + "\"");
 }
 
+namespace {
+
+#if !defined(_WIN32) && !defined(_WIN64)
+
+// Decode one UTF-8 sequence and advance p past it.
+// Truncated or invalid input yields U+FFFD and consumes one byte, so no
+// undecoded bytes are ever passed through.
+uint32_t next_utf8(const unsigned char*& p, const unsigned char* end)
+{
+    const unsigned char b = *p++;
+    if (b < 0x80) return b;
+
+    int extra = 0;
+    uint32_t codepoint = 0;
+    if      ((b & 0xE0) == 0xC0) { extra = 1; codepoint = b & 0x1F; }
+    else if ((b & 0xF0) == 0xE0) { extra = 2; codepoint = b & 0x0F; }
+    else if ((b & 0xF8) == 0xF0) { extra = 3; codepoint = b & 0x07; }
+    else return 0xFFFD;
+
+    for (int i = 0; i < extra; ++i) {
+        if (p >= end) return 0xFFFD;
+        const unsigned char nb = *p;
+        if ((nb & 0xC0) != 0x80) return 0xFFFD;
+        ++p;
+        codepoint = (codepoint << 6) | (nb & 0x3F);
+    }
+
+    // Only the shortest form is valid UTF-8.
+    static constexpr uint32_t minimum[4] = { 0x00, 0x80, 0x800, 0x10000 };
+    if (codepoint < minimum[extra]) return 0xFFFD;
+
+    return codepoint;
+}
+
+#endif
+
+} // namespace
+
+// Wide string <-> UTF-8.
+// On Windows wchar_t is UTF-16, so the WinAPI does the conversion.
+// Everywhere else wchar_t is UTF-32, so it is done here.
 std::string json_value::json_wtoa(const std::wstring& ws) {
 #if defined(_WIN32) || defined(_WIN64)
     if (ws.empty()) return {};
@@ -1218,8 +1315,8 @@ std::string json_value::json_wtoa(const std::wstring& ws) {
     return s;
 #else
     std::string s;
-    s.reserve(ws.size());
-    for (wchar_t c : ws) s += static_cast<char>(c);
+    s.reserve(ws.size() * 3);
+    for (wchar_t wc : ws) append_utf8(s, static_cast<uint32_t>(wc));
     return s;
 #endif
 }
@@ -1232,7 +1329,12 @@ std::wstring json_value::json_atow(const std::string& s) {
     MultiByteToWideChar(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()), &ws[0], len);
     return ws;
 #else
-    return std::wstring(s.begin(), s.end());
+    std::wstring ws;
+    ws.reserve(s.size());
+    const auto* p = reinterpret_cast<const unsigned char*>(s.data());
+    const auto* end = p + s.size();
+    while (p < end) ws += static_cast<wchar_t>(next_utf8(p, end));
+    return ws;
 #endif
 }
 

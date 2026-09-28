@@ -1,5 +1,10 @@
 # Changelog
 
+### v3.7.0
+- Fixed: `json` wrote strings and object keys escaped twice — a backslash, quote or tab came back changed, and every read-write round added another layer of escaping.
+- Fixed: `json` skipped one byte after each multi-byte character when `escapeNonAscii` was on; `\uXXXX` surrogate pairs are now combined when parsing.
+- Fixed: `json` and `str_to_wstr` / `wstr_to_str` truncated non-ASCII text on non-Windows builds. Invalid UTF-8 now becomes `U+FFFD` instead of being passed through.
+
 ### v3.6.0
 - New: `scl2::pipe` in `pipe` — Windows named pipes: a server with a client limit and a choice of security descriptor, one handle per connection, message mode, and a clean report when a connection breaks. On POSIX the header defines nothing and says so.
 - New: `unixsocket` — local AF_UNIX sockets, POSIX only.

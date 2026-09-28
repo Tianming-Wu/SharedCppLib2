@@ -53,7 +53,7 @@ int main() {
     scl2::json output = scl2::json::fromString(R"({"key": "value"})");
     output["new_field"] = scl2::json_value(42);
     std::string text = output.toString();         // 格式化输出
-    std::string compact = output.toCompatString(); // 紧凑输出
+    std::string compact = output.toCompactString(); // 紧凑输出
 
     // 文件 I/O
     scl2::json cfg = scl2::json::fromFile("config.json");

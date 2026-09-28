@@ -2,7 +2,7 @@
 
 + 名称: string
 + 命名空间: `scl2`
-+ 文档版本: `1.0.0`
++ 文档版本: `1.1.0`
 
 ## CMake 配置信息
 
@@ -124,6 +124,10 @@ std::string  scl2::wstr_to_str(const std::wstring& wstr);
 |------|----------|
 | Windows | `MultiByteToWideChar` / `WideCharToMultiByte`，使用 `CP_UTF8` |
 | Unix | 手动实现的 UTF-8 ↔ UTF-32（无已弃用的 `<codecvt>` 依赖） |
+
+> [!NOTE]
+> 非法 UTF-8（截断的序列、孤立的续字节）以及不是 Unicode 标量值的宽字符单元会被转换为
+> `U+FFFD`，而不是被拒绝。
 
 **示例：**
 ```cpp
