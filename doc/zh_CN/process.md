@@ -2,7 +2,7 @@
 
 + 名称: process
 + 命名空间: `scl2::process`
-+ 文档版本: `1.0.0`
++ 文档版本: `1.1.0`
 
 ## CMake 配置信息
 
@@ -113,13 +113,14 @@ process 侧只保留一个 `weak_ptr`，因此你一旦丢掉它，`stderrStream
 | `setArguments(stringlist)` / `arguments()` | 参数，一个元素一个参数 |
 | `setWorkingDirectory(path)` / `workingDirectory()` | 子进程的工作目录。留空表示"继承我们的" |
 | `setChannelMode(mode)` / `channelMode()` | 见上；运行期间调用无效 |
+| `setConsoleMode(mode)` / `consoleMode()` | Windows：子进程会拿到什么样的控制台，见下面「控制台窗口」。运行期间调用无效，Unix 上也不起作用 |
 
 ### 生命周期
 
 | 成员 | 说明 |
 |---|---|
 | `start()` | 启动。失败返回 `false` 并写入 `error()` |
-| `static startDetached(program, args, working_dir)` | 不接任何管道地启动并撒手，子进程活得比调用更长 |
+| `static startDetached(program, args, working_dir, mode = console_mode::auto_)` | 不接任何管道地启动并撒手，子进程活得比调用更长 |
 | `detach()` | 释放我们的句柄、让子进程继续跑（管道被关闭，子进程会看到 EOF） |
 | `terminate()` | 请求子进程停止，并确保它真的停。Windows：`TerminateProcess`。Unix：`SIGTERM`，几秒后升级为 `SIGKILL` |
 | `kill()` | 不给清理机会地终止子进程。Unix：`SIGKILL`。Windows：与 `terminate()` 相同 |
@@ -207,9 +208,25 @@ process 侧只保留一个 `weak_ptr`，因此你一旦丢掉它，`stderrStream
 | `kill()` | 与 `terminate()` 相同 | `SIGKILL` |
 | 程序查找 | `CreateProcessW`，裸名字走 `PATH` | `execvp`，规则相同 |
 | 参数传递 | 用 `stringlist::pack()` 压成一条命令行（逆操作是 `unpack()`） | 直接传真正的 `argv` 数组，完全不涉及引号 |
-| `startDetached()` | 不继承任何管道，子进程继续共用我们的控制台 | 双重 fork + `setsid()`，子进程被 init 收养 |
+| `startDetached()` | 不继承任何管道；我们有控制台时子进程共用，没有时给它一个不带窗口的（由 `console_mode` 决定） | 双重 fork + `setsid()`，子进程被 init 收养 |
 | `detach()` | 关掉我们的句柄，子进程继续跑 | 此后没人 reap，子进程退出后会变僵尸 —— 需要的话自己拿 `processId()` 去 wait |
 | SIGPIPE | 不存在 | 每次写入都屏蔽，子进程关掉 stdin 后不会把我们一并带走 |
+
+### 控制台窗口
+
+只有当启动它的进程没有控制台可以外借时，Windows 才会为一个控制台程序建一个控制台。所以有控制台的进程的子进程会共用那个控制台；而无窗口进程（GUI 程序、服务）的子进程会得到新建的一个，而那个控制台自带一个可见窗口。`console_mode` 决定子进程拿到哪一种：
+
+| `console_mode` | 子进程 |
+|---|---|
+| `auto_`（默认） | 我们有控制台就共用，没有就给它一个不带窗口的 |
+| `hidden` | 自己有一个控制台，但不带窗口 |
+| `new_window` | 自己有一个控制台，带窗口 |
+
+> [!NOTE]
+> 子进程的标准流始终是我们交给它的管道，所以 `auto_` 与 `hidden` 对读取、写入、日志没有任何影响。`new_window` 打开的那个窗口只会显示子进程直接写到控制台上的内容；要让子进程真的在那个窗口里运行，请用 `startDetached()`。
+
+> [!NOTE]
+> 这只关乎 Windows。在 Unix 上，子进程留在启动它的那个终端里，也没有办法给它一个新的。
 
 ## 注意事项
 
@@ -221,7 +238,7 @@ process 侧只保留一个 `weak_ptr`，因此你一旦丢掉它，`stderrStream
 ## 限制与路线图
 
 + 没有回调/信号；没有事件循环可以投递它们。
-+ 没有 `setEnvironment()`，不能把输出重定向到文件，也不支持通道转发（让子进程直接共用我们的控制台）。
++ 没有 `setEnvironment()`，不能把输出重定向到文件，也不支持通道转发（子进程就用它最终得到的那个控制台）。
 + `exitcode()` 区分不了"被信号杀死"和"尚未退出" —— Unix 上两者都是 `-1`。
 + Unix 侧还等着第一次真机验证。
 

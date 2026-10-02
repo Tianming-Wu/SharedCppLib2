@@ -559,6 +559,7 @@ process::process(process&& another) noexcept
     , m_args(std::move(another.m_args))
     , m_working_dir(std::move(another.m_working_dir))
     , m_mode(another.m_mode)
+    , m_console_mode(another.m_console_mode)
     , m_read_channel(another.m_read_channel)
     , m_process_handle(std::exchange(another.m_process_handle, process_stream::invalid_handle))
     , m_thread_handle(std::exchange(another.m_thread_handle, process_stream::invalid_handle))
@@ -588,6 +589,7 @@ process& process::operator=(process&& another) noexcept
     m_args = std::move(another.m_args);
     m_working_dir = std::move(another.m_working_dir);
     m_mode = another.m_mode;
+    m_console_mode = another.m_console_mode;
     m_read_channel = another.m_read_channel;
     m_process_handle = std::exchange(another.m_process_handle, process_stream::invalid_handle);
     m_thread_handle = std::exchange(another.m_thread_handle, process_stream::invalid_handle);
@@ -623,6 +625,17 @@ void process::setChannelMode(channel_mode mode)
 process::channel_mode process::channelMode() const
 {
     return m_mode;
+}
+
+void process::setConsoleMode(console_mode mode)
+{
+    if (running()) return;
+    m_console_mode = mode;
+}
+
+process::console_mode process::consoleMode() const
+{
+    return m_console_mode;
 }
 
 void process::setReadChannel(channel ch)
@@ -890,6 +903,26 @@ void process::release()
 
 #ifdef OS_WINDOWS
 
+// A console program only ends up with a window when Windows has to create a
+// console for it, which is what happens when the process starting it has none
+// to lend. We have one whenever we are attached to a console, with or without a
+// window of its own.
+static bool parent_has_console()
+{
+    return ::GetConsoleCP() != 0;
+}
+
+static DWORD console_creation_flag(process::console_mode mode)
+{
+    using console_mode = process::console_mode;
+    switch (mode) {
+        case console_mode::hidden:     return CREATE_NO_WINDOW;
+        case console_mode::new_window: return CREATE_NEW_CONSOLE;
+        case console_mode::auto_:      break;
+    }
+    return parent_has_console() ? 0 : CREATE_NO_WINDOW;
+}
+
 bool process::start()
 {
     if (running()) {
@@ -972,7 +1005,7 @@ bool process::start()
         nullptr,
         nullptr,
         TRUE,       // the child inherits our pipe ends
-        0,
+        console_creation_flag(m_console_mode), // and gets no console window we have none to lend
         nullptr,
         working_dir.empty() ? nullptr : working_dir.c_str(),
         &si,
@@ -1016,7 +1049,7 @@ bool process::start()
 }
 
 bool process::startDetached(const fs::path& proc, const scl2::stringlist& arguments,
-                            const fs::path& working_dir)
+                            const fs::path& working_dir, console_mode mode)
 {
     if (proc.empty()) return false;
     if (proc.has_parent_path() && !fs::exists(proc)) return false;
@@ -1032,7 +1065,8 @@ bool process::startDetached(const fs::path& proc, const scl2::stringlist& argume
 
     const std::wstring dir = working_dir.wstring();
 
-    // No pipe at all, so the child simply borrows our console.
+    // No pipe at all, so nothing is inherited: the child keeps using whatever
+    // console we have, and gets a windowless one of its own when we have none.
     STARTUPINFOW si{};
     si.cb = sizeof(si);
 
@@ -1043,7 +1077,7 @@ bool process::startDetached(const fs::path& proc, const scl2::stringlist& argume
         nullptr,
         nullptr,
         FALSE,
-        0,
+        console_creation_flag(mode),
         nullptr,
         dir.empty() ? nullptr : dir.c_str(),
         &si,
@@ -1374,10 +1408,14 @@ bool process::start()
 }
 
 bool process::startDetached(const fs::path& proc, const scl2::stringlist& arguments,
-                            const fs::path& working_dir)
+                            const fs::path& working_dir, console_mode mode)
 {
     if (proc.empty()) return false;
     if (proc.has_parent_path() && !fs::exists(proc)) return false;
+
+    // A detached child already leaves our terminal through setsid(), and Unix
+    // has no way to hand it a new one, so console_mode does not apply here.
+    (void)mode;
 
     const std::string program = proc.string();
 

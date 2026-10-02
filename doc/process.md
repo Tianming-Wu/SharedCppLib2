@@ -2,7 +2,7 @@
 
 + Name: process
 + Namespace: `scl2::process`
-+ Document Version: `1.0.0`
++ Document Version: `1.1.0`
 
 ## CMake Info
 
@@ -122,13 +122,14 @@ and `attached(channel)` answers whether the process is still in charge of a chan
 | `setArguments(stringlist)` / `arguments()` | arguments, one per element |
 | `setWorkingDirectory(path)` / `workingDirectory()` | the child's working directory. Empty means "inherit ours" |
 | `setChannelMode(mode)` / `channelMode()` | see above; ignored while running |
+| `setConsoleMode(mode)` / `consoleMode()` | Windows: what the child gets in the way of a console, see Console Windows below. Ignored while running, and has no effect on Unix |
 
 ### Lifecycle
 
 | member | description |
 |---|---|
 | `start()` | launch. Returns `false` and sets `error()` on failure |
-| `static startDetached(program, args, working_dir)` | launch without any pipe and forget about it. The child outlives the call |
+| `static startDetached(program, args, working_dir, mode = console_mode::auto_)` | launch without any pipe and forget about it. The child outlives the call |
 | `detach()` | release our handles and leave the child running (pipes are closed, which the child sees as EOF) |
 | `terminate()` | ask the child to stop, and make sure it does. Windows: `TerminateProcess`. Unix: `SIGTERM`, escalated to `SIGKILL` after a few seconds |
 | `kill()` | take the child down without giving it a chance to clean up. Unix: `SIGKILL`. Windows: same as `terminate()` |
@@ -222,9 +223,32 @@ polling works without calling a wait function.
 | `kill()` | identical to `terminate()` | `SIGKILL` |
 | program lookup | `CreateProcessW`, so a bare name goes through `PATH` | `execvp`, same rule |
 | arguments | packed into one command line with `stringlist::pack()` (`unpack()` is its inverse) | passed as a real `argv` array, so quoting is never involved |
-| `startDetached()` | no pipe is inherited, the child keeps sharing our console | double fork + `setsid()`, so the child is reparented to init |
+| `startDetached()` | no pipe is inherited; the child shares our console when we have one, and otherwise gets one without a window (see `console_mode`) | double fork + `setsid()`, so the child is reparented to init |
 | `detach()` | closing our handles leaves the child running | nobody reaps the child any more, so it becomes a zombie once it exits — keep `processId()` and wait for it yourself if that matters |
 | SIGPIPE | does not exist | blocked around every write, so a child that closed its stdin cannot kill us |
+
+### Console Windows
+
+Windows creates a console for a console program only when the process starting it has none
+to lend. A child of a console process therefore shares that console; a child of a
+windowless process (a GUI application, a service) would get a new one, and that console
+comes with a visible window. `console_mode` says which of the three the child gets:
+
+| `console_mode` | the child |
+|---|---|
+| `auto_` (default) | shares our console when we have one, otherwise gets one without a window |
+| `hidden` | gets a console of its own, without a window |
+| `new_window` | gets a console of its own, with a window |
+
+> [!NOTE]
+> The child's standard streams stay the pipes it is handed, so `auto_` and `hidden` change
+> nothing about reading, writing or logging. `new_window` opens a window that shows only
+> what the child writes to the console itself; use `startDetached()` when the child should
+> really run in that window.
+
+> [!NOTE]
+> This is a Windows matter only. On Unix a child stays in the terminal it was started
+> from, and there is no way to give it a new one.
 
 ## Notes
 
@@ -241,7 +265,7 @@ polling works without calling a wait function.
 
 - No callbacks or signals; there is no event loop to deliver them from.
 - No `setEnvironment()`, no output redirection to a file, no channel forwarding
-  (a child sharing our console/stdout verbatim).
+  (a child uses whichever console it ends up with).
 - `exitcode()` does not distinguish "killed by a signal" from "not exited yet" — both
   are `-1` on Unix.
 - Unix support still needs its first run on real hardware.

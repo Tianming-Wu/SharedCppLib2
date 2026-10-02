@@ -148,6 +148,25 @@ public:
         merged = 1,
     };
 
+    /// @brief What the child gets in the way of a console. Windows only.
+    enum class console_mode : std::uint8_t
+    {
+        /// Decide from whether we have a console to lend: a child started from
+        /// a console keeps using it, a child started from a process without one
+        /// gets a console of its own, with no window. This is the default.
+        auto_ = 0,
+        /// The child gets a console of its own, with no window. Without this a
+        /// console program started from a windowless process makes Windows
+        /// create a console that comes with a visible window.
+        hidden = 1,
+        /// The child gets a console of its own, with a window.
+        /// @note start() still hands the child our pipes as its standard
+        ///       streams, so the window shows only what the child writes to the
+        ///       console itself. Use startDetached() when the child should
+        ///       really run in that window.
+        new_window = 2,
+    };
+
     /// @brief The reason the last start() or wait function failed.
     enum class error_code : std::uint8_t
     {
@@ -164,6 +183,8 @@ public:
     using native_handle_type = process_stream::native_handle_type;
 
     process();
+
+    // create with parameters, does not start automatically.
     explicit process(const fs::path& proc, const scl2::stringlist& arguments = scl2::stringlist());
 
     /// @note Kills the child if it is still running (see kill()), then releases
@@ -194,21 +215,33 @@ public:
     void setChannelMode(channel_mode mode);
     channel_mode channelMode() const;
 
+    /// @brief What the child gets in the way of a console. Windows only: on
+    ///        Unix a child stays in (or out of) our terminal as before.
+    /// @note Has no effect while the process is running.
+    void setConsoleMode(console_mode mode);
+    console_mode consoleMode() const;
+
     // ── lifecycle ────────────────────────────────────────────────────
 
     /// @brief Launch the child. Returns false on failure, see error().
     /// @note Fails with error_code::already_running when a child is still alive;
     ///       call reset() or waitForFinished() first.
+    /// @note Windows: a console child of a process without a console gets a
+    ///       console without a window, so none pops up. See console_mode to
+    ///       ask for something else.
     bool start();
 
     /// @brief Launch the child without attaching any pipe, then forget about it.
     /// The child keeps running after the returned object is gone.
     /// @note Unix: a double fork puts the child in its own session, so it
-    ///       outlives us and never becomes a zombie. Windows: nothing is
-    ///       inherited and the child keeps sharing our console.
+    ///       outlives us and never becomes a zombie; there is no console to give
+    ///       it, so @p mode does nothing. Windows: nothing is inherited, the
+    ///       child shares our console when we have one, and @p mode decides what
+    ///       happens when we have none.
     static bool startDetached(const fs::path& proc,
                               const scl2::stringlist& arguments = scl2::stringlist(),
-                              const fs::path& working_dir = fs::path());
+                              const fs::path& working_dir = fs::path(),
+                              console_mode mode = console_mode::auto_);
 
     /// @brief Release our handles and leave the child running.
     /// The pipes are closed, which the child sees as EOF / broken pipe. After
@@ -353,6 +386,7 @@ private:
     fs::path m_working_dir;
 
     channel_mode m_mode = channel_mode::separate;
+    console_mode m_console_mode = console_mode::auto_;
     channel m_read_channel = channel::standard_output;
 
     // Native bookkeeping. Only Windows uses the two handles; on Unix they stay
