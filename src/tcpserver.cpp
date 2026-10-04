@@ -118,21 +118,18 @@ server::server()
     : m_address(), m_port(0)
 {
     init();
-    m_address.dummy = true;
 }
 
 server::server(uint16_t port)
     : m_address(), m_port(port)
 {
     init();
-    m_address.dummy = true;
 }
 
 server::server(network_address address, uint16_t port)
     : m_address(address), m_port(port)
 {
     init();
-    m_address.dummy = false;
 }
 
 server::~server()
@@ -178,23 +175,20 @@ void server::start(uint16_t port)
     addr.sin_family = AF_INET;
     addr.sin_port = htons(m_port);
 
-    if (m_address.dummy || m_address.address.empty()) {
+    if (m_address.type == network_address::kind::unspecified) {
+        // No address given: listen on every IPv4 interface.
         addr.sin_addr.s_addr = htonl(INADDR_ANY);
-        m_address.address = "0.0.0.0";
-        m_address.__ipv4 = ipv4::from_string(m_address.address);
-        m_address.dummy = false;
+        m_address = network_address(ipv4{ 0, 0, 0, 0 });
     } else {
-        in_addr in_addr_val;
-        if (::inet_pton(AF_INET, m_address.address.c_str(), &in_addr_val) != 1) {
+        if (m_address.type != network_address::kind::ipv4) {
 #ifdef OS_WINDOWS
             ::closesocket(listen_socket);
 #else
             ::close(listen_socket);
 #endif
-            throw network_error("Invalid IPv4 address");
+            throw network_error("The server address must be an IPv4 address");
         }
-        addr.sin_addr = in_addr_val;
-        m_address.__ipv4 = ipv4::from_string(m_address.address);
+        addr.sin_addr.s_addr = htonl(m_address.to_ipv4().to_uint32());
     }
 
     if (

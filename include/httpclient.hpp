@@ -70,10 +70,26 @@ public:
     
     /// @brief Set timeout for receiving responses
     /// @param timeout Timeout duration (default: 30 seconds)
+    /// @note Sets the header and the body timeout; the connection keeps its own.
     void set_timeout(std::chrono::milliseconds timeout);
     
     /// @brief Get current timeout setting
     std::chrono::milliseconds get_timeout() const;
+
+    /// @brief Timeout for the status line and the headers (default: 30 seconds).
+    void set_header_timeout(std::chrono::milliseconds timeout);
+    std::chrono::milliseconds header_timeout() const;
+
+    /// @brief Timeout for the body once the headers are in (default: 30 seconds).
+    void set_body_timeout(std::chrono::milliseconds timeout);
+    std::chrono::milliseconds body_timeout() const;
+
+    /// @brief Timeout for the connection itself, resolution included
+    ///        (default: 10 seconds).
+    /// @note Only transports that can honour it do; see
+    ///       scl2::transport_interface::connect().
+    void set_connect_timeout(std::chrono::milliseconds timeout);
+    std::chrono::milliseconds connect_timeout() const;
     
     /// @brief Get the connected server hostname
     std::string server_host() const;
@@ -93,7 +109,9 @@ private:
     std::unique_ptr<scl2::transport_interface> m_transport;
     std::string m_host;
     uint16_t m_port = 80;
-    std::chrono::milliseconds m_timeout = std::chrono::seconds(30);
+    std::chrono::milliseconds m_timeout = std::chrono::seconds(30);         // body
+    std::chrono::milliseconds m_header_timeout = std::chrono::seconds(30);  // status line + headers
+    std::chrono::milliseconds m_connect_timeout = std::chrono::seconds(10); // connection
 };
 
 } // namespace network::http

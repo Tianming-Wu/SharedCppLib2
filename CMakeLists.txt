@@ -146,6 +146,10 @@ add_library(network_dns STATIC src/dns.cpp)
 add_library(network_tcp STATIC src/tcpclient.cpp src/tcpserver.cpp)
 add_library(network_udp STATIC src/udp.cpp)
 
+# 地址类型与解析：dns 只依赖 core（core 不反向依赖 dns，将来换解析实现只动这里）
+target_link_libraries(network_dns PUBLIC basic network_core)
+target_link_libraries(network_udp PUBLIC basic network_core network_dns)
+
 add_library(network_http STATIC
     src/http.cpp
     src/httpserver.cpp
@@ -178,9 +182,6 @@ target_link_libraries(compression INTERFACE api basic)
 # 平台依赖
 target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要平台相关支持
 # target_link_libraries(debug PUBLIC platform) # 需要用户自行链接以使用 platform 提供的功能
-
-# Network module dependencies (commented out until ready)
-# target_link_libraries(network PUBLIC basic platform)
 
 # datauri 依赖
 target_link_libraries(datauri PUBLIC basic)

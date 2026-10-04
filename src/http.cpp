@@ -33,12 +33,27 @@ static const std::map<std::string, http_method> str_to_method = {
 static const std::map<http_status, std::string> status_messages = {
     {http_status::OK, "OK"},
     {http_status::CREATED, "Created"},
+    {http_status::ACCEPTED, "Accepted"},
     {http_status::NO_CONTENT, "No Content"},
+    {http_status::MOVED_PERMANENTLY, "Moved Permanently"},
+    {http_status::FOUND, "Found"},
+    {http_status::NOT_MODIFIED, "Not Modified"},
     {http_status::BAD_REQUEST, "Bad Request"},
+    {http_status::UNAUTHORIZED, "Unauthorized"},
+    {http_status::FORBIDDEN, "Forbidden"},
     {http_status::NOT_FOUND, "Not Found"},
     {http_status::METHOD_NOT_ALLOWED, "Method Not Allowed"},
+    {http_status::REQUEST_TIMEOUT, "Request Timeout"},
+    {http_status::CONFLICT, "Conflict"},
+    {http_status::LENGTH_REQUIRED, "Length Required"},
+    {http_status::PAYLOAD_TOO_LARGE, "Payload Too Large"},
+    {http_status::URI_TOO_LONG, "URI Too Long"},
+    {http_status::TOO_MANY_REQUESTS, "Too Many Requests"},
     {http_status::INTERNAL_SERVER_ERROR, "Internal Server Error"},
-    {http_status::NOT_IMPLEMENTED, "Not Implemented"}
+    {http_status::NOT_IMPLEMENTED, "Not Implemented"},
+    {http_status::BAD_GATEWAY, "Bad Gateway"},
+    {http_status::SERVICE_UNAVAILABLE, "Service Unavailable"},
+    {http_status::GATEWAY_TIMEOUT, "Gateway Timeout"}
 };
 
 std::string method_to_string(http_method method)
@@ -60,6 +75,12 @@ std::string status_to_string(http_status status)
 {
     auto it = status_messages.find(status);
     return it != status_messages.end() ? it->second : "Unknown";
+}
+
+std::string status_to_string(int status_code)
+{
+    if (status_code == 0) return "";
+    return status_to_string(static_cast<http_status>(status_code));
 }
 
 // ========== request implementation ==========
@@ -188,7 +209,8 @@ std::string response::serialize() const
     result.reserve(512);
 
     // Status line: HTTP/version STATUS_CODE STATUS_MESSAGE
-    result += http_version + " " + std::to_string(static_cast<int>(status)) + " " + status_to_string(status) + "\r\n";
+    const int code = (status_code != 0) ? status_code : static_cast<int>(status);
+    result += http_version + " " + std::to_string(code) + " " + status_to_string(code) + "\r\n";
     
     // Headers
     for (const auto& [key, value] : headers) {
@@ -231,12 +253,16 @@ response response::deserialize(const std::string& str)
     
     std::istringstream line_stream(line);
     std::string version;
-    int status_code;
+    int status_code = 0;
     
     line_stream >> version >> status_code;
     
     resp.http_version = version;
-    resp.status = static_cast<http_status>(status_code);
+    resp.status_code = status_code;
+
+    // `status` only names the codes we know; the exact one is kept above.
+    const http_status as_enum = static_cast<http_status>(status_code);
+    resp.status = status_messages.count(as_enum) ? as_enum : http_status::UNKNOWN;
     
     // Parse headers
     while (std::getline(stream, line)) {
@@ -281,6 +307,7 @@ response response::make_text(http_status status, const std::string& text)
 {
     response resp;
     resp.status = status;
+    resp.status_code = static_cast<int>(status);
     resp.headers["Content-Type"] = "text/plain; charset=utf-8";
     resp.body = text;
     return resp;
@@ -290,6 +317,7 @@ response response::make_json(http_status status, const std::string& json)
 {
     response resp;
     resp.status = status;
+    resp.status_code = static_cast<int>(status);
     resp.headers["Content-Type"] = "application/json; charset=utf-8";
     resp.body = json;
     return resp;

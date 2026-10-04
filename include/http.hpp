@@ -37,15 +37,33 @@ enum class http_method {
 };
 
 /// @brief HTTP status codes
+/// @note This is the set of codes the library names; a response that carries
+///       any other code keeps it in `status_code` and reports `UNKNOWN` here.
 enum class http_status {
+    UNKNOWN = 0,
     OK = 200,
     CREATED = 201,
+    ACCEPTED = 202,
     NO_CONTENT = 204,
+    MOVED_PERMANENTLY = 301,
+    FOUND = 302,
+    NOT_MODIFIED = 304,
     BAD_REQUEST = 400,
+    UNAUTHORIZED = 401,
+    FORBIDDEN = 403,
     NOT_FOUND = 404,
     METHOD_NOT_ALLOWED = 405,
+    REQUEST_TIMEOUT = 408,
+    CONFLICT = 409,
+    LENGTH_REQUIRED = 411,
+    PAYLOAD_TOO_LARGE = 413,
+    URI_TOO_LONG = 414,
+    TOO_MANY_REQUESTS = 429,
     INTERNAL_SERVER_ERROR = 500,
     NOT_IMPLEMENTED = 501,
+    BAD_GATEWAY = 502,
+    SERVICE_UNAVAILABLE = 503,
+    GATEWAY_TIMEOUT = 504,
 };
 
 /// @brief HTTP request type
@@ -69,6 +87,11 @@ struct request {
 /// @brief HTTP response type
 struct response {
     http_status status = http_status::OK;
+
+    /// @brief The code exactly as it came in, or 0 for a response that was built
+    ///        rather than parsed. Serialization prefers this over `status`.
+    int status_code = 0;
+
     std::string http_version = "HTTP/1.1";
     std::map<std::string, std::string> headers;
     std::string body;
@@ -94,6 +117,9 @@ http_method string_to_method(const std::string& str);
 
 /// @brief Get status code description
 std::string status_to_string(http_status status);
+
+/// @brief Get the description of a raw status code; empty when it is unknown.
+std::string status_to_string(int status_code);
 
 
 

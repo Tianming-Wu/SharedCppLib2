@@ -1,5 +1,6 @@
 #include "udp.hpp"
 
+#include "dns.hpp"
 #include "network_platform.hpp"
 
 #include <cstring>
@@ -19,22 +20,22 @@ static int fill_sockaddr(sockaddr_storage& ss, const network_address& addr, uint
 {
     std::memset(&ss, 0, sizeof(ss));
 
-    // Prefer IPv4 if it has been set (even to 0.0.0.0; that means "any")
-    // We detect this by checking if the __ipv4 octets differ from a
-    // default-constructed ipv4.  A default ipv4 is all-zero (0.0.0.0),
-    // which is valid for "bind to any".  We use a simple heuristic:
-    // if address string is non-empty, trust that; otherwise default to IPv4 any.
-    if (!addr.address.empty() && addr.address.find(':') != std::string::npos) {
-        // looks like an IPv6 or hostname with port; just use IPv4 for now
+    if (addr.type == network_address::kind::ipv6) {
+        auto* sin6 = reinterpret_cast<sockaddr_in6*>(&ss);
+        sin6->sin6_family = AF_INET6;
+        sin6->sin6_port = htons(port);
+        sin6->sin6_scope_id = addr.ipv6_addr.scope_id;
+        const auto bytes = addr.ipv6_addr.to_bytes();
+        std::memcpy(&sin6->sin6_addr, bytes.data(), bytes.size());
+        return AF_INET6;
     }
 
-    // Default to IPv4
+    // IPv4, and "any" for an unspecified address (what a plain bind() means).
     auto* sin = reinterpret_cast<sockaddr_in*>(&ss);
     sin->sin_family = AF_INET;
     sin->sin_port = htons(port);
-
-    uint32_t raw = addr.__ipv4.to_uint32();
-    std::memcpy(&sin->sin_addr, &raw, sizeof(raw));
+    const uint32_t raw = (addr.type == network_address::kind::ipv4) ? addr.ipv4_addr.to_uint32() : 0;
+    sin->sin_addr.s_addr = htonl(raw);
     return AF_INET;
 }
 
@@ -83,7 +84,7 @@ bool socket::bind(const network_address& addr, uint16_t port)
     ::setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR,
                  reinterpret_cast<const char*>(&reuse), sizeof(reuse));
 
-    socklen_t addr_len = sizeof(sockaddr_in);
+    const socklen_t addr_len = (family == AF_INET6) ? sizeof(sockaddr_in6) : sizeof(sockaddr_in);
     if (::bind(m_socket, reinterpret_cast<const sockaddr*>(&ss), addr_len) == socket_error) {
         close();
         return false;
@@ -97,27 +98,29 @@ bool socket::bind(const network_address& addr, uint16_t port)
 
 bool socket::connect(const std::string& address, uint16_t port)
 {
-    // Try IPv4 parse first, then resolve
-    network_address addr;
-    try {
-        addr.__ipv4 = ipv4::from_string(address);
-        addr.address = address;
-    } catch (...) {
-        // Fallback: treat as hostname (simple resolve via DNS)
-        // For now, store address as dummy and let the first send fail
-        // if resolution is not available.  The user should call
-        // network::resolve() themselves if needed.
-        addr.address = address;
-        addr.dummy   = true;
+    network_address addr = network_address::parse(address);
+
+    if (addr.needs_resolution()) {
+        try {
+            const dns::dns_query_result result = dns::dns_query(addr.address);
+            if (!result.ok()) return false;
+            addr = result.preferred();
+        } catch (...) {
+            return false;
+        }
     }
+
+    if (!addr.is_literal()) return false;
     return connect(addr, port);
 }
 
 bool socket::connect(const network_address& addr, uint16_t port)
 {
+    const int family = (addr.type == network_address::kind::ipv6) ? AF_INET6 : AF_INET;
+
     if (m_socket == invalid_socket) {
         // Auto-create socket if we haven't bound yet
-        m_socket = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        m_socket = ::socket(family, SOCK_DGRAM, IPPROTO_UDP);
         if (m_socket == invalid_socket) {
             return false;
         }
@@ -126,7 +129,7 @@ bool socket::connect(const network_address& addr, uint16_t port)
     sockaddr_storage ss{};
     fill_sockaddr(ss, addr, port);
 
-    socklen_t len = sizeof(sockaddr_in);
+    socklen_t len = (family == AF_INET6) ? sizeof(sockaddr_in6) : sizeof(sockaddr_in);
     if (::connect(m_socket, reinterpret_cast<const sockaddr*>(&ss), len) == socket_error) {
         return false;
     }
@@ -164,7 +167,8 @@ size_t socket::sendTo(const scl2::bytearray& data,
     }
 
     sockaddr_storage ss{};
-    fill_sockaddr(ss, dest, port);
+    const int family = fill_sockaddr(ss, dest, port);
+    const socklen_t len = (family == AF_INET6) ? sizeof(sockaddr_in6) : sizeof(sockaddr_in);
 
     int sent = ::sendto(
         m_socket,
@@ -172,7 +176,7 @@ size_t socket::sendTo(const scl2::bytearray& data,
         static_cast<int>(data.size()),
         0, // flags
         reinterpret_cast<const sockaddr*>(&ss),
-        sizeof(sockaddr_in)
+        len
     );
 
     return (sent == socket_error) ? 0 : static_cast<size_t>(sent);
@@ -270,8 +274,7 @@ datagram socket::receiveFrom(std::chrono::milliseconds timeout)
 
     // Extract sender address
     auto* sin = reinterpret_cast<sockaddr_in*>(&from);
-    dg.sender_addr.__ipv4 = ipv4::from_uint32(ntohl(sin->sin_addr.s_addr));
-    dg.sender_addr.address = dg.sender_addr.__ipv4.to_string();
+    dg.sender_addr = network_address(ipv4::from_uint32(ntohl(sin->sin_addr.s_addr)));
     dg.sender_port = ntohs(sin->sin_port);
 
     return dg;

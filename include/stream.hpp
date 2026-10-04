@@ -94,6 +94,15 @@ public:
     /// @brief Connect to a remote host.
     virtual bool connect(const std::string& host, uint16_t port) = 0;
 
+    /// @brief Connect to a remote host, giving up after @p timeout.
+    /// @note The default ignores @p timeout and calls the two argument form;
+    ///       an implementation that can should honour it.
+    virtual bool connect(const std::string& host, uint16_t port, std::chrono::milliseconds timeout)
+    {
+        (void)timeout;
+        return connect(host, port);
+    }
+
     /// @brief Disconnect from the remote host.
     virtual void disconnect() = 0;
 
