@@ -598,6 +598,17 @@ void json_parser::parseFromString(const std::string &str_input)
         throw std::runtime_error("Input JSON string is empty");
     }
 
+    // A byte order mark is not part of the text. Files written by Notepad, by Visual Studio
+    // and by PowerShell's Out-File start with one, and so do the ones a browser downloads in
+    // some cases. Step over it instead of failing on the first byte.
+    if (json_str.size() >= 3
+        && static_cast<unsigned char>(json_str[0]) == 0xEF
+        && static_cast<unsigned char>(json_str[1]) == 0xBB
+        && static_cast<unsigned char>(json_str[2]) == 0xBF)
+    {
+        pos = 3;
+    }
+
     result_root = parseJsonValue();
 }
 
@@ -736,6 +747,14 @@ std::string json_parser::parseJsonString()
 
 json_value json_parser::parseJsonValue()
 {
+    // Whitespace in front of a value is normal: a document may begin with a blank line, and a
+    // member value sits behind the colon with the space the writer chose.
+    skipWhitespace();
+
+    if (pos >= json_str.size()) {
+        throw std::runtime_error("Unexpected end of JSON input");
+    }
+
     char c = peek();
     if (c == '{') {
         return parseObject();

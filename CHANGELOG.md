@@ -10,6 +10,7 @@ See [release.md](doc/release.md) for the releasing standards.
 - New: `json2` — a lossless JSON module next to `json`: a document that is parsed, edited and written back differs only where it was changed, and `fidelity::semantic` keeps the values only. Members keep document order, lookup is by key, JSON Pointer and the `json`-shaped accessors are there, and the regenerated text uses the layout `json` writes by default.
 - New: `fileio` can replace a file in one step — `writeFileAtomic()` writes through a temporary file and `replaceFile()` moves it into place, so a reader sees either the whole old file or the whole new one, and an interrupted run leaves the old file behind.
 - Fixed: `fileio::readAndLoad()` never compiled.
+- Fixed: `json` refused a byte order mark, and refused a document whose root value was preceded by whitespace; a file written by Notepad, Visual Studio or PowerShell's `Out-File` did not parse.
 
 ### v3.7.0
 - Fixed: `json` wrote strings and object keys escaped twice — a backslash, quote or tab came back changed, and every read-write round added another layer of escaping.
