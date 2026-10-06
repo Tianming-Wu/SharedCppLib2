@@ -65,9 +65,11 @@ T gload(const scl2::bytearray& data) { return data.readContainer<T>(); }
 // ── std::string / std::wstring ────────────────────────────────────────
 // The whole value with a length prefix (fromString / toString), which is also the bytes a
 // string gets when it sits inside a pair or a container.
-
-scl2::bytearray gdump(const std::string& str) { return scl2::bytearray::fromString(str); }
-scl2::bytearray gdump(const std::wstring& str) { return scl2::bytearray::fromWString(str); }
+//
+// inline: unlike everything else here these two are not templates, and this header is pulled
+// in by api.hpp — so every translation unit that includes api.hpp would define them.
+inline scl2::bytearray gdump(const std::string& str) { return scl2::bytearray::fromString(str); }
+inline scl2::bytearray gdump(const std::wstring& str) { return scl2::bytearray::fromWString(str); }
 
 template<typename T>
 requires std::same_as<T, std::string>
