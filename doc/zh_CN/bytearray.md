@@ -260,7 +260,8 @@ float value = serialized.to<float>();
 ```cpp
 template<typename _T> _T toContainer() const;
 ```
-把内容装成一个容器（`_T` 的 `value_type` 可简单复制），元素个数由大小推出来。
+把内容装成一个容器。`_T` 必须是“元素可简单复制、且能用（指针，个数）构造”的连续容器 ——
+`std::string`、`std::vector` 可以，`std::array`、`std::list` 不行。元素个数由大小推出来。
 
 ### 流操作
 
@@ -374,7 +375,9 @@ void append(const bytearray &data);               // 写到末尾
 - `insertRawString(pos, str)` / `appendRawString(str)` —— 只有字符，没有长度前缀
 - `insertRawWString(pos, str)` / `appendRawWString(str)` —— 宽字符版同理
 - `insertByte(pos, uint8_t byte)` / `appendByte(uint8_t byte)` —— 从普通整数写一个字节
-- `insertContainer(pos, const C &container)` / `appendContainer(const C &container)` —— 先个数、再元素大小、再元素
+- `insertContainer(pos, const C &container)` —— 元素可简单复制的连续容器：先个数、再元素大小、再整块
+- `appendContainer(const C &container)` —— 这类容器同上；其他容器则是先个数、再逐个用 `gdump()` 写出的元素。
+  两种形式 `readContainer<T>()` 都能读回
 
 字符串形式与读函数是成对的：`append(str)` 写出的正是 `readString()` 读回的东西，
 `appendRawString(str)` 写出的则是 `readRawString(n)` 读回的。

@@ -97,54 +97,112 @@ T gload(const scl2::bytearray& data);
 
 
 
-// nested container support
-// This is a very powerful feature that allows you to directly dump/load containers of supported types,
-// and even nested containers like std::map<std::string, std::vector<int>>.
-// And decode it only in one line.
+// ── What gdump() / gload() accept ─────────────────────────────────────
+// Every overload is constrained by exactly the precondition of its body: a type that satisfies
+// a constraint compiles, and a type whose body cannot handle it does not satisfy the
+// constraint. Elements are what makes this recursive.
+//
+// The previous version only asked whether `value_type` was trivially copyable, so std::list,
+// std::map, std::string and ordered_map all looked like "plain copyable blocks" while every
+// branch then refused them inside the template.
 
 namespace gdp_detail {
-    // 基础定义：判断 T 是否为容器且其元素是否满足 dump/load 约束。
+
+    // std::string / std::wstring: written and read whole, with a length prefix.
+    template <typename T> struct is_string_type : std::false_type {};
+    template <> struct is_string_type<std::string> : std::true_type {};
+    template <> struct is_string_type<std::wstring> : std::true_type {};
+
+    // Handled as one value by one of the paths above: the type's own dump()/load(), one raw
+    // trivially copyable object, one string, or one plain-copy container block.
+    template <typename T>
+    struct has_own_writer : std::bool_constant<
+        ::scl2::has_gdump<std::remove_cv_t<T>>
+        || std::is_trivially_copyable_v<std::remove_cv_t<T>>
+        || is_string_type<std::remove_cv_t<T>>::value
+        || ::scl2::stl::restorable_trivially_copyable_container<std::remove_cv_t<T>>> {};
+
+    template <typename T>
+    struct has_own_reader : std::bool_constant<
+        ::scl2::has_gload<std::remove_cv_t<T>>
+        || std::is_trivially_copyable_v<std::remove_cv_t<T>>
+        || is_string_type<std::remove_cv_t<T>>::value
+        || ::scl2::stl::restorable_trivially_copyable_container<std::remove_cv_t<T>>> {};
+
+    // A container the element-wise path walks: range-for and size(), and not one contiguous
+    // plain-copy block (that one is written and read as a whole).
     //
-    // 注意：必须用 void_t 做偏特化来探测 value_type，不能在同一个表达式里写
-    // `requires { typename T::value_type; } && has_gload<typename T::value_type>`。
-    // `&&` 在常量表达式里虽然是短路求值，但整个表达式仍然必须先良构，
-    // 所以 `typename T::value_type` 对 int / char 这类没有 value_type 的类型
-    // 会硬报错（C2825/C2039），而不是求值为 false。偏特化才是 SFINAE 友好的。
-    template <typename T, typename = void>
-    struct has_gdump_recursive : std::false_type {};
+    // value_type has to be probed through void_t partial specializations below: writing
+    // `requires { typename T::value_type; } && has_gdump<typename T::value_type>` in one
+    // expression is a hard error for a type without value_type, not a false.
+    template <typename T>
+    concept elementwise_writer = ::scl2::stl::is_container<T>
+        && (!::scl2::stl::trivially_copyable_container<T>)
+        && requires(const T& c) { c.size(); };
+
+    // ...and what reading it back needs: default constructible, insertable, and every element
+    // readable from the cursor (cursor_readable).
+    template <typename T>
+    concept elementwise_reader = elementwise_writer<T>
+        && std::default_initializable<T>
+        && ::scl2::stl::universal_insertable<T>;
+
+    template <typename T, typename = void> struct writable : std::false_type {};
+    template <typename T, typename = void> struct readable : std::false_type {};
+    template <typename T, typename = void> struct writable_pair : std::false_type {};
+    template <typename T, typename = void> struct readable_pair : std::false_type {};
+
+    // One value of T can be written / read: one of the paths above, a pair of those, or a
+    // container of those (that is the recursion).
+    template <typename T>
+    concept value_writable = has_own_writer<T>::value
+        || writable<T>::value || writable_pair<T>::value;
 
     template <typename T>
-    struct has_gdump_recursive<T, std::void_t<typename T::value_type>>
-        : std::bool_constant<::scl2::has_gdump<typename T::value_type>
-                             || has_gdump_recursive<typename T::value_type>::value> {};
+    concept value_readable = has_own_reader<T>::value
+        || readable<T>::value || readable_pair<T>::value;
 
+    // What read_element<T>() needs: bytearray::read<T>() (raw, or the type's own load()), a
+    // string, a pair, or a nested container read with readContainer<T>().
     template <typename T, typename = void>
-    struct has_gload_recursive : std::false_type {};
+    struct cursor_readable
+        : std::bool_constant<has_own_reader<T>::value || readable_pair<T>::value> {};
 
     template <typename T>
-    struct has_gload_recursive<T, std::void_t<typename T::value_type>>
-        : std::bool_constant<::scl2::has_gload<typename T::value_type>
-                             || has_gload_recursive<typename T::value_type>::value> {};
-}
+    struct cursor_readable<T, std::void_t<typename T::value_type>>
+        : std::bool_constant<has_own_reader<T>::value || readable_pair<T>::value
+            || (elementwise_reader<T> && cursor_readable<typename T::value_type>::value)> {};
 
-// template<typename T>
-// concept has_gdump_container = requires(const T& v) {
-//     typename T::value_type;
-//     requires ::scl2::has_gdump<typename T::value_type> || ::scl2::has_gdump_container<typename T::value_type>;
-// };
+    template <typename T>
+    struct writable<T, std::void_t<typename T::value_type>>
+        : std::bool_constant<elementwise_writer<T> && value_writable<typename T::value_type>> {};
 
-// template<typename T>
-// concept has_gload_container = requires(T& v) {
-//     typename T::value_type;
-//     requires ::scl2::has_gload<typename T::value_type> || ::scl2::has_gload_container<typename T::value_type>;
-// };
+    template <typename T>
+    struct readable<T, std::void_t<typename T::value_type>>
+        : std::bool_constant<elementwise_reader<T>
+            && cursor_readable<typename T::value_type>::value> {};
+
+    // std::map's value_type shape: first is const, which is what is_pair() checks.
+    template <typename T>
+    struct writable_pair<T, std::void_t<typename T::first_type, typename T::second_type>>
+        : std::bool_constant<::scl2::stl::is_pair<T>
+            && value_writable<typename T::first_type>
+            && value_writable<typename T::second_type>> {};
+
+    template <typename T>
+    struct readable_pair<T, std::void_t<typename T::first_type, typename T::second_type>>
+        : std::bool_constant<::scl2::stl::is_pair<T>
+            && cursor_readable<typename T::first_type>::value
+            && cursor_readable<typename T::second_type>::value> {};
+
+} // namespace gdp_detail
+
+// A container gdump() / gload() handle themselves, element by element.
+template<typename T>
+concept has_gdump_container = gdp_detail::writable<T>::value;
 
 template<typename T>
-concept has_gdump_container = gdp_detail::has_gdump_recursive<T>::value;
-
-// 替换原有的 has_gload_container
-template<typename T>
-concept has_gload_container = gdp_detail::has_gload_recursive<T>::value;
+concept has_gload_container = gdp_detail::readable<T>::value;
 
 
 template<typename T>
@@ -156,11 +214,47 @@ requires has_gload_container<T> && (!::scl2::has_gload<T>)
 T gload(const scl2::bytearray& data);
 
 
+// A contiguous container of trivially copyable elements: count, element size, then the whole
+// block at once. A trivially copyable object is still written as itself, so it stays on the
+// path above.
+template<typename T>
+requires ::scl2::stl::restorable_trivially_copyable_container<T>
+      && (!std::is_trivially_copyable_v<T>) && (!::scl2::has_gdump<T>)
+scl2::bytearray gdump(const T& container);
+
+template<typename T>
+requires ::scl2::stl::restorable_trivially_copyable_container<T>
+      && (!std::is_trivially_copyable_v<T>) && (!::scl2::has_gload<T>)
+T gload(const scl2::bytearray& data);
+
+
+// std::string / std::wstring, length prefixed.
+scl2::bytearray gdump(const std::string& str);
+scl2::bytearray gdump(const std::wstring& str);
+
+template<typename T>
+requires std::same_as<T, std::string>
+T gload(const scl2::bytearray& data);
+
+template<typename T>
+requires std::same_as<T, std::wstring>
+T gload(const scl2::bytearray& data);
+
+
+// One element from the read cursor — the counterpart of the append(gdump(element)) that
+// bytearray::appendContainer() writes, for containers that are not one plain-copy block.
+template<typename T>
+requires gdp_detail::cursor_readable<T>::value
+T read_element(const scl2::bytearray& data);
+
+
 // pair support
-template<::scl2::stl::is_pair T>
+template<typename T>
+requires ::scl2::stl::is_pair<T> && (!::scl2::has_gdump<T>) && gdp_detail::value_writable<T>
 scl2::bytearray gdump(const T& pair);
 
-template<::scl2::stl::is_pair T>
+template<typename T>
+requires ::scl2::stl::is_pair<T> && (!::scl2::has_gload<T>) && gdp_detail::value_readable<T>
 T gload(const scl2::bytearray& data);
 
 } // namespace scl2

@@ -264,8 +264,9 @@ float value = serialized.to<float>();
 ```cpp
 template<typename _T> _T toContainer() const;
 ```
-Builds a container (`_T` has a trivially copyable `value_type`) out of the content, taking
-the element count from the size.
+Builds a container out of the content. `_T` has to be a contiguous container of trivially
+copyable elements that can be constructed from a pointer and a count — `std::string` and
+`std::vector` can, `std::array` and `std::list` cannot. The element count comes from the size.
 
 ### Stream Operations
 
@@ -381,7 +382,11 @@ void append(const bytearray &data);               // at the end
 - `insertRawString(pos, str)` / `appendRawString(str)` - the characters alone, no length prefix
 - `insertRawWString(pos, str)` / `appendRawWString(str)` - the same for the wide form
 - `insertByte(pos, uint8_t byte)` / `appendByte(uint8_t byte)` - one byte from a plain integer
-- `insertContainer(pos, const C &container)` / `appendContainer(const C &container)` - count, element size, then the elements
+- `insertContainer(pos, const C &container)` - a contiguous container of trivially copyable
+  elements: count, element size, then the block
+- `appendContainer(const C &container)` - the same for such a container, and for any other one
+  a count followed by each element written with `gdump()`. `readContainer<T>()` reads both
+  forms back
 
 The string forms pair up with the readers: `append(str)` writes what `readString()` reads
 back, and `appendRawString(str)` writes what `readRawString(n)` reads back.

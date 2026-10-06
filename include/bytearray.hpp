@@ -141,10 +141,10 @@ public:
     void insertRawWString(const std::wstring& str) { insertRawWString(write_pointer, str); }
     void appendRawWString(const std::wstring& str) { insertRawWString(size(), str); }
 
-    // ── Container write (trivially copyable elements) ────────────────
+    // ── Container write (plain copy) ─────────────────────────────────
+    // Contiguous storage of trivially copyable elements: count, element size, then the block.
     template<typename ContainerType>
-    requires requires { typename ContainerType::value_type; }
-          && std::is_trivially_copyable_v<typename ContainerType::value_type>
+    requires ::scl2::stl::trivially_copyable_container<ContainerType>
     void insertContainer(size_t pos, const ContainerType& container) {
         insert<uint32_t>(pos, static_cast<uint32_t>(container.size()));
         insert<uint32_t>(pos + sizeof(uint32_t), static_cast<uint32_t>(sizeof(typename ContainerType::value_type)));
@@ -153,9 +153,16 @@ public:
                container.size() * sizeof(typename ContainerType::value_type));
     }
 
-    // ── Container write (gdump elements) ─────────────────────────────
+    // ── Container write ─────────────────────────────────────────────
+    // Plain copy: a contiguous block of trivially copyable elements — count, element size,
+    // then the block. readContainer() reads this back the same way.
+    template<typename ContainerType>
+    requires ::scl2::stl::trivially_copyable_container<ContainerType>
+    void appendContainer(const ContainerType& container) { insertContainer(size(), container); }
+
+    // Element by element: count, then each element written with gdump().
     template<typename _T>
-    requires (!::scl2::stl::trivially_copyable_container<_T> && ::scl2::has_gdump_container<_T>)
+    requires ::scl2::has_gdump_container<_T>
     void appendContainer(const _T& in) {
         append<uint32_t>(static_cast<uint32_t>(in.size()));
         for (const auto& elem : in) {
@@ -243,10 +250,9 @@ public:
         return result;
     }
 
-    // Container read (trivially copyable elements)
+    // Container read (plain copy: count, element size, then the block)
     template<typename ContainerType>
-    requires requires { typename ContainerType::value_type; }
-          && std::is_trivially_copyable_v<typename ContainerType::value_type>
+    requires ::scl2::stl::restorable_trivially_copyable_container<ContainerType>
     ContainerType readContainer() const {
         if (!available<uint32_t>()) throw std::out_of_range("bytearray::readContainer: not enough data for count");
         uint32_t count = read<uint32_t>();
@@ -257,23 +263,25 @@ public:
             throw std::runtime_error("bytearray::readContainer: element size mismatch");
         if (!bytesAvailable(count * elemSize)) throw std::out_of_range("bytearray::readContainer: not enough data");
         ContainerType container(count);
+        if (container.size() != count)
+            throw std::runtime_error("bytearray::readContainer: count mismatch");
         std::memcpy(container.data(), this->data() + read_pointer, count * elemSize);
         read_pointer += count * elemSize;
         return container;
     }
 
-    // Container read (gdump elements)
-    // const: the body only uses const readers, and the recursive
-    // scl2::gload<value_type>(*this) accepts a const bytearray.
+    // Container read (element by element)
+    // const: the body only uses const readers, and scl2::read_element() accepts a const
+    // bytearray (the cursor is mutable).
     template<typename _T>
-    requires (!::scl2::stl::trivially_copyable_container<_T> && ::scl2::has_gdump_container<_T>)
+    requires ::scl2::has_gload_container<_T>
     _T readContainer() const {
         if (!available<uint32_t>()) throw std::out_of_range("bytearray::readContainer: not enough data for count");
         uint32_t count = read<uint32_t>();
         _T result;
         if constexpr (requires(_T& c) { c.reserve(size_t{}); }) result.reserve(count);
         for (uint32_t i = 0; i < count; ++i) {
-            ::scl2::stl::universal_insert(result, ::scl2::gload<typename _T::value_type>(*this));
+            ::scl2::stl::universal_insert(result, ::scl2::read_element<typename _T::value_type>(*this));
         }
         return result;
     }
@@ -433,7 +441,8 @@ public:
     }
 
     template<typename _T>
-    requires (std::is_class_v<_T> && std::is_trivially_copyable_v<typename _T::value_type>)
+    requires ::scl2::stl::trivially_copyable_container<_T>
+          && requires(const typename _T::value_type* p, size_t n) { _T(p, n); }
     _T toContainer() const {
         using _Tp = typename _T::value_type;
         return _T(reinterpret_cast<const _Tp*>(this->data()), this->size() / sizeof(_Tp));
