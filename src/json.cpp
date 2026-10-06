@@ -5,6 +5,9 @@
 */
 #include "json.hpp"
 
+#include <cmath>
+#include <cstdlib>
+
 #include <fstream>
 #include <sstream>
 
@@ -1243,13 +1246,44 @@ void json_exporter::exportString(const json_value& value, size_t indentLevel)
     result_str += jquote(value.as_string()); // jquote already escapes
 }
 
+namespace {
+
+/// A double as text, in the shortest form that reads back as the same double.
+///
+/// `std::to_string` is `%f` with six decimals: it turns 1e-10 into "0.000000" (the value is
+/// gone) and writes 1e20 as 27 digits with ".000000" on the end. Trying `%g` at increasing
+/// precision until it reads back is the usual way out, and 17 digits always suffice.
+///
+/// A result without a '.', 'e' or 'E' gets a ".0" appended, so that reading it back gives a
+/// double rather than an integer: a value that changes type on a round trip is a value that
+/// changed. Non-finite values keep the text they always had ("nan" / "inf"), which is not
+/// valid JSON either way and is not this function's decision to make.
+std::string json_double_to_string(double value)
+{
+    if (!std::isfinite(value)) return std::to_string(value);
+
+    char buffer[48];
+    for (int precision = 1; precision <= 17; ++precision) {
+        std::snprintf(buffer, sizeof(buffer), "%.*g", precision, value);
+        if (std::strtod(buffer, nullptr) != value) continue;
+
+        std::string text(buffer);
+        if (text.find_first_of(".eE") == std::string::npos) text += ".0";
+        return text;
+    }
+
+    return std::string(buffer); // unreachable for a finite value
+}
+
+} // namespace <unnamed>
+
 void json_exporter::exportNumber(const json_value &value, size_t indentLevel)
 {
     (void)indentLevel;
     if (value.is_int()) {
         result_str += std::to_string(value.as_int());
     } else {
-        result_str += std::to_string(value.as_double());
+        result_str += json_double_to_string(value.as_double());
     }
 }
 

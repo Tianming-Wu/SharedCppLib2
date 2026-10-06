@@ -12,6 +12,7 @@ See [release.md](doc/release.md) for the releasing standards.
 - Fixed: `fileio::readAndLoad()` never compiled.
 - Fixed: `json` refused a byte order mark, and refused a document whose root value was preceded by whitespace; a file written by Notepad, Visual Studio or PowerShell's `Out-File` did not parse.
 
+- Fixed: `json` lost precision when writing doubles — `1e-10` came back as `0.000000` — and a double that held a whole number came back as an integer.
 ### v3.7.0
 - Fixed: `json` wrote strings and object keys escaped twice — a backslash, quote or tab came back changed, and every read-write round added another layer of escaping.
 - Fixed: `json` skipped one byte after each multi-byte character when `escapeNonAscii` was on; `\uXXXX` surrogate pairs are now combined when parsing.
