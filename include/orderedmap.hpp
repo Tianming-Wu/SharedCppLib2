@@ -2,23 +2,54 @@
     Ordered Map for SharedCppLib2
     Tianming Wu <https://github.com/Tianming-Wu> 2026.10.6
 
-    A combination of map and linked list, which preserves the order inside a tree, without
-    losing the insanely fast lookup speed of a map. Does not rely on standard library containers.
+    A hybrid approach of combining map and linked list, in order to preserves the order
+    inside a tree, without losing the insanely fast lookup speed of a map. Does not rely
+    on standard library containers.
 
-    Unlike std::map's "ordered" property, which is in practice sorted pairs based on the key's
-    comparison operator, this implementation allows you to control the order by yourself, similar
-    to a std::vector, but with O(log n) lookup speed. (In fact more like a linked list, since insertion
-    is much faster than a vector)
+    Unlike std::map's "ordered" property, which is in practice sorted pairs based on the
+    key's comparison operator, this implementation allows you to control the order by
+    yourself, similar to a std::vector, but with O(log n) lookup speed. (In fact more
+    like a linked list, since insertion is much faster than a vector)
 
-    The iteration is by default your custom order, thus the insertion order by default. You can also
-    customize the iteration order by inserting elements or removing elements.
-    The std::map's legacy key order is still available as `sorted_iterator`, so you do not need to sort
-    the elements yourself when you need key-based ordering.
+    The iteration is by default your custom order, thus the insertion order by default.
+    You can also customize the iteration order by inserting elements or removing elements.
+    The std::map's legacy key order is still available as `sorted_iterator`, so you do
+    not need to sort the elements yourself when you need key-based ordering.
     
-    Also, reference stability is guaranteed. Inserting or removing elements will not invalidate
-    references to other elements.
+    Also, reference stability is guaranteed. Inserting or removing elements will not
+    invalidate references to other elements.
 
     It is implemented as a modified red-black tree, with additional linking information.
+
+    It is a map first: the map-shaped operations keep the standard names and the standard
+    behaviour, and the elements are appended to the end of the order unless you move them.
+
+    The names say which of the two dimensions they act on:
+      - the plain std::map names (insert, erase, find, at, operator[], ...) are the key
+        dimension. When a signature cannot be shared, the map behaviour keeps the name.
+      - the order names (insert_at, erase_at, nth, index_of, move_before / splice, sort, sort_by,
+        push_back / push_front / pop_back / pop_front / emplace_back / emplace_front, reverse,
+        front, back) are the order dimension, with the lookup side left alone; they follow
+        std::list's contracts. The standard spellings insert(pos, ...) and erase(pos) are added
+        on top of them when a key cannot be mistaken for a position (key_position_distinct).
+      - sorted_begin() / sorted_end() are the key order. begin() / end() give the insertion
+        order on purpose, because that is the useful default here, so sequence-style code can
+        walk the elements directly.
+
+    With those names it can be used as an ordered container with the map part as an index: the
+    order names are the sequence operations, the key names stay the lookups, and sorted_* still
+    reaches everything in key order.
+
+    Not a full STL container — the map subset plus the order list. Deviations from std::map,
+    one line each:
+      - begin()/end() walk the insertion order; the key order is sorted_begin()/sorted_end()
+      - insert() / emplace() never overwrite an existing value; insert_or_assign() does
+      - the stored key is not const, so writing it->first breaks the key order
+      - erase() does not move or reorder the other elements
+
+    [SCL_STANDALONE_MODULE]
+    version: 1.1.0
+    cpp_generation: cxx17 - cxx23
 */
 
 #pragma once
@@ -28,6 +59,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -36,7 +68,6 @@ namespace scl2 {
 
 template<typename KeyType, typename ValueType, typename Compare = std::less<KeyType>>
 class ordered_map {
-
 public:
     using key_type        = KeyType;
     using mapped_type     = ValueType;
@@ -56,7 +87,6 @@ private:
     struct node : link {
         value_type data;
 
-
         // red-black tree color, true for red, false for black
         bool red = true;
 
@@ -72,7 +102,14 @@ private:
     link sentinel_;              // circular order list: .next is the first element, .prev the last
     node* root = nullptr;        // root of the red-black tree
     std::size_t size_ = 0;
-    [[no_unique_address]] Compare comp_{};
+
+    // [[no_unique_address]] is C++20; this module also builds as C++17.
+#ifdef __has_cpp_attribute
+#  if __has_cpp_attribute(no_unique_address) >= 201803L
+    [[no_unique_address]]
+#  endif
+#endif
+    Compare comp_{};
 
 public:
     template<bool IsConst> class ordered_iterator;
@@ -170,6 +207,12 @@ public:
         template<bool OtherConst>
         bool operator!=(const key_iterator<OtherConst>& other) const noexcept { return cur_ != other.cur_; }
     };
+
+    // The positional spellings (insert(pos, ...), erase(pos)) are only offered when a key
+    // cannot be mistaken for a position. The positional names (insert_at, erase_at) are always
+    // there — see the header comment.
+    static constexpr bool key_position_distinct =
+        !std::is_convertible_v<KeyType, iterator> && !std::is_convertible_v<iterator, KeyType>;
 
     // ---------------------------------------------------------------------------------
     // Construction / destruction / assignment
@@ -295,28 +338,40 @@ public:
     }
 
     // ---------------------------------------------------------------------------------
-    // Modifiers. None of them moves the elements that are already there.
+    // Modifiers — the key dimension. None of them moves an element that is already there.
     // ---------------------------------------------------------------------------------
 
-    // Returns true when a new element was appended; an existing value is left alone.
-    template<typename K, typename V>
-    bool insert(K&& key, V&& value) {
-        return insert_node(std::forward<K>(key), std::forward<V>(value)).second;
+    // Returns where the element is and whether it is new, like std::map's insert. An existing
+    // value is never overwritten.
+    template<typename K, typename V,
+             typename = std::enable_if_t<std::is_constructible_v<value_type, K&&, V&&>>>
+    std::pair<iterator, bool> insert(K&& key, V&& value) {
+        return insert_pair(std::forward<K>(key), std::forward<V>(value));
+    }
+
+    // The same, taking the pair std::map would take.
+    std::pair<iterator, bool> insert(const value_type& kv) {
+        return insert_pair(kv.first, kv.second);
+    }
+
+    std::pair<iterator, bool> insert(value_type&& kv) {
+        return insert_pair(std::move(kv.first), std::move(kv.second));
     }
 
     // Same as insert, kept because std::map has both names.
-    template<typename K, typename V>
-    bool emplace(K&& key, V&& value) {
-        return insert_node(std::forward<K>(key), std::forward<V>(value)).second;
+    template<typename K, typename V,
+             typename = std::enable_if_t<std::is_constructible_v<value_type, K&&, V&&>>>
+    std::pair<iterator, bool> emplace(K&& key, V&& value) {
+        return insert_pair(std::forward<K>(key), std::forward<V>(value));
     }
 
     // Appends when the key is new, overwrites in place when it is not (position unchanged).
-    template<typename K, typename V>
-    bool insert_or_assign(K&& key, V&& value) {
+    template<typename K, typename V,
+             typename = std::enable_if_t<std::is_constructible_v<value_type, K&&, V&&>>>
+    std::pair<iterator, bool> insert_or_assign(K&& key, V&& value) {
         node* n = find_impl(key);
-        if (n) { n->data.second = std::forward<V>(value); return false; }
-        insert_node(std::forward<K>(key), std::forward<V>(value));
-        return true;
+        if (n) { n->data.second = std::forward<V>(value); return { iterator(n), false }; }
+        return insert_pair(std::forward<K>(key), std::forward<V>(value));
     }
 
     bool erase(const KeyType& key) {
@@ -326,12 +381,241 @@ public:
         return true;
     }
 
-    // Erases the element the iterator points at and returns the next one in insertion order.
-    iterator erase(iterator pos) {
-        link* nxt = pos.cur_->next;
-        erase_node(static_cast<node*>(pos.cur_));
+    // ---------------------------------------------------------------------------------
+    // The order dimension. A position is an iterator into the insertion order, an index is a
+    // position counted from begin(). The key order is a property of the lookup structure, so
+    // none of these change what sorted_begin() / sorted_end() walk.
+    // ---------------------------------------------------------------------------------
+
+    // The element at that index, or end() when it is out of range.
+    // O(min(index, size() - index)).
+    const_iterator nth(size_type index) const noexcept {
+        const link* l = &sentinel_;
+        if (index * 2 < size_) {
+            l = sentinel_.next;
+            for (size_type i = 0; i < index; ++i) l = l->next;
+        } else {
+            for (size_type i = size_; i > index; --i) l = l->prev;
+        }
+        return const_iterator(l);
+    }
+
+    iterator nth(size_type index) noexcept {
+        const ordered_map& self = *this;
+        return iterator(const_cast<link*>(self.nth(index).cur_));
+    }
+
+    // Where that element sits in the insertion order, empty when the key is not in the map. O(n).
+    std::optional<size_type> index_of(const KeyType& key) const noexcept {
+        const node* wanted = find_impl(key);
+        if (!wanted) return std::nullopt;
+        size_type index = 0;
+        for (const link* l = sentinel_.next; l != &sentinel_; l = l->next, ++index) {
+            if (static_cast<const node*>(l) == wanted) return index;
+        }
+        return std::nullopt;
+    }
+
+    // The first and the last element in the insertion order, O(1). Like std::map's front/back
+    // they are only defined when the map is not empty.
+    value_type& front() noexcept { return static_cast<node*>(sentinel_.next)->data; }
+    const value_type& front() const noexcept { return static_cast<const node*>(sentinel_.next)->data; }
+    value_type& back() noexcept { return static_cast<node*>(sentinel_.prev)->data; }
+    const value_type& back() const noexcept { return static_cast<const node*>(sentinel_.prev)->data; }
+
+    // ── The ends, like any ordered list: O(1) for the order, O(log n) for the key ──────
+    // An existing key is neither moved nor overwritten, like insert().
+
+    template<typename K, typename V,
+             typename = std::enable_if_t<std::is_constructible_v<value_type, K&&, V&&>>>
+    std::pair<iterator, bool> push_back(K&& key, V&& value) {
+        return insert_at(end(), std::forward<K>(key), std::forward<V>(value));
+    }
+
+    std::pair<iterator, bool> push_back(const value_type& kv) { return insert_at(end(), kv); }
+    std::pair<iterator, bool> push_back(value_type&& kv) { return insert_at(end(), std::move(kv)); }
+
+    template<typename K, typename V,
+             typename = std::enable_if_t<std::is_constructible_v<value_type, K&&, V&&>>>
+    std::pair<iterator, bool> emplace_back(K&& key, V&& value) {
+        return insert_at(end(), std::forward<K>(key), std::forward<V>(value));
+    }
+
+    template<typename K, typename V,
+             typename = std::enable_if_t<std::is_constructible_v<value_type, K&&, V&&>>>
+    std::pair<iterator, bool> push_front(K&& key, V&& value) {
+        return insert_at(begin(), std::forward<K>(key), std::forward<V>(value));
+    }
+
+    std::pair<iterator, bool> push_front(const value_type& kv) { return insert_at(begin(), kv); }
+    std::pair<iterator, bool> push_front(value_type&& kv) { return insert_at(begin(), std::move(kv)); }
+
+    template<typename K, typename V,
+             typename = std::enable_if_t<std::is_constructible_v<value_type, K&&, V&&>>>
+    std::pair<iterator, bool> emplace_front(K&& key, V&& value) {
+        return insert_at(begin(), std::forward<K>(key), std::forward<V>(value));
+    }
+
+    // Drop the last / the first element, like erase(). Undefined when the map is empty, exactly
+    // like std::list::pop_back() / pop_front().
+    void pop_back() noexcept { erase_node(static_cast<node*>(sentinel_.prev)); }
+    void pop_front() noexcept { erase_node(static_cast<node*>(sentinel_.next)); }
+
+    // Reverse the insertion order, O(n). Keys, tree and references are untouched.
+    void reverse() noexcept {
+        link* l = &sentinel_;
+        do {
+            link* const nxt = l->next;
+            l->next = l->prev;
+            l->prev = nxt;
+            l = nxt;
+        } while (l != &sentinel_);
+    }
+
+    // Remove every element the predicate accepts, and return how many were removed. The
+    // predicate takes the stored pair, like std::list::remove_if.
+    template<typename Predicate>
+    size_type remove_if(Predicate pred) {
+        size_type removed = 0;
+        for (link* l = sentinel_.next; l != &sentinel_;) {
+            link* const nxt = l->next;
+            if (pred(static_cast<node*>(l)->data)) {
+                erase_node(static_cast<node*>(l));
+                ++removed;
+            }
+            l = nxt;
+        }
+        return removed;
+    }
+
+    // Drop elements a run of consecutive ones the predicate calls duplicates, keeping the first
+    // of each run, and return how many were removed — std::list::unique's shape.
+    //
+    // There is deliberately no parameterless overload: the elements are pairs whose keys are
+    // already unique, so comparing whole elements can never find two consecutive equals. Compare
+    // what is actually being deduplicated instead:
+    //     m.unique([](const auto& a, const auto& b) { return a.second == b.second; });
+    template<typename BinaryPredicate>
+    size_type unique(BinaryPredicate same) {
+        size_type removed = 0;
+        for (link* l = sentinel_.next; l != &sentinel_ && l->next != &sentinel_;) {
+            link* const nxt = l->next;
+            if (same(static_cast<node*>(l)->data, static_cast<node*>(nxt)->data)) {
+                erase_node(static_cast<node*>(nxt)); // keep `l` where it is and compare again
+                ++removed;
+            } else {
+                l = nxt;
+            }
+        }
+        return removed;
+    }
+
+    // Insert in front of `pos`; pos == end() appends. O(log n) for the key, O(1) for the order.
+    // An existing key is neither moved nor overwritten — use move_before() for that.
+    template<typename K, typename V,
+             typename = std::enable_if_t<std::is_constructible_v<value_type, K&&, V&&>>>
+    std::pair<iterator, bool> insert_at(const_iterator pos, K&& key, V&& value) {
+        node* existing = find_impl(key);
+        if (existing) return { iterator(existing), false };
+        const std::pair<node*, bool> inserted =
+            insert_node(std::forward<K>(key), std::forward<V>(value), const_cast<link*>(pos.cur_));
+        return { iterator(inserted.first), inserted.second };
+    }
+
+    std::pair<iterator, bool> insert_at(const_iterator pos, const value_type& kv) {
+        return insert_at(pos, kv.first, kv.second);
+    }
+
+    std::pair<iterator, bool> insert_at(const_iterator pos, value_type&& kv) {
+        return insert_at(pos, std::move(kv.first), std::move(kv.second));
+    }
+
+    // The same, taking an index: O(index) to reach the place, then as above.
+    template<typename K, typename V,
+             typename = std::enable_if_t<std::is_constructible_v<value_type, K&&, V&&>>>
+    std::pair<iterator, bool> insert_at(size_type index, K&& key, V&& value) {
+        return insert_at(nth(index), std::forward<K>(key), std::forward<V>(value));
+    }
+
+    // Erase the element at that position and return the next one in the insertion order.
+    iterator erase_at(const_iterator pos) {
+        link* const target = const_cast<link*>(pos.cur_);
+        link* const nxt = target->next;
+        erase_node(static_cast<node*>(target));
         return iterator(nxt);
     }
+
+    iterator erase_at(size_type index) { return erase_at(nth(index)); }
+
+    // Move an element that is already in the map in front of `pos`, O(1). Its key, its value and
+    // its place in the tree are untouched, so references to it stay valid.
+    void move_before(const_iterator pos, iterator what) noexcept {
+        link* const target = const_cast<link*>(pos.cur_);
+        link* const moving = what.cur_;
+        if (target == moving || target == moving->next) return; // already there
+        unlink(moving);
+        link_before(moving, target);
+    }
+
+    // std::list's name for the same operation.
+    void splice(const_iterator pos, iterator what) noexcept { move_before(pos, what); }
+
+    // Reorders the elements in [first, last) — the order list, not the key order — with `comp`
+    // on the stored pairs. Stable, O(n log n), no allocation. To sort by value, pass a
+    // comparator on `second`.
+    template<typename Compare>
+    void sort(iterator first, iterator last, Compare comp) {
+        if (first == last) return;
+
+        size_type length = 0;
+        for (iterator it = first; it != last; ++it) ++length;
+        if (length < 2) return;
+
+        link* const before = first.cur_->prev;
+        link* const after = last.cur_;
+        link* head = nullptr;
+        link* tail = nullptr;
+        merge_sort_range(first.cur_, length, comp, head, tail);
+
+        before->next = head;
+        head->prev = before;
+        tail->next = after;
+        after->prev = tail;
+    }
+
+    template<typename Compare>
+    void sort(Compare comp) { sort(begin(), end(), comp); }
+
+    // sort() with a projection instead of a comparator: proj(element) is compared with <. This
+    // is the shape for "sort by something inside the mapped value", e.g.
+    //     m.sort_by([](const auto& kv) { return kv.second.age; });
+    template<typename Projection>
+    void sort_by(iterator first, iterator last, Projection proj) {
+        sort(first, last, [&proj](const value_type& a, const value_type& b) { return proj(a) < proj(b); });
+    }
+
+    template<typename Projection>
+    void sort_by(Projection proj) { sort_by(begin(), end(), proj); }
+
+    // Standard spellings for the positional forms, offered only when a key cannot be mistaken
+    // for a position. insert_at / erase_at are always there.
+    template<typename = std::enable_if_t<key_position_distinct>>
+    iterator insert(const_iterator pos, const KeyType& key, const ValueType& value) {
+        return insert_at(pos, key, value).first;
+    }
+
+    template<typename = std::enable_if_t<key_position_distinct>>
+    iterator insert(const_iterator pos, const value_type& kv) {
+        return insert_at(pos, kv).first;
+    }
+
+    template<typename = std::enable_if_t<key_position_distinct>>
+    iterator insert(const_iterator pos, value_type&& kv) {
+        return insert_at(pos, std::move(kv)).first;
+    }
+
+    template<typename = std::enable_if_t<key_position_distinct>>
+    iterator erase(const_iterator pos) { return erase_at(pos); }
 
     void clear() noexcept {
         destroy_all();
@@ -384,14 +668,14 @@ private:
         sentinel_.prev->next = &sentinel_;
     }
 
-    void link_back(node* n) noexcept {
-        n->prev = sentinel_.prev;
-        n->next = &sentinel_;
-        sentinel_.prev->next = n;
-        sentinel_.prev = n;
+    void link_before(link* n, link* where) noexcept { // where == &sentinel_ appends
+        n->prev = where->prev;
+        n->next = where;
+        where->prev->next = n;
+        where->prev = n;
     }
 
-    void unlink(node* n) noexcept {
+    void unlink(link* n) noexcept {
         n->prev->next = n->next;
         n->next->prev = n->prev;
         n->prev = n->next = nullptr;
@@ -600,7 +884,13 @@ private:
     }
 
     template<typename K, typename V>
-    std::pair<node*, bool> insert_node(K&& key, V&& value) {
+    std::pair<iterator, bool> insert_pair(K&& key, V&& value) {
+        const std::pair<node*, bool> inserted = insert_node(std::forward<K>(key), std::forward<V>(value));
+        return { iterator(inserted.first), inserted.second };
+    }
+
+    template<typename K, typename V>
+    std::pair<node*, bool> insert_node(K&& key, V&& value, link* before = nullptr) {
         node* parent = nullptr;
         node* cur = root;
         bool go_left = false;
@@ -618,10 +908,61 @@ private:
         else if (go_left) parent->left = n;
         else parent->right = n;
 
-        link_back(n);
+        link_before(n, before ? before : &sentinel_);
         ++size_;
         insert_fixup(n);
         return { n, true };
+    }
+
+    // ── Order-list merge sort: relinks only, allocation free, stable ────────────────
+    template<typename Compare>
+    static void merge_sort_range(link* head, size_type length, Compare& comp, link*& out_head, link*& out_tail) {
+        if (length <= 1) {
+            head->prev = nullptr;
+            head->next = nullptr;
+            out_head = head;
+            out_tail = head;
+            return;
+        }
+
+        const size_type half = length / 2;
+        link* mid = head;
+        for (size_type i = 0; i < half; ++i) mid = mid->next;
+
+        link* left_head = nullptr;
+        link* left_tail = nullptr;
+        link* right_head = nullptr;
+        link* right_tail = nullptr;
+        merge_sort_range(head, half, comp, left_head, left_tail);
+        merge_sort_range(mid, length - half, comp, right_head, right_tail);
+
+        link* result_head = nullptr;
+        link* result_tail = nullptr;
+        link* a = left_head;
+        link* b = right_head;
+        while (a && b) {
+            link* next = nullptr;
+            // take the left one unless the right one is strictly smaller: that keeps it stable
+            if (comp(static_cast<node*>(b)->data, static_cast<node*>(a)->data)) { next = b; b = b->next; }
+            else                                                                { next = a; a = a->next; }
+            next->prev = result_tail;
+            next->next = nullptr;
+            if (result_tail) result_tail->next = next;
+            else result_head = next;
+            result_tail = next;
+        }
+        for (link* rest = a ? a : b; rest;) {
+            link* next = rest;
+            rest = rest->next;
+            next->prev = result_tail;
+            next->next = nullptr;
+            if (result_tail) result_tail->next = next;
+            else result_head = next;
+            result_tail = next;
+        }
+
+        out_head = result_head;
+        out_tail = result_tail;
     }
 
     const node* find_impl(const KeyType& key) const noexcept {
