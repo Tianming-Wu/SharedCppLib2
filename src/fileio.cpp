@@ -2,6 +2,7 @@
 #include "platform.hpp"
 
 #include <iomanip>
+#include <string>
 
 #ifndef OS_WINDOWS
 #include <fcntl.h> // ::open, used by flushFile
@@ -119,6 +120,39 @@ size_t writeFile(const fs::path &path, const std::string &data, bool flush)
     }
     if (flush) flushFile(path);
     return data.size();
+}
+
+void replaceFile(const fs::path& from, const fs::path& to)
+{
+    // One call, so nobody can observe a file that is half old and half new.
+#ifdef OS_WINDOWS
+    // MOVEFILE_WRITE_THROUGH is the point of this call for durability: without it the rename
+    // can land while the data it points at has not.
+    if (!MoveFileExW(from.c_str(), to.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        throw std::runtime_error("Failed to replace file: " + to.string()
+                                 + " (error " + std::to_string(GetLastError()) + ")");
+    }
+#else
+    std::error_code ec;
+    fs::rename(from, to, ec);
+    if (ec) {
+        throw std::runtime_error("Failed to replace file: " + to.string() + " (" + ec.message() + ")");
+    }
+#endif
+}
+
+size_t writeFileAtomic(const fs::path& path, const scl2::bytearray& data, bool flush)
+{
+    return detail::atomicWriteFile(path, flush, [&](const fs::path& tmp) {
+        return writeFile(tmp, data);
+    });
+}
+
+size_t writeFileAtomic(const fs::path& path, const std::string& data, bool flush)
+{
+    return detail::atomicWriteFile(path, flush, [&](const fs::path& tmp) {
+        return writeFile(tmp, data);
+    });
 }
 
 scl2::bytearray readFile(const fs::path &path)

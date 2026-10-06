@@ -10,6 +10,7 @@
 
 #include <fstream>
 #include <filesystem>
+#include <system_error>
 #include <type_traits>
 
 #include "api.hpp"
@@ -86,6 +87,19 @@ private:
 ///       instance before renaming it over another file. Throws if the flush fails.
 void flushFile(const fs::path& path);
 
+/// @brief Move @p from onto @p to, replacing whatever is there, in one operating system call.
+/// @note This is the second half of a safe write: put everything into a temporary file, then
+///       replace the real one with it. Because the replacement is a single call, a reader —
+///       another process, or this one after a restart — sees either the whole old file or the
+///       whole new one, never a half written mix. Both paths have to be on the same volume
+///       for this to be a rename rather than a copy, which is why the temporary is written
+///       next to its target.
+/// @note On Windows the call does not return until the change has reached the disk
+///       (`MOVEFILE_WRITE_THROUGH`). Everywhere else it is `rename`, which is atomic, but the
+///       directory entry itself is not flushed — a power loss can still undo it.
+/// @throws std::runtime_error if the replacement fails; @p from is left where it was.
+void replaceFile(const fs::path& from, const fs::path& to);
+
 // This is the truly powerful part of SharedCppLib2's new generic api.
 // A single line i/o! How cool is that!
 
@@ -141,6 +155,62 @@ size_t writeFile(const fs::path& path, const scl2::bytearray& data, bool flush =
 // Single-line Call for writing a string to file.
 size_t writeFile(const fs::path& path, const std::string& data, bool flush = false);
 
+// writeFile(), but through a temporary file that then replaces the target, so a run that
+// dies halfway leaves the previous file untouched instead of a truncated one.
+//
+// The temporary is `path` + ".tmp", next to the target, and is removed again if anything
+// fails. A crash leaves it behind; nothing here scans for it afterwards.
+//
+// `flush` defaults to true, unlike writeFile(): replacing a file with data that has not
+// reached the disk yet is the very thing this exists to avoid.
+
+namespace detail {
+/// @brief Write through `path` + ".tmp" and replace `path` with it.
+/// @param write Called with the temporary path; it has to put the data there.
+/// @return Whatever @p write returned.
+/// @throws Whatever @p write, the flush or the replace throws, after removing the temporary.
+template<typename WriteFn>
+inline size_t atomicWriteFile(const fs::path& path, bool flush, WriteFn&& write) {
+    fs::path tmp = path;
+    tmp += ".tmp";
+
+    try {
+        const size_t written = write(tmp);
+        if (flush) flushFile(tmp);
+        replaceFile(tmp, path);
+        return written;
+    }
+    catch (...) {
+        // The temporary is ours, and it has no value once the replacement failed.
+        std::error_code ignored;
+        fs::remove(tmp, ignored);
+        throw;
+    }
+}
+} // namespace detail
+
+template<typename T>
+requires ::scl2::has_generic_serialize<T>
+size_t writeFileAtomic(const fs::path& path, const T& data, bool flush = true) {
+    return detail::atomicWriteFile(path, flush, [&](const fs::path& tmp) {
+        return writeFile(tmp, data);
+    });
+}
+
+template<typename T>
+requires ::scl2::has_generic_dump<T>
+size_t writeFileAtomic(const fs::path& path, const T& data, bool flush = true) {
+    return detail::atomicWriteFile(path, flush, [&](const fs::path& tmp) {
+        return writeFile(tmp, data);
+    });
+}
+
+// Single-line Call for writing a bytearray to file, through a temporary and a replace.
+size_t writeFileAtomic(const fs::path& path, const scl2::bytearray& data, bool flush = true);
+
+// Single-line Call for writing a string to file, through a temporary and a replace.
+size_t writeFileAtomic(const fs::path& path, const std::string& data, bool flush = true);
+
 template<typename T>
 requires ::scl2::has_generic_load<T>
 T readAndLoad(const fs::path& path) {
@@ -148,7 +218,10 @@ T readAndLoad(const fs::path& path) {
     if (!ifs) {
         throw std::runtime_error("Failed to open file for reading: " + path.string());
     }
-    scl2::bytearray ba((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+    // Note: a char iterator range does not fit bytearray's range constructor — bytearray holds
+    // std::byte, and a char does not convert to it. Read the stream instead.
+    scl2::bytearray ba;
+    ba.readAllFromStream(ifs);
     return scl2::generic_load<T>(ba);
 }
 

@@ -8,6 +8,8 @@ See [release.md](doc/release.md) for the releasing standards.
 - Fixed: `network` — name resolution answers with every address of both families, IPv6 works, `connect()` takes host names as well as IPv4 and IPv6 literals, `tcp::client` says why a connection failed, `ping()` works, and `http` exposes its timeouts separately.
 - Fixed: `process` no longer opens a console window for a child of a windowless process.
 - New: `json2` — a lossless JSON module next to `json`: a document that is parsed, edited and written back differs only where it was changed, and `fidelity::semantic` keeps the values only. Members keep document order, lookup is by key, JSON Pointer and the `json`-shaped accessors are there, and the regenerated text uses the layout `json` writes by default.
+- New: `fileio` can replace a file in one step — `writeFileAtomic()` writes through a temporary file and `replaceFile()` moves it into place, so a reader sees either the whole old file or the whole new one, and an interrupted run leaves the old file behind.
+- Fixed: `fileio::readAndLoad()` never compiled.
 
 ### v3.7.0
 - Fixed: `json` wrote strings and object keys escaped twice — a backslash, quote or tab came back changed, and every read-write round added another layer of escaping.
