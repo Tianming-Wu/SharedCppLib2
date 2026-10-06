@@ -1,5 +1,13 @@
 # Changelog
 
+See [release.md](doc/release.md) for the releasing standards.
+
+### [Unreleased]
+- New: `orderedmap` — an order-preserving key-value container, `scl2::ordered_map<Key, Value, Compare>`. Iteration follows the insertion order while lookup and erase stay as cheap as `std::map`'s, and `sorted_begin` / `sorted_end` walk the key order instead. It also builds as C++17.
+- Fixed: `bytearray` could not dump or load several kinds of container it should have handled — `std::string`, `std::wstring`, trivially copyable containers, element-wise containers and `std::pair` all work now.
+- Fixed: `network` — name resolution answers with every address of both families, IPv6 works, `connect()` takes host names as well as IPv4 and IPv6 literals, `tcp::client` says why a connection failed, `ping()` works, and `http` exposes its timeouts separately.
+- Fixed: `process` no longer opens a console window for a child of a windowless process.
+
 ### v3.7.0
 - Fixed: `json` wrote strings and object keys escaped twice — a backslash, quote or tab came back changed, and every read-write round added another layer of escaping.
 - Fixed: `json` skipped one byte after each multi-byte character when `escapeNonAscii` was on; `\uXXXX` surrogate pairs are now combined when parsing.
