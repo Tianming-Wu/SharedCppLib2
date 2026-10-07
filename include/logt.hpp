@@ -5,6 +5,7 @@
     Doesn't work well in file mode, disable it in that case by yourself.
 
     This library is way too complex to tell you everything here. Just go and check the document.
+    Although it is not long, it's structure is not simple.
 
     Dev note:
         I just noticed that the exiting of logt is not that graceful. I can take advantage of the C++
@@ -57,15 +58,19 @@
 #endif
 
 enum class LogLevel : int8_t {
-    Quiet = -1, // For not logging anything (filter only)
-    Debug =  0,
-    Info  =  1,
-    Warn  =  2,
-    Error =  3,
-    Fatal =  4,
+    Debug = 0,
+    Info  = 1,
+    Warn  = 2,
+    Error = 3,
+    Fatal = 4,
 
-    // Reserved keys
-    Inherit = 16, // Inherit from global settings, for channel
+    // Reserved keys — these are filter values, not message levels.
+
+    /// Log nothing: it sits above every level, so `level >= Quiet` never holds for a real record.
+    Quiet = 5,
+
+    /// Take the filter from the global setting (for a channel).
+    Inherit = 16,
 };
 
 struct logt_channel {
@@ -118,11 +123,18 @@ public:
     static bool pop(logt_message& result);
     static void stop();
 
+    /// @brief Wait until the queue is empty and the message in hand has been written.
+    static void wait_until_empty();
+
+    /// @brief Tell the waiters that the message just popped has been written.
+    static void mark_processed();
+
 private:
     static std::mutex mutex_;
     static std::condition_variable cond_;
     static std::queue<logt_message> queue_;
     static std::atomic<bool> stopped_;
+    static bool in_flight_; // a message has been popped but not written yet
 };
 
 
@@ -258,20 +270,34 @@ public:
     static void claim(const std::string& name);
 
     /// @brief Set the global log filter level, by default is `LogLevel::Info`.
-    /// @param level The minimum log level to output
+    /// @param level The lowest level that is still written; a record below it is dropped.
+    /// @note A channel with a filter of its own ([setChannelFilter]) is not affected by this,
+    ///       and `LogLevel::Quiet` — above every level — turns logging off completely.
     inline static void setFilterLevel(LogLevel level) { filter_level_ = level; }
 
     /// @brief Set per-channel log filter level.
-    /// @param channel_id The channel ID (returned by addfile/addostream)
-    /// @param level The minimum log level, or LogLevel::Inherit to use global
+    /// @param channel_id The channel ID (returned by addfile/addostream, or 0 for the console)
+    /// @param level The lowest level for this channel, or LogLevel::Inherit to use the global one
     inline static void setChannelFilter(int channel_id, LogLevel level) {
-        if (channel_id > 0 && channel_id < LOGT_MAX_CHANNEL)
+        if (channel_id >= 0 && channel_id < LOGT_MAX_CHANNEL)
             channels_[channel_id].filter = level;
     }
 
     // 静态关闭方法
     /// @brief Shutdown the logging system, ensuring all messages are processed.
+    /// @note Registering a `logt_guard` or calling this before the process ends is no longer the
+    ///       only way out: the logger registers itself with `std::atexit()` when its worker
+    ///       starts, so returning from `main` and `std::exit()` drain the queue and close the
+    ///       files on their own. Nothing runs on `abort()` / `std::terminate()` /
+    ///       `TerminateProcess()` — see flush() for those.
     static void shutdown();
+
+    /// @brief Wait until every message handed over so far has been written.
+    /// @details Does not stop the logger: records can be logged again afterwards. Call it before
+    ///          anything that may end the process without running destructors — a crash handler,
+    ///          an `abort()` path — since only the queue is at risk: a record that has been
+    ///          written is already flushed to the file.
+    static void flush();
 
     /// @brief Shutdown the logging system then close the application.
     static void exit(int exitcode);
@@ -308,6 +334,9 @@ private:
     static std::string get_thread_name();
     static void worker_thread();
     static void ensure_worker_started();
+
+    /// @brief The filter that applies to a channel: its own, or the global one when it inherits.
+    static LogLevel channel_filter(int channel_id);
 
     static void write_message(const logt_message& message);
 

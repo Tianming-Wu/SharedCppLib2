@@ -2,7 +2,7 @@
 
 + Name: logt  
 + Namespace: none  
-+ Document Version: `1.3.0`
++ Document Version: `1.4.0`
 
 ## CMake Info
 
@@ -134,7 +134,7 @@ logt_guard guard;  // Automatically calls logt::shutdown() on destruction
 A convenience RAII class whose destructor calls `logt::shutdown()`. Declaring a `logt_guard` instance at the appropriate scope (e.g. in `main()`) ensures the logging system is properly shut down when it goes out of scope.
 
 > [!NOTE]
-> Using `logt_guard` is entirely optional. If you choose not to use it, you **must** call `logt::shutdown()` before program exit, and `shutdown()` must be called from the last exiting thread. Failing to call `shutdown()` will trigger `std::terminate()` when `main()` exits, because the worker thread is still running.
+> Using `logt_guard` is entirely optional. The logger registers itself with `std::atexit()` when its worker starts, so returning from `main()` and `std::exit()` drain the queue and close the files on their own — a missing `shutdown()` no longer loses the tail, and no longer ends the program in `std::terminate()` either. What still needs you is everything that ends the process without unwinding: call `logt::flush()` (or `shutdown()`) from the place that knows, because `abort()`, `std::terminate()`, `ExitProcess()` and `TerminateProcess()` run no destructors at all.
 
 **Example:**
 
@@ -188,13 +188,13 @@ Sets a readable name for current thread. If a thread is not claimed, logt falls 
 ```cpp
 static void setFilterLevel(LogLevel level);
 ```
-Sets the global minimum log level. Levels: `LogLevel::Debug`, `LogLevel::Info`, `LogLevel::Warn`, `LogLevel::Error`, `LogLevel::Fatal`, special `LogLevel::Quiet`.
+Sets the global minimum log level: a record below it is dropped. Levels: `LogLevel::Debug`, `LogLevel::Info`, `LogLevel::Warn`, `LogLevel::Error`, `LogLevel::Fatal`, and the special `LogLevel::Quiet`, which sits **above every level** and therefore logs nothing at all. It applies to every channel — the console included — except the ones that were given a filter of their own with `setChannelFilter()`.
 
 #### setChannelFilter - per-channel log filtering
 ```cpp
 static void setChannelFilter(int channel_id, LogLevel level);
 ```
-Sets a per-channel filter level, overriding the global `setFilterLevel()` for that specific channel. Use `LogLevel::Inherit` to fall back to the global filter. This is useful when you want different channels to capture different log severities — for example, a console channel showing only warnings while a file channel records everything.
+Sets a per-channel filter level, overriding the global `setFilterLevel()` for that specific channel. Use `LogLevel::Inherit` to fall back to the global filter, or `LogLevel::Quiet` to silence that channel completely. Channel 0 is the console, so `setChannelFilter(0, LogLevel::Quiet)` is how you keep the terminal quiet while the files keep recording. This is useful when you want different channels to capture different log severities — for example, a console channel showing only warnings while a file channel records everything.
 
 #### enableSuperTimestamp - high precision timestamp
 ```cpp
@@ -213,7 +213,19 @@ Preprocessing currently happens in `write_message()`: stdout/custom streams use 
 ```cpp
 static void shutdown();
 ```
-Gracefully stops worker thread and flushes pending messages. **Must be called before program exit.** Must be called from the last exiting thread. Failing to call `shutdown()` will trigger `std::terminate()` when `main()` exits.
+Gracefully stops worker thread, drains the queue and closes the channels. No longer strictly required: `logt` registers a `std::atexit()` handler when its worker starts, so a normal return from `main()` or a call to `std::exit()` does this for you. Call it yourself when the process ends in some other way, or when the log has to be complete before that point — `flush()` is then enough. Must be called from the last exiting thread.
+
+#### flush - wait for the queue
+```cpp
+static void flush();
+```
+Waits until every message handed over so far has been written, without stopping the logger — records can be logged again afterwards. A record that has been written is already flushed to its file, so the queue is the only place a record can still be lost. Call it before anything that may end the process without running destructors:
+
+```cpp
+logt.fatal() << "out of memory";
+logt::flush();   // the record is in the file now
+std::abort();    // or a crash, or TerminateProcess from outside
+```
 
 #### logt_guard - RAII shutdown guard
 ```cpp
@@ -305,13 +317,15 @@ Convenience macro for embedding source location in log messages.
 
 ## Log Levels
 
-- `LogLevel::Quiet` = -1 — log nothing.
 - `LogLevel::Debug` = 0 — detailed debug information.
 - `LogLevel::Info` = 1 — normal runtime information.
 - `LogLevel::Warn` = 2 — potentially abnormal conditions.
 - `LogLevel::Error` = 3 — error conditions.
 - `LogLevel::Fatal` = 4 — unrecoverable failures.
-- `LogLevel::Inherit` = 16 — reserved sentinel value for channel filter; use global setting.
+- `LogLevel::Quiet` = 5 — reserved filter value, above every level: nothing is logged.
+- `LogLevel::Inherit` = 16 — reserved sentinel value for a channel filter: use the global setting.
+
+A filter keeps the records **at or above** its level, so `setFilterLevel(LogLevel::Warn)` drops `Debug` and `Info`. Messages themselves are only ever logged through the level methods of a signature (`logt.info()`, `logt.warn()`, …); `Quiet` and `Inherit` are filter values, not message levels.
 
 ## Complete Example
 
@@ -398,7 +412,7 @@ Field meaning:
 - **Async advantage**: logging does not block caller threads, use it to keep critical paths responsive.
 - **Preprocessing cost**: complete heavy formatting before enqueueing where possible.
 - **Production filter**: consider `setFilterLevel(LogLevel::Warn)` or higher in production.
-- **Shutdown discipline**: always call `shutdown()` before process exit to avoid message loss.
+- **Shutdown discipline**: `flush()` before anything that may end the process without unwinding (a crash handler, an `abort()` path). A normal exit needs nothing — the logger drains itself.
 
 ## Extension Integration
 

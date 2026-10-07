@@ -2,6 +2,13 @@
 
 See [release.md](doc/release.md) for the releasing standards.
 
+### [Unreleased]
+- Fixed: `logt` — `LogLevel::Quiet` was the lowest level instead of the highest, so a filter of `Quiet` kept everything: `setFilterLevel(LogLevel::Quiet)` logged as much as `Debug` did, and so did a per-channel one. It sits above every level now, which is what "log nothing" has to mean for a filter that keeps what is at or above it.
+- Fixed: `logt` — the console (channel 0) ignored the filter completely, and `setChannelFilter()` refused channel 0. The console follows the global filter now, and can be given a filter of its own: `setChannelFilter(0, LogLevel::Quiet)` keeps the terminal quiet while the files keep recording.
+- New: `logt::flush()` — waits until everything handed over so far has been written, without stopping the logger. A record that has been written is already flushed to its file, so the queue is the only place one can still be lost; call it from a crash handler, or before an `abort()` path.
+- Changed: `logt` drains itself on the ordinary way out — it registers a `std::atexit()` handler when its worker starts, so a normal return from `main()` and `std::exit()` flush the queue and close the files without a `shutdown()` call or a `logt_guard`, and without the `std::terminate()` that a forgotten `shutdown()` used to end the program with. Nothing runs on `abort()` / `std::terminate()` / `ExitProcess()` / `TerminateProcess()`; `flush()` is the answer there.
+- Fixed: `logt` — a message logged after `shutdown()` sat in the queue for ever; it is dropped now, since the worker that would have written it is gone.
+
 ### v3.8.0
 - New: `orderedmap` — an order-preserving key-value container, `scl2::ordered_map<Key, Value, Compare>`. Iteration follows the insertion order while lookup and erase stay as cheap as `std::map`'s, and `sorted_begin` / `sorted_end` walk the key order instead. It also builds as C++17.
 - Fixed: `bytearray` could not dump or load several kinds of container it should have handled — `std::string`, `std::wstring`, trivially copyable containers, element-wise containers and `std::pair` all work now.
