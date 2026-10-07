@@ -155,6 +155,84 @@ void mark_broken(bool& broken, bool throw_on_broken, DWORD error)
     }
 }
 
+// How much a read that ended in ERROR_MORE_DATA did transfer: the count belongs to the
+// operation, not to the call.
+DWORD transferred_so_far(HANDLE pipe, OVERLAPPED& ov)
+{
+    DWORD count = 0;
+    if (!GetOverlappedResult(pipe, &ov, &count, FALSE)) count = static_cast<DWORD>(ov.InternalHigh);
+    return count;
+}
+
+// One read or write on a handle that was opened with FILE_FLAG_OVERLAPPED, done the way the API
+// asks for.
+//
+// The overlapped flag belongs to the handle, not to the call: every operation needs an OVERLAPPED
+// of its own. Passing nullptr instead is documented to be able to report an operation as complete
+// while it is not, and the byte count that comes back with it can be the wrong one.
+//
+// That OVERLAPPED, its event and the caller's buffer all have to stay valid until the kernel is
+// finished with them, so the pair is a local here and the operation is waited out before this
+// returns. Nothing is left pending when it does.
+//
+// @param writing      true for WriteFile, false for ReadFile
+// @param transferred  how much the operation really moved
+// @param error        0, or the error it ended with
+// @return true when the operation completed
+bool overlapped_transfer(bool writing, HANDLE pipe, const void* buffer, DWORD bytes,
+                         DWORD& transferred, DWORD& error)
+{
+    OVERLAPPED ov = {};
+    HANDLE event = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+    if (!event) {
+        transferred = 0;
+        error = GetLastError();
+        return false;
+    }
+    ov.hEvent = event;
+
+    transferred = 0;
+    error = 0;
+    bool completed = false;
+
+    // ReadFile wants a mutable pointer; it only ever writes into the buffer.
+    void* destination = const_cast<void*>(buffer);
+
+    const BOOL started = writing
+        ? WriteFile(pipe, buffer, bytes, &transferred, &ov)
+        : ReadFile(pipe, destination, bytes, &transferred, &ov);
+
+    if (started) {
+        // An overlapped call can report success with a byte count that is not the final one, so
+        // ask the operation itself.
+        if (GetOverlappedResult(pipe, &ov, &transferred, FALSE)) {
+            completed = true;
+        } else {
+            error = GetLastError();
+            if (error == ERROR_MORE_DATA) transferred = transferred_so_far(pipe, ov);
+        }
+    } else {
+        error = GetLastError();
+        if (error == ERROR_IO_PENDING) {
+            // The reason for all of this: do not return while the kernel still owns the buffer
+            // and the OVERLAPPED.
+            if (GetOverlappedResult(pipe, &ov, &transferred, TRUE)) {
+                completed = true;
+                error = 0;
+            } else {
+                error = GetLastError();
+                if (error == ERROR_MORE_DATA) transferred = transferred_so_far(pipe, ov);
+            }
+        } else if (error == ERROR_MORE_DATA) {
+            // A message longer than the buffer: the read did not complete, but data did arrive.
+            transferred = transferred_so_far(pipe, ov);
+        }
+    }
+
+    CloseHandle(event);
+    return completed;
+}
+
 } // namespace
 
 static inline bool isBrokenError(DWORD err)
@@ -432,11 +510,12 @@ scl2::bytearray server_client::read(size_t bytes)
     
     // Then read from pipe
     DWORD bytesRead = 0;
+    DWORD ioError = 0;
     scl2::bytearray buffer;
     buffer.resize(bytes);
 
-    if (!ReadFile(H(m_pipe), buffer.data(), static_cast<DWORD>(bytes), &bytesRead, nullptr)) {
-        if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
+    if (!overlapped_transfer(false, H(m_pipe), buffer.data(), static_cast<DWORD>(bytes), bytesRead, ioError)) {
+        if (isBrokenError(ioError)) mark_broken(m_broken, m_throw_on_broken, ioError);
         return result;
     }
     
@@ -473,7 +552,9 @@ scl2::bytearray server_client::readAll()
             scl2::bytearray chunk;
             chunk.resize(m_buffer_size);
             DWORD bytesRead = 0;
-            BOOL ok = ReadFile(H(m_pipe), chunk.data(), static_cast<DWORD>(m_buffer_size), &bytesRead, nullptr);
+            DWORD ioError = 0;
+            const bool ok = overlapped_transfer(false, H(m_pipe), chunk.data(),
+                                                static_cast<DWORD>(m_buffer_size), bytesRead, ioError);
             if (bytesRead > 0) {
                 chunk.resize(bytesRead);
                 result.append(chunk.data(), bytesRead);
@@ -482,12 +563,11 @@ scl2::bytearray server_client::readAll()
                 m_message_incomplete = false;
                 break; // complete message consumed
             }
-            DWORD err = GetLastError();
-            if (err == ERROR_MORE_DATA) {
+            if (ioError == ERROR_MORE_DATA) {
                 m_message_incomplete = true;
                 continue; // more chunks of this message remain
             }
-            if (isBrokenError(err)) mark_broken(m_broken, m_throw_on_broken, err);
+            if (isBrokenError(ioError)) mark_broken(m_broken, m_throw_on_broken, ioError);
             break;
         }
         return result;
@@ -506,8 +586,9 @@ scl2::bytearray server_client::readAll()
         buffer.resize(toRead);
         DWORD bytesRead = 0;
         
-        if (!ReadFile(H(m_pipe), buffer.data(), toRead, &bytesRead, nullptr)) {
-            if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
+        DWORD ioError = 0;
+        if (!overlapped_transfer(false, H(m_pipe), buffer.data(), toRead, bytesRead, ioError)) {
+            if (isBrokenError(ioError)) mark_broken(m_broken, m_throw_on_broken, ioError);
             break;
         }
 
@@ -634,6 +715,13 @@ bool server_client::waitForReadyRead(std::chrono::milliseconds timeout)
 
             // Timeout, cancel or error - the read is dropped either way.
             CancelIoEx(H(m_pipe), &overlapped);
+
+            // CancelIoEx only marks the operation, it does not wait for it. The kernel keeps
+            // writing into the OVERLAPPED, the event and the buffer until it is done, so wait
+            // here, before all three go away with this stack frame.
+            DWORD dropped = 0;
+            GetOverlappedResult(H(m_pipe), &overlapped, &dropped, TRUE);
+
             CloseHandle(hEvent);
             return false;
         } else {
@@ -669,9 +757,10 @@ bool server_client::waitForReadyRead(std::chrono::milliseconds timeout)
 
 size_t server_client::write(const scl2::bytearray &data)
 {
-    DWORD bytesWritten;
-    if (!WriteFile(H(m_pipe), data.data(), DWORD(data.size()), &bytesWritten, nullptr)) {
-        if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
+    DWORD bytesWritten = 0;
+    DWORD ioError = 0;
+    if (!overlapped_transfer(true, H(m_pipe), data.data(), DWORD(data.size()), bytesWritten, ioError)) {
+        if (isBrokenError(ioError)) mark_broken(m_broken, m_throw_on_broken, ioError);
         return 0;
     }
     return bytesWritten;
@@ -1043,6 +1132,14 @@ bool server::cleanup()
     // Cancel pending operations and close main pipe
     if (is_open(m_pipe)) {
         CancelIoEx(H(m_pipe), nullptr);
+
+        // The connect still holds the OVERLAPPED and the connect event, and CancelIoEx does not
+        // wait for it to let go of them. Wait for that operation before anything is deleted.
+        if (m_overlapped_connect) {
+            DWORD dropped = 0;
+            GetOverlappedResult(H(m_pipe), ov(m_overlapped_connect), &dropped, TRUE);
+        }
+
         CloseHandle(H(m_pipe));
         m_pipe = nullptr;
     }
@@ -1396,6 +1493,13 @@ bool client::waitForReadyRead(std::chrono::milliseconds timeout)
 
             // Timeout, cancel or error - the read is dropped either way.
             CancelIoEx(H(m_pipe), &overlapped);
+
+            // CancelIoEx only marks the operation, it does not wait for it. The kernel keeps
+            // writing into the OVERLAPPED, the event and the buffer until it is done, so wait
+            // here, before all three go away with this stack frame.
+            DWORD dropped = 0;
+            GetOverlappedResult(H(m_pipe), &overlapped, &dropped, TRUE);
+
             CloseHandle(hEvent);
             return false;
         } else {
@@ -1486,11 +1590,12 @@ scl2::bytearray client::read(size_t bytes)
 
     // Then read from pipe
     DWORD bytesRead = 0;
+    DWORD ioError = 0;
     scl2::bytearray buffer;
     buffer.resize(bytes);
 
-    if (!ReadFile(H(m_pipe), buffer.data(), static_cast<DWORD>(bytes), &bytesRead, nullptr)) {
-        if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
+    if (!overlapped_transfer(false, H(m_pipe), buffer.data(), static_cast<DWORD>(bytes), bytesRead, ioError)) {
+        if (isBrokenError(ioError)) mark_broken(m_broken, m_throw_on_broken, ioError);
         return result;
     }
 
@@ -1530,7 +1635,9 @@ scl2::bytearray client::readAll()
             scl2::bytearray chunk;
             chunk.resize(m_buffer_size);
             DWORD bytesRead = 0;
-            BOOL ok = ReadFile(H(m_pipe), chunk.data(), static_cast<DWORD>(m_buffer_size), &bytesRead, nullptr);
+            DWORD ioError = 0;
+            const bool ok = overlapped_transfer(false, H(m_pipe), chunk.data(),
+                                                static_cast<DWORD>(m_buffer_size), bytesRead, ioError);
             if (bytesRead > 0) {
                 chunk.resize(bytesRead);
                 result.append(chunk.data(), bytesRead);
@@ -1539,12 +1646,11 @@ scl2::bytearray client::readAll()
                 m_message_incomplete = false;
                 break;
             }
-            DWORD err = GetLastError();
-            if (err == ERROR_MORE_DATA) {
+            if (ioError == ERROR_MORE_DATA) {
                 m_message_incomplete = true;
                 continue;
             }
-            if (isBrokenError(err)) mark_broken(m_broken, m_throw_on_broken, err);
+            if (isBrokenError(ioError)) mark_broken(m_broken, m_throw_on_broken, ioError);
             break;
         }
         return result;
@@ -1563,8 +1669,9 @@ scl2::bytearray client::readAll()
         buffer.resize(toRead);
         DWORD bytesRead = 0;
         
-        if (!ReadFile(H(m_pipe), buffer.data(), toRead, &bytesRead, nullptr)) {
-            if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
+        DWORD ioError = 0;
+        if (!overlapped_transfer(false, H(m_pipe), buffer.data(), toRead, bytesRead, ioError)) {
+            if (isBrokenError(ioError)) mark_broken(m_broken, m_throw_on_broken, ioError);
             break;
         }
 
@@ -1593,8 +1700,9 @@ size_t client::write(const scl2::bytearray& data)
     }
 
     DWORD bytesWritten = 0;
-    if (!WriteFile(H(m_pipe), data.data(), DWORD(data.size()), &bytesWritten, nullptr)) {
-        if (isBrokenError(GetLastError())) mark_broken(m_broken, m_throw_on_broken, GetLastError());
+    DWORD ioError = 0;
+    if (!overlapped_transfer(true, H(m_pipe), data.data(), DWORD(data.size()), bytesWritten, ioError)) {
+        if (isBrokenError(ioError)) mark_broken(m_broken, m_throw_on_broken, ioError);
         return 0;
     }
 

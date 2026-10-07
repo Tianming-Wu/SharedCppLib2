@@ -199,6 +199,8 @@ private:
 /// @brief The listening end of a named pipe.
 class server {
 public:
+    /// @param name The full pipe path, `R"(\\.\pipe\my_app)"`. It is handed to the operating
+    ///             system as it is; nothing is prefixed to it.
     server(const std::string& name, const permissions& perms = permissions(permission_preset::Default));
     ~server();
 
@@ -252,6 +254,7 @@ private:
 /// @brief The client end of a named pipe.
 class client : public scl2::basic_iostream {
 public:
+    /// @param name The full pipe path, the same one the server was given.
     client(const std::string& name);
     ~client();
 

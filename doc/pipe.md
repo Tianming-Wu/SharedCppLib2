@@ -25,8 +25,9 @@ target_link_libraries(target SharedCppLib2::pipe)
 ## Description
 
 A named pipe is a connection between two processes of the same machine, addressed by a name
-instead of an address and a port. No port is opened, nothing is reachable from the network,
-and the name is the whole address.
+instead of an address and a port. The name is the full pipe path, `\\.\pipe\my_app`: the
+library hands it to the operating system as it is and adds nothing to it. No port is opened,
+nothing is reachable from the network, and the name is the whole address.
 
 One `server` owns the name and hands out a `server_client` for every connection; a `client`
 connects to that name. Both ends are `scl2::basic_iostream`, so the same read and write calls
@@ -44,18 +45,21 @@ which is the macro portable code tests:
 #include <SharedCppLib2/pipe.hpp>
 
 #if SCL2_PIPE_SUPPORTED
-    scl2::pipe::server server("my_app");
+    scl2::pipe::server server(R"(\\.\pipe\my_app)");
     ...
 #endif
 ```
 
 ## Quick Start
 
+Write the name as a raw string literal, so the backslashes do not have to be doubled by hand:
+`R"(\\.\pipe\my_app)"` is the path `\\.\pipe\my_app`, all 15 characters of it.
+
 The server:
 ```cpp
 #include <SharedCppLib2/pipe.hpp>
 
-scl2::pipe::server server("my_app", scl2::pipe::permission_preset::Everyone);
+scl2::pipe::server server(R"(\\.\pipe\my_app)", scl2::pipe::permission_preset::Everyone);
 server.setPipeMode(scl2::pipe::mode::Message);
 server.setClientLimit(2);
 
@@ -82,7 +86,7 @@ while (server.active()) {
 
 The client:
 ```cpp
-scl2::pipe::client client("my_app");
+scl2::pipe::client client(R"(\\.\pipe\my_app)");
 
 if (!client.connect(std::chrono::seconds(5))) {
     std::fprintf(stderr, "no server at that name\n");
@@ -124,7 +128,7 @@ all touch its members.
 
 | Member | Description |
 |---------|---------|
-| `server(name)` | Prepare a server for that name. Nothing is created yet |
+| `server(name)` | Prepare a server for that name. It is the full pipe path, `\\.\pipe\my_app`; nothing is created yet |
 | `server(name, permissions)` | The same, with an explicit security descriptor |
 | `start()` | Create the pipe and begin listening. `false` on failure |
 | `stop()` / `cleanup()` | Stop listening (releasing the waits of the connections it handed out) and close the handles |
@@ -167,6 +171,7 @@ so they can only be set before `start()`.
 
 | Member | Description |
 |---------|---------|
+| `client(name)` | Prepare a client for that name. The same full pipe path as the server takes |
 | `connect(timeout = 5s)` | Connect to the server, waiting at most `timeout`. Retries while the name does not exist yet and while every instance is busy |
 | `waitForConnection(timeout = 5s)` | The same as `connect(timeout)`; the clearer name when the server is expected to start later |
 | `serverExists()` | Whether something is listening on the name now. `false` only when the name does not exist |
@@ -339,8 +344,8 @@ once the peer reads, or once the connection closes.
 
 > [!NOTE]
 > **The name is machine-wide, not per-user.** Two processes only meet if they agree on the
-> name exactly; nothing about the server's identity is part of it. Use `permissions` to
-> decide who may connect.
+> name exactly, prefix included; nothing about the server's identity is part of it. Use
+> `permissions` to decide who may connect.
 
 ## See Also
 
