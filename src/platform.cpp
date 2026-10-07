@@ -194,6 +194,23 @@ wargProvider::~wargProvider() {
     LocalFree(argv);
 }
 
+
+console_code_pages enable_utf8_console() {
+    console_code_pages pages;
+    pages.output = GetConsoleOutputCP();
+    pages.input = GetConsoleCP();
+
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+
+    return pages;
+}
+
+void restore_console_code_pages(const console_code_pages& pages) {
+    SetConsoleOutputCP(pages.output);
+    SetConsoleCP(pages.input);
+}
+
 } // namespace windows
 #else // linux
 // platform::linux_os

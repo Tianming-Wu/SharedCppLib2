@@ -52,6 +52,7 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **[`yaml`](doc/yaml.md)** - YAML 1.2 parser with streaming support (early development)
 - **[`toml`](doc/toml.md)** - TOML parser and serializer (early development)
 - **[`json2`](doc/json2.md)** - Lossless JSON: the source text is kept, so an edited file writes back unchanged (early development)
+- **[`encoding`](doc/encoding.md)** - The encoding boundary: UTF-8 inside, conversion at the edges (paths, code pages, byte order marks, the console)
 - **`platform`** - Cross-platform utilities and abstractions
 - **[`process`](doc/process.md)** - Child process management with pipe-based stdio (QProcess-inspired)
 - **[`unixsocket`](doc/unixsocket.md)** - Local (AF_UNIX) sockets, POSIX only
@@ -103,7 +104,7 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(your_target SharedCppLib2::basic)
 ```
 
-**Available targets:** `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`, `orderedmap`, `xml2`, `json2`
+**Available targets:** `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`, `orderedmap`, `xml2`, `json2`, `encoding`
 
 ### 4. Code Example
 ```cpp

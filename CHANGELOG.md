@@ -15,6 +15,9 @@ See [release.md](doc/release.md) for the releasing standards.
 - Fixed: `json` lost precision when writing doubles — `1e-10` came back as `0.000000` — and a double that held a whole number came back as an integer.
 - Fixed: `bytearray`'s `gdump` for `std::string` / `std::wstring` could not be used from more than one translation unit; linking reported duplicate symbols.
 - Fixed: `pipe` left an operation running after cancelling it and released the buffer and the `OVERLAPPED` that operation was still using, and it passed `nullptr` where a handle opened for overlapped I/O requires an `OVERLAPPED` of its own.
+- New: `encoding` — the encoding boundary in one place. `path_to_utf8()` for a path on its way to a person, a log or an error message, `from_codepage()` / `to_codepage()` / `from_ansi()` / `to_ansi()` for text that is not UTF-8, and `is_valid_utf8()` to ask before converting. The rule the library always followed is now written down in `doc/encoding.md`: text inside is UTF-8, conversion happens at the edges, and an invalid sequence becomes `U+FFFD`.
+- New: `scl2::strip_bom()` in `string` — a leading byte order mark off a string, for files that begin with one because something wrote them that way.
+- New: `platform::windows::enable_utf8_console()` and `restore_console_code_pages()` in `platform` — put the console in UTF-8 so non-ASCII output is text instead of mojibake, and put the code pages back on the way out.
 ### v3.7.0
 - Fixed: `json` wrote strings and object keys escaped twice — a backslash, quote or tab came back changed, and every read-write round added another layer of escaping.
 - Fixed: `json` skipped one byte after each multi-byte character when `escapeNonAscii` was on; `\uXXXX` surrogate pairs are now combined when parsing.

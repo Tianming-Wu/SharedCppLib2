@@ -51,6 +51,7 @@ Other languages: [English](README.md)
 - **[`yaml`](doc/zh_CN/yaml.md)** - YAML 1.2 解析器，支持流式读取（早期开发）
 - **[`toml`](doc/zh_CN/toml.md)** - TOML 解析与序列化（早期开发）
 - **[`json2`](doc/zh_CN/json2.md)** - 无损 JSON：保留原文，改过之后写回去只有改动处不同（早期开发）
+- **[`encoding`](doc/zh_CN/encoding.md)** - 编码边界：内部一律 UTF-8，只在边界上转换（路径、代码页、BOM、控制台）
 - **`platform`** - 跨平台工具和抽象层
 - **[`process`](doc/zh_CN/process.md)** - 子进程管理与管道标准流读写（参考 QProcess）
 - **[`unixsocket`](doc/zh_CN/unixsocket.md)** - 本地（AF_UNIX）套接字，仅限 POSIX
@@ -105,7 +106,7 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(您的目标 SharedCppLib2::basic)
 ```
 
-**可用目标：** `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`, `xml2`, `json2`
+**可用目标：** `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`, `xml2`, `json2`, `encoding`
 
 上述列表可能不完整，以顶部列表为准。
 

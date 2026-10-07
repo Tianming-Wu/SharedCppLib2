@@ -113,6 +113,9 @@ add_library(xml STATIC src/xml.cpp)
 add_library(xml2 STATIC src/xml2.cpp)
 # json2 是保真 JSON 模块（保序 + 原文保留），同样是标准库自包含（不依赖 basic）
 add_library(json2 STATIC src/json2.cpp)
+# encoding 是编码边界上的辅助函数（路径、代码页），标准库自包含（不依赖 basic）；
+# Windows 上它调用系统的转换 API，其他平台上这些转换返回原字符串。
+add_library(encoding STATIC src/encoding.cpp)
 add_library(abstract STATIC src/abstract.cpp)
 add_library(debug STATIC src/debug.cpp)
 add_library(console STATIC src/console.cpp)
@@ -238,7 +241,7 @@ target_compile_definitions(json PUBLIC
 # 库列表
 set(TARGET_LIST
     sha256 sha512 sha1 crc32 basic indexer regexfilter
-    logt logc platform perm process arguments ini abstract xml xml2 json2 debug
+    logt logc platform perm process arguments ini abstract xml xml2 json2 encoding debug
     console aes keydb types condition filesystem datauri json toml i18n yaml
     fileio file filepack uri pipe
     network_core network_dns network_tcp network_udp network_http network_io

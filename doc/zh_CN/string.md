@@ -2,7 +2,7 @@
 
 + 名称: string
 + 命名空间: `scl2`
-+ 文档版本: `1.1.0`
++ 文档版本: `1.2.0`
 
 ## CMake 配置信息
 
@@ -135,6 +135,30 @@ std::string utf8 = "hello";
 std::wstring wide = scl2::str_to_wstr(utf8);
 std::string back = scl2::wstr_to_str(wide);
 ```
+
+### strip_bom
+
+```cpp
+// 位于 scl2 命名空间
+template<typename CharT> std::basic_string<CharT>  strip_bom(std::basic_string<CharT> text);
+template<typename CharT> scl2::basic_string<CharT> strip_bom(scl2::basic_string<CharT> text);
+```
+
+用记事本、Visual Studio 或 PowerShell 的 `Out-File` 写出的 UTF-8 文件，开头常常带着 BOM
+（`EF BB BF`）；宽字符串也可能以 `U+FEFF` 开头。两者都不是文本的一部分，而没料到它的解析器会
+在第一个记号的边上读到一个多余字符。
+
+`strip_bom` 有就去掉，没有就原样返回。它按值接收字符串，所以通常的写法只是一次移动：
+
+```cpp
+scl2::string text = scl2::readFileAsString(path);
+text = scl2::strip_bom(std::move(text));
+```
+
+有两个重载，一个收 `std::basic_string`，一个收 `scl2::basic_string`：模板推导不会从派生类走到
+基类，两个都要有，`scl2::string` 才能直接用。
+
+[`json`](json.md) 与 [`json2`](json2.md) 自己跳过 BOM，因为独立模块用不了这个函数。
 
 ## 参见
 

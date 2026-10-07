@@ -76,6 +76,27 @@ public:
     LPWSTR* argv;
 };
 
+// --- console code page ---
+
+/// @brief The code pages a console was in, as they were before they were changed.
+struct console_code_pages {
+    unsigned int output = 0;  ///< the code page text written to the console is converted from
+    unsigned int input = 0;   ///< the code page text read from the console is converted to
+};
+
+/// @brief Switch the console to UTF-8.
+/// @details Calls SetConsoleOutputCP(CP_UTF8) and SetConsoleCP(CP_UTF8).
+/// @return The code pages the console was in before, to be handed back to
+///         restore_console_code_pages(). Both are 0 when there is no console (a windowless
+///         process, or a redirected stream).
+/// @note Without this, UTF-8 written with std::cout shows up as mojibake: the console decodes
+///       the bytes in the code page it is currently in, not in UTF-8.
+console_code_pages enable_utf8_console();
+
+/// @brief Put the console code pages back the way they were.
+/// @param pages The value enable_utf8_console() returned.
+void restore_console_code_pages(const console_code_pages& pages);
+
 } // namespace platform::windows
 
 #else // linux
