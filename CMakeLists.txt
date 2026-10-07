@@ -127,6 +127,10 @@ add_library(filesystem STATIC src/filesystem.cpp)
 add_library(datauri STATIC src/datauri.cpp)
 add_library(json STATIC src/json.cpp)
 add_library(toml STATIC src/toml.cpp)
+# toml 的表是有序 map：orderedmap 是 header-only 的独立模块，所以这里公开依赖它
+# （include/orderedmap.hpp 出现在 toml.hpp 里，消费方需要它的 include 目录）。
+# basic 那一条是 foreach 顺手带上的，toml 自身并不调用 basic。
+target_link_libraries(toml PUBLIC orderedmap)
 add_library(i18n STATIC src/i18n.cpp)
 add_library(yaml STATIC src/yaml.cpp)
 add_library(bitmap STATIC src/bitmap.cpp)
