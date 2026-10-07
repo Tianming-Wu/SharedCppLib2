@@ -46,9 +46,10 @@
       - insert() / emplace() never overwrite an existing value; insert_or_assign() does
       - the stored key is not const, so writing it->first breaks the key order
       - erase() does not move or reorder the other elements
+      - operator== compares the entries as a map: the same keys with equal values, in any order
 
     [SCL_STANDALONE_MODULE]
-    version: 1.1.0
+    version: 1.2.0
     cpp_generation: cxx17 - cxx23
 */
 
@@ -1054,6 +1055,35 @@ inline void swap(ordered_map<KeyType, ValueType, Compare>& a,
                  ordered_map<KeyType, ValueType, Compare>& b) noexcept
 {
     a.swap(b);
+}
+
+// Two maps are equal when they hold the same entries: the same keys with equal values, whatever
+// order they are in — the same meaning std::map gives ==, which is also what a std::variant
+// alternative needs before it can be compared at all. The order is a property of the container,
+// not of the entries, so it is not part of this: walk both maps when that is what has to match.
+//
+// The keys are matched with the container's own comparator (find()), so "the same key" means what
+// it means to the map. Requires ValueType to be equality-comparable; nothing is instantiated until
+// == is actually used.
+template<typename KeyType, typename ValueType, typename Compare>
+inline bool operator==(const ordered_map<KeyType, ValueType, Compare>& a,
+                       const ordered_map<KeyType, ValueType, Compare>& b)
+{
+    if (&a == &b) return true;
+    if (a.size() != b.size()) return false;
+
+    for (const auto& entry : a) {
+        const auto it = b.find(entry.first);
+        if (it == b.end() || !(it->second == entry.second)) return false;
+    }
+    return true;
+}
+
+template<typename KeyType, typename ValueType, typename Compare>
+inline bool operator!=(const ordered_map<KeyType, ValueType, Compare>& a,
+                       const ordered_map<KeyType, ValueType, Compare>& b)
+{
+    return !(a == b);
 }
 
 } // namespace scl2

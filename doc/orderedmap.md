@@ -2,7 +2,7 @@
 
 + Name: orderedmap
 + Namespace: `scl2`
-+ Document Version: `1.1.0`
++ Document Version: `1.2.0`
 
 ## CMake Info
 
@@ -166,14 +166,21 @@ One line each, as promised in the header:
 - The positional operations (`insert_at` / `erase_at` / `move_before` / `sort`) are extra —
   `std::map` has no order to work with.
 - `erase(const_iterator)` is only added on top of `erase(key)` while the two can be told apart.
+- `operator==` compares the entries as a map: the same keys with equal values, in any order.
 - No `emplace_hint`, `merge`, `extract`, `map[key]`-style node handles, allocators, or reverse
   iterators - only what the library needs.
+
+The order is not part of the comparison: two maps that hold the same entries are equal even when
+they walk them differently, and walking both is what a caller does when the order has to match. It
+is also the meaning `std::variant` needs — a variant requires every alternative to be comparable,
+so without this one a variant holding an `ordered_map` cannot be compared at all.
 
 ## Notes
 
 - The key type only needs what the comparator uses (`std::less<KeyType>`, so `operator<` by
-  default) - no `operator==` / `operator!=`. A comparator that carries state is stored in the
-  container and copied along with it.
+  default); the key itself is never compared with `==`, which is one thing this `operator==` asks
+  less of than `std::map`'s does. A comparator that carries state is stored in the container and
+  copied along with it.
 - `value_type` is `std::pair<KeyType, ValueType>`. A `KeyType` or `ValueType` that cannot be
   copied still works as long as the pair and the comparator allow it.
 - `check_invariants()` reports whether the container is internally consistent; it is O(n) and
