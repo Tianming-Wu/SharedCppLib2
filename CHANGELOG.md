@@ -2,7 +2,7 @@
 
 See [release.md](doc/release.md) for the releasing standards.
 
-### [Unreleased]
+### v3.8.0
 - New: `orderedmap` — an order-preserving key-value container, `scl2::ordered_map<Key, Value, Compare>`. Iteration follows the insertion order while lookup and erase stay as cheap as `std::map`'s, and `sorted_begin` / `sorted_end` walk the key order instead. It also builds as C++17.
 - Fixed: `bytearray` could not dump or load several kinds of container it should have handled — `std::string`, `std::wstring`, trivially copyable containers, element-wise containers and `std::pair` all work now.
 - Fixed: `network` — name resolution answers with every address of both families, IPv6 works, `connect()` takes host names as well as IPv4 and IPv6 literals, `tcp::client` says why a connection failed, `ping()` works, and `http` exposes its timeouts separately.
