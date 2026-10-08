@@ -44,7 +44,8 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **[`logt`](doc/logt.md)** - High-performance asynchronous logging
 - **[`logc`](doc/logc.md)** - Colored console output for logt
 - **`indexer`** - Data indexing and search utilities
-- **`hpcalc`** - High-precision arithmetic operations
+- **`bigint`** - Arbitrary-precision integer arithmetic
+- **`bigfloat`** - Arbitrary-precision decimal arithmetic
 - **[`regexfilter`](doc/regexfilter.md)** - Regex-based blacklist/whitelist filtering
 - **`atxsort`** - Universal sorting algorithms
 - **[`ini`](doc/ini.md)** - INI configuration parser and writer

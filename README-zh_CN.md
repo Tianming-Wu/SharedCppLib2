@@ -43,7 +43,8 @@ Other languages: [English](README.md)
 - **[`logt`](doc/zh_CN/logt.md)** - 高性能异步日志记录
 - **[`logc`](doc/zh_CN/logc.md)** - 为 logt 提供彩色控制台输出
 - **`indexer`** - 数据索引和搜索工具
-- **`hpcalc`** - 高精度算术运算
+- **`bigint`** - 任意精度大整数运算
+- **`bigfloat`** - 任意精度大浮点数运算
 - **[`regexfilter`](doc/zh_CN/regexfilter.md)** - 基于正则表达式的黑名单/白名单过滤
 - **`atxsort`** - 通用排序算法
 - **[`ini`](doc/zh_CN/ini.md)** - INI 配置解析与写入库

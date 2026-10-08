@@ -11,11 +11,11 @@
 [x] Colorize
 [ ] Customize color profile
 
-## symalgo
-[ ] class hpint
-[ ] class hpfloat
-[ ] ln()
-[ ] exp()
+## bigint
+[ ] class bigint
+
+## bigfloat
+[ ] class bigfloat
 
 
 
