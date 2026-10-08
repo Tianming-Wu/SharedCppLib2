@@ -125,7 +125,7 @@ void preprocessing(scl2::bytearray* _message)
 {
     if (!_message)
     {
-        throw std::runtime_error("sha256::preprocessing: null message pointer");
+        throw std::invalid_argument("sha256::preprocessing: null message pointer");
     }
 
     const uint64_t original_bit_size = _message->size() * 8;
@@ -168,11 +168,11 @@ void breakTextInto64ByteChunks(const scl2::bytearray& message,
 {
     if (!_chunks)
     {
-        throw std::runtime_error("sha256::breakTextInto64ByteChunks: null chunks pointer");
+        throw std::invalid_argument("sha256::breakTextInto64ByteChunks: null chunks pointer");
     }
     if (message.size() % 64 != 0)
     {
-        throw std::runtime_error("sha256::breakTextInto64ByteChunks: message size is not multiple of 64");
+        throw std::invalid_argument("sha256::breakTextInto64ByteChunks: message size is not multiple of 64");
     }
 
     _chunks->clear(); // 清空缓冲区
@@ -190,11 +190,11 @@ void structureWords(const scl2::bytearray& chunk,
 {
     if (!_words)
     {
-        throw std::runtime_error("sha256::structureWords: null words pointer");
+        throw std::invalid_argument("sha256::structureWords: null words pointer");
     }
     if (chunk.size() != 64)
     {
-        throw std::runtime_error("sha256::structureWords: chunk size must be 64");
+        throw std::invalid_argument("sha256::structureWords: chunk size must be 64");
     }
 
     _words->resize(64);
@@ -221,7 +221,7 @@ void transform(const std::vector<uint32_t>& words,
 {
     if (!_message_digest)
     {
-        throw std::runtime_error("sha256::transform: null message digest pointer");
+        throw std::invalid_argument("sha256::transform: null message digest pointer");
     }
     if (_message_digest->size() != 8)
     {

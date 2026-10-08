@@ -94,7 +94,7 @@ void json_pointer::split_tokens()
 {
     if (pointer_str.empty()) return; // empty pointer is valid and points to the whole document
     if (pointer_str[0] != '/')
-        throw std::runtime_error("json_pointer::split_tokens: pointer must start with '/'");
+        throw std::invalid_argument("json_pointer::split_tokens: pointer must start with '/'");
 
     size_t pos = 0, lpos = 1;
     while ((pos = pointer_str.find('/', lpos)) != std::string::npos) {

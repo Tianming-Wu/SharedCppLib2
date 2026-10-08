@@ -744,8 +744,8 @@ std::vector<scl2::string> ResourceManager::_sources() const {
 namespace res {
 
 namespace {
-// The registry has to exist before anything is asked of it, and saying so in one place keeps the
-// error the same however it was reached.
+// The forwarders below throw std::logic_error when no instance exists, and so does this. It is here
+// as well because it can say what to construct, which a message naming only the call cannot.
 void require_registry() {
     if (!ResourceManager::hasInstance()) {
         throw std::logic_error(

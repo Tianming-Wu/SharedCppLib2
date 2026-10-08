@@ -193,10 +193,10 @@ static scl2::bytearray unpad16(const scl2::bytearray& data) {
         throw std::invalid_argument("aes: invalid ciphertext length");
     uint8_t pad_len = static_cast<uint8_t>(data.back());
     if (pad_len < 1 || pad_len > 16)
-        throw std::invalid_argument("aes: invalid padding byte value");
+        throw std::runtime_error("aes: invalid padding byte value");
     for (size_t i = data.size() - pad_len; i < data.size(); ++i)
         if (data.at(i) != std::byte{pad_len})
-            throw std::invalid_argument("aes: invalid PKCS7 padding");
+            throw std::runtime_error("aes: invalid PKCS7 padding");
     return data.subarr(0, data.size() - pad_len);
 }
 

@@ -101,7 +101,7 @@ struct PatternScannerResult {
     template <typename T>
     explicit operator T() const {
         if (!valid) {
-            throw std::runtime_error("PatternScannerResult: invalid result cannot be converted");
+            throw std::logic_error("PatternScannerResult: invalid result cannot be converted");
         }
         return fetch<T>(address);
     }

@@ -216,7 +216,7 @@ logh_out& logh_out::operator=(logh_out&& other) noexcept
 inline std::ostream &logh_out::stream()
 {
     if (!p_out_stream) {
-        throw std::runtime_error("Output stream is not initialized");
+        throw std::logic_error("Output stream is not initialized");
     }
     return *p_out_stream;
 }
