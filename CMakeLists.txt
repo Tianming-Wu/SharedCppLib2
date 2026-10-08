@@ -143,7 +143,25 @@ add_library(xkeydb STATIC src/xkeydb.cpp)
 
 add_library(fileio STATIC src/fileio.cpp)
 add_library(file STATIC src/file.cpp)
-add_library(filepack STATIC src/filepack.cpp)
+# resourced 是资源查找模块：容器 ResourcePack 的目录是有序 map，orderedmap 是 header-only 的独立模块，
+# 所以这里公开依赖它。Windows 上还有“字节变成平台对象”的一部分（图标 / 光标），要 user32 与 gdi32。
+add_library(resourced STATIC src/resourced.cpp)
+target_link_libraries(resourced PUBLIC orderedmap singleinst)
+if(WIN32)
+    target_link_libraries(resourced PRIVATE user32 gdi32)
+endif()
+
+# resgen 是**构建期**的生成器：把资源目录打成一个容器。它不属于 resourced ——
+# 编译期要知道的和加载期要知道的不是一回事（就像 SFX 不带压缩，它只需要会解压）。
+# 但两边共享格式：resgen 链接 resourced 并直接调 ResourcePack::dump()，
+# 所以容器布局只有一份实现，写端与读端不可能各自漂移。
+# 它不随包分发二进制，而是把源码装出去，由消费方在它自己的构建里编出来
+# （见 cmake/resources.cmake 与 tools/resgen.cpp 里的说明）。
+# 同时也装一份可执行文件到 bin/：交叉编译或 CI 想把它拿到目标平台上跑时得够得着它。
+add_executable(resgen tools/resgen.cpp)
+target_link_libraries(resgen PRIVATE resourced)
+install(TARGETS resgen RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 add_library(uri STATIC src/uri.cpp)
 
 # pipe 是 Windows 命名管道的封装；POSIX 上它什么都不定义，只发一条提示，
@@ -205,7 +223,7 @@ target_link_libraries(network_tcp PUBLIC basic network_core network_dns)
 foreach(target
     regexfilter logc sha256 sha512 sha1 crc32 arguments ini abstract
     xml keydb perm condition datauri json toml i18n yaml aes
-    fileio file filepack uri zlib
+    fileio file resourced uri zlib
     bitmap qrcode png xkeydb
 )
     target_link_libraries(${target} PUBLIC basic)
@@ -247,7 +265,7 @@ set(TARGET_LIST
     sha256 sha512 sha1 crc32 basic indexer regexfilter
     logt logc platform perm process arguments ini abstract xml xml2 json2 encoding debug
     console aes keydb types condition filesystem datauri json toml i18n yaml
-    fileio file filepack uri pipe
+    fileio file resourced uri pipe
     network_core network_dns network_tcp network_udp network_http network_io
     bitmap qrcode zlib png xkeydb
 )
@@ -332,7 +350,16 @@ install(FILES
 # 安装便捷 CMake 脚本（由 Config.cmake 引入，例如 i18n_copy_lang）
 install(FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/i18n.cmake
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/resources.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
+)
+
+# resgen 的工具源码装在 resources.cmake 旁边：scl2_add_resources() 用
+# CMAKE_CURRENT_LIST_DIR 找到它，因此整个包是可重定位的（拷到哪都能用）。
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools/resgen.cpp
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
+    RENAME resgen_tool.cpp
 )
 
 # 安装配置文件
