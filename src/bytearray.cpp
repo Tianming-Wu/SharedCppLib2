@@ -30,6 +30,8 @@ bytearray::bytearray(const void* raw, size_t sz) {
                                 reinterpret_cast<const std::byte*>(raw) + sz);
 }
 
+bytearray::bytearray(bytearray_view view) : bytearray(view.data(), view.size()) {}
+
 bytearray::bytearray(size_t count, std::byte value) : base_type(count, value) {}
 bytearray::bytearray(size_t count) : base_type(count, std::byte{0}) {}
 bytearray::bytearray(std::initializer_list<std::byte> init) : base_type(init) {}
@@ -379,7 +381,7 @@ scl2::bytearray bytearray::randomarray(size_t sz) {
     return out;
 }
 bytearray bytearray_view::subarr(size_t begin, size_t n) const {
-    if(begin>=size_)return{}; size_t end=(n==bytearray::seek_end)?size_:std::min(size_,begin+n);
+    if(begin>=size_)return{}; size_t end=(n==npos)?size_:std::min(size_,begin+n);
     return bytearray(data_+begin,end-begin);
 }
 bool bytearray_view::operator==(const bytearray_view& o) const { return size_==o.size_&&(size_==0||std::memcmp(data_,o.data_,size_)==0); }

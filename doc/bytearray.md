@@ -67,8 +67,15 @@ explicit bytearray(const void *raw, size_t size);
 explicit bytearray(size_t count);                   // `count` zeroed bytes
 explicit bytearray(size_t count, std::byte value);  // `count` copies of `value`
 bytearray(std::initializer_list<std::byte> init);
+explicit bytearray(bytearray_view view);                              // the bytes it points at
+template<size_t N> explicit bytearray(const char (&literal)[N]);      // a literal's bytes
 template<typename InputIt> bytearray(InputIt first, InputIt last);
 ```
+Both of these are `explicit`: `scl2::bytearray ba(view);`, not `scl2::bytearray ba = view;`.
+
+A string literal contributes its bytes without the terminating null, and keeps any embedded
+nulls: `scl2::bytearray("a\0b").size()` is 3. A buffer whose length is not the array extent
+goes through the pointer-and-length form.
 
 #### Writing a Value
 ```cpp
@@ -92,12 +99,10 @@ scl2::bytearray same;
 same.append(value);                                             // the same, in two statements
 ```
 
-#### B, PCB and bytes
+#### B and PCB
 ```cpp
 #define B(IN)   std::byte{IN}                            // a byte literal, shorter to write
 #define PCB(IN) reinterpret_cast<const std::byte*>(&IN)  // the bytes of a value
-
-template<size_t ContentSize> struct bytes;
 ```
 `B(0x08)` is `std::byte{0x08}`. `PCB(v)` is the address of `v`, read as bytes, which is what
 the pointer-and-length overloads take:
@@ -108,9 +113,7 @@ ba.append(PCB(v), sizeof(v));
 ```
 
 Define `BYTEARRAY_NODEFINE` before including the header if those two macro names get in the
-way. `scl2::bytes<N>` is a fixed-size block of bytes carrying its own size; it is the
-argument type a fixed-size construction API is meant to take, and until then it can be
-appended like any other trivially copyable value.
+way.
 
 ### Data Access & Manipulation
 
@@ -563,8 +566,14 @@ its own - it passes a range around without copying, and parsing is the `bytearra
 ```cpp
 class bytearray_view {
 public:
+    bytearray_view();
     bytearray_view(const bytearray& ba);
     bytearray_view(const std::byte* data, size_t size);
+    bytearray_view(const void* data, size_t size);
+    bytearray_view(std::span<const std::byte> span);
+
+    template<typename Range> bytearray_view(Range& range);          // byte[N], std::array, std::vector
+    template<size_t N> bytearray_view(const char (&literal)[N]);    // a literal's bytes
 
     const std::byte* data() const;
     size_t size() const;
@@ -572,15 +581,28 @@ public:
 
     std::byte operator[](size_t i) const;
     std::byte at(size_t i) const;                  // throws when out of range
-    bytearray subarr(size_t begin, size_t n = bytearray::seek_end) const;
+
+    static constexpr size_t npos;                  // "to the end" for subview
+    bytearray_view subview(size_t pos = 0, size_t count = npos) const;
+    bytearray subarr(size_t begin, size_t n = npos) const;      // the same slice, copied
 
     bool operator==(const bytearray_view& other) const;
     bool operator!=(const bytearray_view& other) const;
 };
 ```
 
+A literal is taken by its array extent, so the terminating null is not part of the view and an
+embedded null is: `bytearray_view("hello").size()` is 5, `bytearray_view("a\0b").size()` is
+3. There is no `const char*` overload - a pointer on its own carries no length, and searching
+for a null would cut binary data short.
+
+`subview()` slices without copying: the result points at the same bytes, `count` is cut down to
+what is left, and `pos` past the end throws `std::out_of_range`. `subarr()` is the same slice as
+a new `bytearray`.
+
 A view cannot be built from a temporary `bytearray` (`bytearray_view(const bytearray&&)` is
-deleted), so it cannot outlive the data it points at in that case.
+deleted), and the range form takes lvalues only, so a container that is about to be destroyed
+cannot become a view by accident.
 
 ## Memory Hygiene
 

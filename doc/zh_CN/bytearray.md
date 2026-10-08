@@ -67,8 +67,14 @@ explicit bytearray(const void *raw, size_t size);
 explicit bytearray(size_t count);                   // `count` 个零字节
 explicit bytearray(size_t count, std::byte value);  // `count` 个 `value`
 bytearray(std::initializer_list<std::byte> init);
+explicit bytearray(bytearray_view view);                              // 视图指向的字节
+template<size_t N> explicit bytearray(const char (&literal)[N]);      // 字面量的字节
 template<typename InputIt> bytearray(InputIt first, InputIt last);
 ```
+这两个都是 `explicit`：写 `scl2::bytearray ba(view);`，不是 `scl2::bytearray ba = view;`。
+
+字符串字面量贡献它的字节、去掉结尾的 null，而内嵌的 null 会保留：
+`scl2::bytearray("a\0b").size()` 是 3。长度不等于数组长度的缓冲区走“指针 + 长度”那条。
 
 #### 写入一个值
 ```cpp
@@ -91,12 +97,10 @@ scl2::bytearray same;
 same.append(value);                                             // 一样，只是写成两条语句
 ```
 
-#### B、PCB 与 bytes
+#### B、PCB
 ```cpp
 #define B(IN)   std::byte{IN}                            // 字节字面量，写起来短一点
 #define PCB(IN) reinterpret_cast<const std::byte*>(&IN)  // 一个值的字节
-
-template<size_t ContentSize> struct bytes;
 ```
 `B(0x08)` 就是 `std::byte{0x08}`。`PCB(v)` 是把 `v` 的地址按字节看，正是那些
 "指针 + 长度" 重载要的东西：
@@ -106,9 +110,7 @@ uint32_t v = 0x12345678;
 ba.append(PCB(v), sizeof(v));
 ```
 
-如果这两个宏名字碍事，就在包含头文件前定义 `BYTEARRAY_NODEFINE`。`scl2::bytes<N>` 是一块
-自带大小的定长字节块；它是以后那套定长构造 API 要收的参数类型，在那之前它和任何可简单
-复制的值一样可以直接 append。
+如果这两个宏名字碍事，就在包含头文件前定义 `BYTEARRAY_NODEFINE`。
 
 ### 数据访问与操作
 
@@ -552,8 +554,14 @@ User deserialize(const scl2::bytearray& data) {
 ```cpp
 class bytearray_view {
 public:
+    bytearray_view();
     bytearray_view(const bytearray& ba);
     bytearray_view(const std::byte* data, size_t size);
+    bytearray_view(const void* data, size_t size);
+    bytearray_view(std::span<const std::byte> span);
+
+    template<typename Range> bytearray_view(Range& range);          // byte[N]、std::array、std::vector
+    template<size_t N> bytearray_view(const char (&literal)[N]);    // 字面量的字节
 
     const std::byte* data() const;
     size_t size() const;
@@ -561,15 +569,25 @@ public:
 
     std::byte operator[](size_t i) const;
     std::byte at(size_t i) const;                  // 越界时抛异常
-    bytearray subarr(size_t begin, size_t n = bytearray::seek_end) const;
+
+    static constexpr size_t npos;                  // subview 里表示“到末尾”
+    bytearray_view subview(size_t pos = 0, size_t count = npos) const;
+    bytearray subarr(size_t begin, size_t n = npos) const;      // 同一段切片，但是拷贝
 
     bool operator==(const bytearray_view& other) const;
     bool operator!=(const bytearray_view& other) const;
 };
 ```
 
-不能从临时 `bytearray` 构造视图（`bytearray_view(const bytearray&&)` 已被删除），所以
-在那种情况下它不会比数据活得久。
+字面量按数组长度取，所以结尾的 null 不在视图里，而内嵌的 null 在：`bytearray_view("hello").size()`
+是 5，`bytearray_view("a\0b").size()` 是 3。没有 `const char*` 那个重载 —— 光有指针没有长度，
+去搜 null 会把二进制数据截短。
+
+`subview()` 是零拷贝的切片：结果仍指向同一批字节，`count` 会被削到到末尾为止，`pos` 越过末尾抛
+`std::out_of_range`。`subarr()` 是同一段切片、但返回一个新的 `bytearray`。
+
+不能从临时 `bytearray` 构造视图（`bytearray_view(const bytearray&&)` 已被删除），范围形式也只收
+左值，所以一个马上要销毁的容器不会意外变成视图。
 
 ## 内存清理
 
