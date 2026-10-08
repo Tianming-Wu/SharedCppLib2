@@ -49,7 +49,7 @@ add_library(api INTERFACE include/api.hpp)
 # Header-only modules (INTERFACE targets)
 set(INTERFACE_TARGET_LIST
     hmac compression logh rerr bits cache exexception engineering multindex percentage RAII singleinst
-    structural_binding typemask orderedmap
+    structural_binding typemask orderedmap undostack
     network base64 unixsocket
 )
 
@@ -69,6 +69,9 @@ add_library(structural_binding INTERFACE include/structural_binding.hpp)
 add_library(typemask INTERFACE include/typemask.hpp)
 # orderedmap 是 header-only 的模板容器（有序 map），标准库自包含，不依赖其他模块。
 add_library(orderedmap INTERFACE include/orderedmap.hpp)
+# undostack 是 header-only 的撤销/重做栈（快照式 undostack + 命令式 commandstack），
+# 只依赖标准库，所以是 INTERFACE 目标，没有对应的源文件。
+add_library(undostack INTERFACE include/undostack.hpp)
 # unixsocket 是 POSIX 专有的头文件模块（AF_UNIX）；在 Windows 上它什么都不定义，只是发一条
 # 警告，所以做成 INTERFACE 目标，不需要（也不能有）对应的源文件。
 add_library(unixsocket INTERFACE include/unixsocket.hpp)
