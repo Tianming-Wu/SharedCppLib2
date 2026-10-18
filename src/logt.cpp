@@ -176,7 +176,7 @@ std::string logt_sso::default_formatter(const logt_format::formatSettings& setti
 
 
 
-logt_sig::logt_sig(const std::string& name)
+logt_sig::logt_sig(std::string_view name)
     : name_(name)
 {
     formatter = logt::formatter_;

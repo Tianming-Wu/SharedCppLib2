@@ -82,12 +82,16 @@ LOGT_DEFINE(DatabaseManager, "Database");
 // network.cpp
 
 void send_data() {
-    LOGT_LOCAL("Network::send_data"); // Recommended signature style.
+    LOGT_AUTO; // Recommended signature style: the name comes from the function itself.
 
     logt.info() << "Start packet transmission";
     logt.debug() << "Packet details - size: " << packet_size << " bytes";
 }
 ```
+
+The signature above is `send_data`, and the same declaration inside `Network::send_data` is
+`Network::send_data`. Where a name of your own says more than the function's, name it by hand
+with `LOGT_LOCAL` instead.
 
 ### Enable debug mode
 ```cpp
@@ -298,6 +302,23 @@ Defines module-level signature (global / namespace scope).
 ### LOGT_LOCAL(Name)
 Defines function-scope local signature.
 
+### LOGT_AUTO
+Defines a function-scope signature that is named after the function it sits in, so there is no
+string to keep in step with the code. The name is cut out of `__FUNCSIG__` (MSVC) or
+`__PRETTY_FUNCTION__` by `scl2::function_name()`, which leaves the qualified name: a member
+function is `Class::method`, a template `Class::method<int>`, a lambda
+`main::<lambda_1>::operator ()`.
+
+```cpp
+void DatabaseManager::connect() {
+    LOGT_AUTO;                       // the signature is DatabaseManager::connect
+    logt.info() << "Opening database connection...";
+}
+```
+
+The signature object is a function-local static, built on the first call, so it follows the same
+rule as `LOGT_LOCAL`: the first call has to come after the channels are set up.
+
 ### LOGT_TEMP(Name)
 Defines one-shot temporary signature object.
 
@@ -386,7 +407,7 @@ int main() {
 Log signatures are source labels attached to each message in logt. They can be defined at class/module/function scope to make origin tracing explicit.
 
 However, due to current design limitations, `LOGT_MODULE` and `LOGT_DECLARE` are not recommended for now because their scope is broader and less precise for troubleshooting.
-Prefer defining local signatures with `LOGT_LOCAL` inside functions for clearer and more accurate log origins.
+Prefer a per-function signature for clearer and more accurate log origins: `LOGT_AUTO`, which names itself after the function it sits in, or `LOGT_LOCAL` where a name of your own says more.
 
 ## Output Format
 

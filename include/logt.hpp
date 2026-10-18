@@ -7,12 +7,6 @@
     This library is way too complex to tell you everything here. Just go and check the document.
     Although it is not long, it's structure is not simple.
 
-    Dev note:
-        I just noticed that the exiting of logt is not that graceful. I can take advantage of the C++
-        scope-exit destruction action to exit the logt automatically.
-
-        I don't want to destroy the current pull-up logic though, so a simple logt_guard class instance is enough.
-
 */
 #pragma once
 
@@ -26,6 +20,7 @@
 #include <atomic>
 #include <format>
 #include <sstream>
+#include <string_view>
 #include <unordered_map>
 #include <chrono>
 #include <functional>
@@ -73,6 +68,7 @@ enum class LogLevel : int8_t {
     Inherit = 16,
 };
 
+// channel information, including type, validity, and filter level
 struct logt_channel {
     enum class ChannelType {
         invalid = -1, stdcout = 0, file = 1, custom_ostream = 2
@@ -85,7 +81,7 @@ struct logt_channel {
     bool valid;
     bool enabled;
 
-    LogLevel filter = LogLevel::Inherit;
+    LogLevel filter = LogLevel::Inherit; // By default, inherit the global filter level.
 
     union {
         std::ofstream fileobj;
@@ -117,13 +113,15 @@ struct logt_message {
     logt_message(std::string msg, LogLevel level, logt_channelinfo channels);
 };
 
+// logt bus object, the core of logt
+// responsible for message queueing and dispatching
 class logt_eventbus {
 public:
     static void push(const std::string& s, LogLevel level, logt_channelinfo channel);
     static bool pop(logt_message& result);
     static void stop();
 
-    /// @brief Wait until the queue is empty and the message in hand has been written.
+    /// @brief Wait until the queue is empty and all the message in hand has been written.
     static void wait_until_empty();
 
     /// @brief Tell the waiters that the message just popped has been written.
@@ -137,7 +135,7 @@ private:
     static bool in_flight_; // a message has been popped but not written yet
 };
 
-
+// logt format object
 class logt_format {
 public:
     logt_format() {}
@@ -173,6 +171,7 @@ public:
 
 typedef std::function<bool(logt_message&)> preprocessor_t;
 
+// logt string stream object. For grammar convenience.
 class logt_sso {
 public:
     logt_sso(LogLevel level, const logt_format& formatter, const logt_channelinfo& channels, const std::string& signature = "");
@@ -222,7 +221,7 @@ private:
 
 class logt_sig {
 public:
-    logt_sig(const std::string& name);
+    logt_sig(std::string_view name);
     
     const std::string& name() const { return name_; }
 
@@ -363,23 +362,6 @@ private:
 };
 
 
-class logt_guard {
-public:
-    logt_guard() = default;
-    ~logt_guard() { logt::shutdown(); }
-};
-
-
-// 日志文件管理
-// class logt_manager {
-// public:
-//     logt_manager(const std::filesystem::path& logFolder);
-//     ~logt_manager();
-
-// private:
-//     std::filesystem::path m_logFolder;
-// };
-
 // 类内签名定义宏
 // 不建议使用，因为类成员函数的自定义签名目前会覆盖这个宏定义的签名，所以它不太实用
 #define LOGT_DECLARE \
@@ -390,6 +372,7 @@ private: \
 #define LOGT_PUBLIC_DECLARE \
 public: \
     static ::logt_sig logt;
+
 
 // 类外签名定义宏
 #define LOGT_DEFINE(Class, Name) \
@@ -406,6 +389,75 @@ public: \
 // 临时签名（用于一次性使用）
 #define LOGT_TEMP(Name) \
     ::logt_sig(Name)
+
+
+// ── Signature name ───────────────────────────────────────────────────
+
+// The signature macros print the whole thing — return type, calling convention, parameters,
+// trailing qualifiers — and what a log wants as its name is `Cls::method<int>`. This cuts the
+// name out at compile time, so a function can name itself instead of being handed a string
+// that drifts away from the code.
+
+namespace scl2 {
+
+/// @brief The qualified function name a signature string describes.
+/// @note Template arguments stay in the name (`Cls::tmethod<int>`), and a lambda comes out as
+///       `main::<lambda_1>::operator ()`.
+constexpr std::string_view function_name(std::string_view signature) {
+    constexpr auto is_word_start = [](char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+            || (c >= '0' && c <= '9') || c == '_';
+    };
+    constexpr std::size_t npos = std::string_view::npos;
+
+    // The parameter list is the first '(' outside <...> that is neither preceded by a space
+    // — a parameter list is glued to the name, while the parentheses a return type may carry
+    // sit after one — nor the empty pair of an `operator ()`.
+    std::size_t angle = 0, paren = npos;
+    for (std::size_t i = 0; i < signature.size() && paren == npos; ++i) {
+        const char c = signature[i];
+        if (c == '<') ++angle;
+        else if (c == '>') { if (angle) --angle; }
+        else if (c == '(' && angle == 0 && i > 0 && signature[i - 1] != ' '
+                 && !(i + 1 < signature.size() && signature[i + 1] == ')'))
+            paren = i;
+    }
+    if (paren == npos) return signature;
+
+    // In front of it the name starts after the last space outside <...> that a word follows.
+    // The return type and the calling convention are before that space; the spaces inside
+    // `operator +` and `operator new` are inside the name.
+    std::size_t start = 0;
+    angle = 0;
+    for (std::size_t i = 0; i + 1 < paren; ++i) {
+        const char c = signature[i];
+        if (c == '<') ++angle;
+        else if (c == '>') { if (angle) --angle; }
+        else if (c == ' ' && angle == 0 && is_word_start(signature[i + 1])) {
+            std::size_t word = i, begin = word;
+            while (begin > 0 && is_word_start(signature[begin - 1])) --begin;
+            if (signature.substr(begin, word - begin) != "operator")
+                start = i + 1;
+        }
+    }
+    return signature.substr(start, paren - start);
+}
+
+} // namespace scl2
+
+// 自动化宏
+#if defined(_MSC_VER)
+    #define LOGT_FUNCTION __FUNCSIG__
+#elif defined(__GNUC__) || defined(__clang__)
+    #define LOGT_FUNCTION __PRETTY_FUNCTION__
+#else
+    #define LOGT_FUNCTION __func__
+#endif
+
+// 签名从本函数自己取，日志里的名字就是 `Class::method`，而不是一个可能和代码脱节的手写字符串
+#define LOGT_AUTO \
+    static ::logt_sig logt(::scl2::function_name(LOGT_FUNCTION))
+
 
 
 

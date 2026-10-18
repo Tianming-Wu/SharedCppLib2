@@ -79,12 +79,15 @@ LOGT_DEFINE(DatabaseManager, "Database");
 // network.cpp 文件
 
 void send_data() {
-    LOGT_LOCAL("Network::send_data"); // 这是最清晰的签名方式，推荐使用。
+    LOGT_AUTO; // 推荐的签名方式：名字直接取自函数自身。
 
     logt.info() << "开始传输数据包";
     logt.debug() << "数据包详细信息 - 大小: " << packet_size << " 字节";
 }
 ```
+
+上面这段的签名就是 `send_data`；同样一句写在 `Network::send_data` 里，签名就是
+`Network::send_data`。若自己的名字比函数名更能说明问题，仍然用 `LOGT_LOCAL` 手写。
 
 ### 启用调试模式
 ```cpp
@@ -293,6 +296,21 @@ logt_sso debug() const;
 ### LOGT_LOCAL(Name)
 创建函数作用域内的局部日志签名，适用于在函数内部临时使用的日志标识。
 
+### LOGT_AUTO
+创建一个以它所在函数命名的函数作用域签名，没有需要和代码保持同步的字符串。名字由
+`scl2::function_name()` 从 `__FUNCSIG__`（MSVC）或 `__PRETTY_FUNCTION__` 中削出来，留下限定名：
+成员函数是 `Class::method`，模板是 `Class::method<int>`，lambda 是 `main::<lambda_1>::operator ()`。
+
+```cpp
+void DatabaseManager::connect() {
+    LOGT_AUTO;                       // 签名即 DatabaseManager::connect
+    logt.info() << "Opening database connection...";
+}
+```
+
+签名对象是函数局部静态量，首次调用时构建，所以它和 `LOGT_LOCAL` 遵守同一条规则：首次调用必须
+发生在通道配置之后。
+
 ### LOGT_TEMP(Name)
 创建临时日志签名对象，适用于一次性使用的日志场景，不保留静态状态。
 
@@ -380,7 +398,7 @@ int main() {
 ## 日志签名
 日志签名是 logt 中用于标识日志消息来源的字符串标签。它们可以在类、模块或函数级别定义，以便在日志输出中清晰地显示消息的上下文来源。
 
-但是，由于目前的设计问题，暂时不建议使用 `LOGT_MODULE`、`LOGT_DECLARE` 等日志签名方式，因为它们所标记的范围较广，不利于定位问题。建议直接在函数内部使用 `LOGT_LOCAL` 定义局部日志签名，以实现精准定位和更清晰的日志输出。
+但是，由于目前的设计问题，暂时不建议使用 `LOGT_MODULE`、`LOGT_DECLARE` 等日志签名方式，因为它们所标记的范围较广，不利于定位问题。建议使用按函数定位的签名：`LOGT_AUTO`（名字取自它所在的函数），或者在自己取的名字更能说明问题时用 `LOGT_LOCAL`。
 
 
 ## 输出格式说明
