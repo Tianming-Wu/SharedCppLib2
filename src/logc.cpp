@@ -4,7 +4,7 @@
 
 namespace logc {
 
-const color_standard clrstd_buildin {
+const color_standard clrstd_builtin {
     .debug = color(144, 238, 144),
     .info = color(255, 255, 255),
     .warn = color(255, 165, 0),
@@ -21,7 +21,7 @@ const color_standard clrstd_vscode {
 };
 
 
-color_standard clrstd = clrstd_buildin;
+color_standard clrstd = clrstd_builtin;
 
 bool logPreprocessor(logt_message& message) {
     std::string colortag = scl2::to_ansi_code(clrstd.get(message.level));
