@@ -13,7 +13,7 @@ server_client_handler::server_client_handler(server &srv, client_info &info)
 {
 }
 
-bool server_client_handler::readyRead()
+bool server_client_handler::readable()
 {
     if (m_client_info.socket == invalid_socket) {
         return false;

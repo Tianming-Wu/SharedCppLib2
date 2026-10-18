@@ -281,7 +281,7 @@ bool client::valid()
     return is_connected();
 }
 
-bool client::readyRead()
+bool client::readable()
 {
     if (m_socket == invalid_socket) {
         return false;

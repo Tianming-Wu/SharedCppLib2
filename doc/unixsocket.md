@@ -102,7 +102,7 @@ one byte to the marker. A name that is too long reports `ENAMETOOLONG` and is no
 | `connect(address, port)` | The `transport_interface` form: the name goes in `address`, and the port is not used |
 | `disconnect()` | Shut down and close. Does nothing when there is nothing to close |
 | `is_connected()` / `valid()` | Whether a descriptor is held. A peer that closed its end is not noticed by this |
-| `readyRead()` | Whether there is something to read now: data, or a closed peer |
+| `readable()` | Whether there is something to read now: data, or a closed peer |
 | `waitForReadyRead(timeout = 5s)` | Wait until there is |
 | `available()` | How many bytes are waiting (`FIONREAD`) |
 | `read(bytes)` | Up to `bytes` bytes; empty when nothing arrived. An empty result is not an error |

@@ -610,7 +610,7 @@ scl2::bytearray server_client::readAll()
     return result;
 }
 
-bool server_client::readyRead()
+bool server_client::readable()
 {
     return available() > 0;
 }
@@ -1390,7 +1390,7 @@ size_t client::appendCancelEvents(void** waits, size_t count) const
     return append_cancel_events(m_cancel_event, nullptr, waits, static_cast<DWORD>(count));
 }
 
-bool client::readyRead()
+bool client::readable()
 {
     return available() > 0;
 }

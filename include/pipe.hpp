@@ -126,7 +126,7 @@ public:
     virtual bool valid() override;
 
     /// Whether an operation has found this connection gone. It is recorded by every operation
-    /// that can find it, including the ones that only look (available(), readyRead()), so a
+    /// that can find it, including the ones that only look (available(), readable()), so a
     /// failed call is enough to tell a timeout from a dead peer.
     bool broken() const;
 
@@ -142,7 +142,7 @@ public:
     void cancel();
     bool cancelled() const;
 
-    virtual bool readyRead() override;
+    virtual bool readable() override;
     virtual bool waitForReadyRead(std::chrono::milliseconds timeout = std::chrono::seconds(5)) override;
 
     virtual size_t available() override;
@@ -269,7 +269,7 @@ public:
 
     virtual bool valid() override;
 
-    virtual bool readyRead() override;
+    virtual bool readable() override;
     virtual bool waitForReadyRead(std::chrono::milliseconds timeout = std::chrono::seconds(5)) override;
 
     virtual size_t available() override;

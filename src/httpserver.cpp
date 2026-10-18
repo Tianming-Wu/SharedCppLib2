@@ -74,7 +74,7 @@ void server::handleClient(tcp::client_id id)
     }
 
     // Read available data
-    if (handler.readyRead()) {
+    if (handler.readable()) {
         auto data = handler.readAll();
         if (data.empty()) {
             return;

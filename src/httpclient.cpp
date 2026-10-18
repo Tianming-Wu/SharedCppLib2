@@ -269,7 +269,7 @@ response client::receive_response()
     
     // Read until we have complete headers
     while (!response::has_complete_headers(buffer)) {
-        if (m_transport->readyRead()) {
+        if (m_transport->readable()) {
             auto data = m_transport->readAll();
             if (!data.empty()) {
                 buffer += data.toStdString();
@@ -311,7 +311,7 @@ response client::receive_response()
     if (is_chunked(resp.headers)) {
         chunked_decoder dec;
         while (!dec.feed(raw_body)) {
-            if (m_transport->readyRead()) {
+            if (m_transport->readable()) {
                 auto data = m_transport->readAll();
                 if (!data.empty()) raw_body += data.toStdString();
             }
@@ -331,7 +331,7 @@ response client::receive_response()
             content_length = 0;
         }
         while (raw_body.size() < content_length) {
-            if (m_transport->readyRead()) {
+            if (m_transport->readable()) {
                 auto data = m_transport->readAll();
                 if (!data.empty()) raw_body += data.toStdString();
             }
@@ -345,7 +345,7 @@ response client::receive_response()
 
     // 无分帧信息：读到 EOF（服务器按 Connection: close 关闭连接）
     while (true) {
-        if (m_transport->readyRead()) {
+        if (m_transport->readable()) {
             auto data = m_transport->readAll();
             if (data.empty()) break;   // 对端关闭
             raw_body += data.toStdString();

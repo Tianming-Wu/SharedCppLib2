@@ -120,7 +120,7 @@ public:
     bool valid() override;
 
     /// @brief Check if data is available to read (non-blocking)
-    bool readyRead() override;
+    bool readable() override;
 
     /// @brief Get number of bytes available in the next pending datagram
     ///

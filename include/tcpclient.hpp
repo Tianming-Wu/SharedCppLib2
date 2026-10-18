@@ -60,7 +60,7 @@ public:
     bool valid() override;
     
     /// @brief Check if data is ready to read
-    bool readyRead() override;
+    bool readable() override;
     
     /// @brief Get number of bytes available to read
     size_t available() override;

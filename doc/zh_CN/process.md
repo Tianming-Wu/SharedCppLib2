@@ -70,7 +70,7 @@ std::string hash(reinterpret_cast<const char*>(raw.data()), raw.size());
 
 | 操作 | 去向 |
 |---|---|
-| `read()`、`readAll()`、`available()`、`readyRead()` | 子进程的**当前读通道**（默认 stdout） |
+| `read()`、`readAll()`、`available()`、`readable()` | 子进程的**当前读通道**（默认 stdout） |
 | `write()` | 子进程的 **stdin** |
 
 用 `setReadChannel()` 可以把读侧切到 stderr —— 这就是"用继承来的读函数读 stderr"的方式，
@@ -138,8 +138,8 @@ process 侧只保留一个 `weak_ptr`，因此你一旦丢掉它，`stderrStream
 | 成员 | 说明 |
 |---|---|
 | `setReadChannel(channel)` / `readChannel()` | 继承来的读函数使用哪条通道。`merged` 模式下无效 |
-| `readyRead()` / `available()` / `read(bytes)` / `readAll()` | 作用于当前读通道 |
-| `readyReadStandardOutput()` / `readyReadStandardError()` | 按通道查询 |
+| `readable()` / `available()` / `read(bytes)` / `readAll()` | 作用于当前读通道 |
+| `readableStandardOutput()` / `readableStandardError()` | 按通道查询 |
 | `availableStandardOutput()` / `availableStandardError()` | 按通道查询 |
 | `readAllStandardOutput()` / `readAllStandardError()` | 按通道取走 |
 
@@ -166,7 +166,7 @@ process 侧只保留一个 `weak_ptr`，因此你一旦丢掉它，`stderrStream
 | `waitForReadyRead(timeout = 5s)` | 等当前读通道有数据 |
 
 两者在等待期间都会**同时排空两条输出通道**，所以话多的子进程不会因为管道写满而死锁。
-没有事件循环也没有信号，只能靠这些函数或 `readyRead()` 轮询。
+没有事件循环也没有信号，只能靠这些函数或 `readable()` 轮询。
 
 ## 缓冲
 
@@ -180,7 +180,7 @@ process 侧只保留一个 `weak_ptr`，因此你一旦丢掉它，`stderrStream
 + 用 process 层的读函数；或
 + 先 `detachStdOutput()`，再自己驱动那个流。
 
-`available()` 与 `readyRead()` 会先把管道里的数据抽进缓冲，所以不调用等待函数也能轮询。
+`available()` 与 `readable()` 会先把管道里的数据抽进缓冲，所以不调用等待函数也能轮询。
 
 ## 错误处理
 

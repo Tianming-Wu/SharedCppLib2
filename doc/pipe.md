@@ -155,7 +155,7 @@ so they can only be set before `start()`.
 | `broken()` | Whether an operation has found the connection gone |
 | `setThrowOnBroken(enabled)` / `throwOnBroken()` | Whether a failing operation should throw `connection_broken`. Off by default |
 | `cancel()` / `cancelled()` | Release the waits on this connection, and whether that was asked for |
-| `readyRead()` | Whether there is something to read now |
+| `readable()` | Whether there is something to read now |
 | `waitForReadyRead(timeout = 5s)` | Wait until there is |
 | `available()` | How many bytes are waiting |
 | `read(bytes)` | Up to `bytes` bytes. Empty in `mode::Message` |
@@ -178,7 +178,7 @@ so they can only be set before `start()`.
 | `valid()` / `broken()` | As on `server_client` |
 | `setThrowOnBroken(enabled)` / `throwOnBroken()` | As on `server_client` |
 | `cancel()` / `cancelled()` | As on `server_client`; a client has no server, so only its own cancel applies |
-| `readyRead()` / `waitForReadyRead(timeout = 5s)` / `available()` | As on `server_client` |
+| `readable()` / `waitForReadyRead(timeout = 5s)` / `available()` | As on `server_client` |
 | `read(bytes)` / `readAll()` / `write(data)` | As on `server_client` |
 | `waitForFinished(timeout = 5s)` | As on `server_client` |
 | `pipeMode()` | The mode the server announced, filled in by `connect()` |
@@ -230,7 +230,7 @@ Every operation that can notice records it, and once recorded it stays:
 | `read()` / `readAll()` | Empty, or the part that arrived before the break |
 | `write()` | 0 |
 | `waitForFinished()` | `false` |
-| `available()` / `readyRead()` | Whatever is still buffered; looking alone records the state |
+| `available()` / `readable()` | Whatever is still buffered; looking alone records the state |
 | `valid()` | `false`, once `broken()` is set |
 
 So a return value on its own does not say whether `false` or empty means "nothing yet" or

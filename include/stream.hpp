@@ -37,7 +37,7 @@ public:
     virtual ~basic_istream() = default;
     
     // Should return true if there is data available to read, false otherwise.
-    virtual bool readyRead() = 0;
+    virtual bool readable() = 0;
 
     // this one comes with a default implementation, since it's fairly compatible to implement
     // Note that the check duration is 10ms. You should implement yourself if you need a different behavior.
@@ -132,7 +132,7 @@ Usage note:
 
         virtual bool valid() override;
 
-        virtual bool readyRead() override;
+        virtual bool readable() override;
         virtual bool waitForReadyRead(std::chrono::milliseconds timeout = std::chrono::seconds(5)) override;
 
         virtual size_t available() override;

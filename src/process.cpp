@@ -327,7 +327,7 @@ bool process_stream::valid()
     return handle_valid(m_handle);
 }
 
-bool process_stream::readyRead()
+bool process_stream::readable()
 {
     return available() > 0;
 }
@@ -720,7 +720,7 @@ void process::pump()
 
 // ── process: reading and writing ─────────────────────────────────────
 
-bool process::readyRead()
+bool process::readable()
 {
     pump();
     return slot(to_pipe(m_read_channel)).buffer.size() > 0;
@@ -744,13 +744,13 @@ scl2::bytearray process::readAll()
     return take_front(slot(to_pipe(m_read_channel)).buffer, static_cast<size_t>(-1));
 }
 
-bool process::readyReadStandardOutput()
+bool process::readableStandardOutput()
 {
     pump();
     return slot(pipe_id::std_out).buffer.size() > 0;
 }
 
-bool process::readyReadStandardError()
+bool process::readableStandardError()
 {
     pump();
     return slot(pipe_id::std_err).buffer.size() > 0;

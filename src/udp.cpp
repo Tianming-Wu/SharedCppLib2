@@ -287,7 +287,7 @@ bool socket::valid()
     return m_socket != invalid_socket;
 }
 
-bool socket::readyRead()
+bool socket::readable()
 {
     if (m_socket == invalid_socket) {
         return false;

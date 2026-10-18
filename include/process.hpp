@@ -88,7 +88,7 @@ public:
     // ── scl2::basic_iostream ─────────────────────────────────────────
 
     bool valid() override;
-    bool readyRead() override;
+    bool readable() override;
     size_t available() override;
 
     scl2::bytearray read(size_t bytes) override;
@@ -290,13 +290,13 @@ public:
     void setReadChannel(channel ch);
     channel readChannel() const;
 
-    bool readyRead() override;
+    bool readable() override;
     size_t available() override;
     scl2::bytearray read(size_t bytes) override;
     scl2::bytearray readAll() override;
 
-    bool readyReadStandardOutput();
-    bool readyReadStandardError();
+    bool readableStandardOutput();
+    bool readableStandardError();
     size_t availableStandardOutput();
     size_t availableStandardError();
     scl2::bytearray readAllStandardOutput();

@@ -100,7 +100,7 @@ if (stream.waitForReadyRead(std::chrono::seconds(1)))
 | `connect(address, port)` | `transport_interface` 的形式：名字放在 `address`，端口不使用 |
 | `disconnect()` | 关闭读写并释放描述符；没东西可关时什么都不做 |
 | `is_connected()` / `valid()` | 是否持有描述符。对端关掉了它，这里看不出来 |
-| `readyRead()` | 现在有没有东西可读：数据，或者对端已关闭 |
+| `readable()` | 现在有没有东西可读：数据，或者对端已关闭 |
 | `waitForReadyRead(timeout = 5s)` | 等它变成可读 |
 | `available()` | 还有多少字节可读（`FIONREAD`） |
 | `read(bytes)` | 最多读 `bytes` 个字节；没读到就是空。空结果不是错误 |

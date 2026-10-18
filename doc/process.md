@@ -78,7 +78,7 @@ takes a stream, without an adapter:
 
 | operation | goes to |
 |---|---|
-| `read()`, `readAll()`, `available()`, `readyRead()` | the child's **current read channel** (stdout by default) |
+| `read()`, `readAll()`, `available()`, `readable()` | the child's **current read channel** (stdout by default) |
 | `write()` | the child's **stdin** |
 
 `setReadChannel()` moves the read side to stderr, which is how you read stderr through
@@ -148,8 +148,8 @@ the child if it is still running.
 | member | description |
 |---|---|
 | `setReadChannel(channel)` / `readChannel()` | which channel the inherited read functions use. Ignored in `merged` mode |
-| `readyRead()` / `available()` / `read(bytes)` / `readAll()` | the current read channel |
-| `readyReadStandardOutput()` / `readyReadStandardError()` | per channel |
+| `readable()` / `available()` / `read(bytes)` / `readAll()` | the current read channel |
+| `readableStandardOutput()` / `readableStandardError()` | per channel |
 | `availableStandardOutput()` / `availableStandardError()` | per channel |
 | `readAllStandardOutput()` / `readAllStandardError()` | per channel |
 
@@ -177,7 +177,7 @@ the child if it is still running.
 
 Both drain **both** output channels while they wait, so a chatty child can never deadlock
 on a full pipe. There is no event loop and no signal: poll with these, or with
-`readyRead()`.
+`readable()`.
 
 
 ## Buffering
@@ -194,7 +194,7 @@ for the same bytes. Pick one:
 - use the process-level read functions, or
 - `detachStdOutput()` first, and then drive the stream yourself.
 
-`available()` and `readyRead()` pull from the pipes into the buffer first, so plain
+`available()` and `readable()` pull from the pipes into the buffer first, so plain
 polling works without calling a wait function.
 
 ## Error Handling

@@ -147,7 +147,7 @@ client.close();
 | `broken()` | 是否已经有操作发现这条连接没了 |
 | `setThrowOnBroken(enabled)` / `throwOnBroken()` | 失败时是否抛 `connection_broken`。默认关闭 |
 | `cancel()` / `cancelled()` | 释放这条连接上的等待，以及是否被如此要求过 |
-| `readyRead()` | 此刻是否有可读内容 |
+| `readable()` | 此刻是否有可读内容 |
 | `waitForReadyRead(timeout = 5s)` | 等到有为止 |
 | `available()` | 有多少字节在等待 |
 | `read(bytes)` | 最多 `bytes` 字节。在 `mode::Message` 下返回空 |
@@ -170,7 +170,7 @@ client.close();
 | `valid()` / `broken()` | 同 `server_client` |
 | `setThrowOnBroken(enabled)` / `throwOnBroken()` | 同 `server_client` |
 | `cancel()` / `cancelled()` | 同 `server_client`；客户端没有服务端，只有它自己的 cancel |
-| `readyRead()` / `waitForReadyRead(timeout = 5s)` / `available()` | 同 `server_client` |
+| `readable()` / `waitForReadyRead(timeout = 5s)` / `available()` | 同 `server_client` |
 | `read(bytes)` / `readAll()` / `write(data)` | 同 `server_client` |
 | `waitForFinished(timeout = 5s)` | 同 `server_client` |
 | `pipeMode()` | 服务端声明的模式，由 `connect()` 填入 |
@@ -219,7 +219,7 @@ client.close();
 | `read()` / `readAll()` | 空，或者断开前收到的那一部分 |
 | `write()` | 0 |
 | `waitForFinished()` | `false` |
-| `available()` / `readyRead()` | 缓冲区里还剩多少；**只是看一眼也会记录状态** |
+| `available()` / `readable()` | 缓冲区里还剩多少；**只是看一眼也会记录状态** |
 | `valid()` | 一旦 `broken()` 置位就是 `false` |
 
 所以光看返回值分不出"还没有"和"再也没有了"：`broken()` 是区分它们的东西，值得在**失败之后**问一次
