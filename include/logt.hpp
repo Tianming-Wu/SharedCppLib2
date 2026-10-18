@@ -115,7 +115,7 @@ struct logt_message {
 
 // logt bus object, the core of logt
 // responsible for message queueing and dispatching
-class logt_eventbus {
+class logt_bus {
 public:
     static void push(const std::string& s, LogLevel level, logt_channelinfo channel);
     static bool pop(logt_message& result);

@@ -5,11 +5,11 @@
 #include <cstdlib>   // std::atexit
 
 // 静态成员定义
-std::mutex logt_eventbus::mutex_;
-std::condition_variable logt_eventbus::cond_;
-std::queue<logt_message> logt_eventbus::queue_;
-std::atomic<bool> logt_eventbus::stopped_;
-bool logt_eventbus::in_flight_ = false;
+std::mutex logt_bus::mutex_;
+std::condition_variable logt_bus::cond_;
+std::queue<logt_message> logt_bus::queue_;
+std::atomic<bool> logt_bus::stopped_;
+bool logt_bus::in_flight_ = false;
 
 
 // 静态成员定义
@@ -81,7 +81,7 @@ logt_message::logt_message(std::string msg, LogLevel level, logt_channelinfo cha
 , channels(channels) {}
 
 
-void logt_eventbus::push(const std::string& s, LogLevel level, logt_channelinfo channel) {
+void logt_bus::push(const std::string& s, LogLevel level, logt_channelinfo channel) {
     std::unique_lock<std::mutex> lock(mutex_);
     // After a shutdown the worker is gone, so a message pushed now would sit in the queue for ever
     // and mean nothing to anybody. Drop it instead of hoarding it.
@@ -90,7 +90,7 @@ void logt_eventbus::push(const std::string& s, LogLevel level, logt_channelinfo 
     cond_.notify_one();
 }
 
-bool logt_eventbus::pop(logt_message& result) {
+bool logt_bus::pop(logt_message& result) {
     std::unique_lock<std::mutex> lock(mutex_);
     cond_.wait(lock, [&]() { return !queue_.empty() || stopped_; });
     
@@ -103,18 +103,18 @@ bool logt_eventbus::pop(logt_message& result) {
     return true;
 }
 
-void logt_eventbus::stop() {
+void logt_bus::stop() {
     std::unique_lock<std::mutex> lock(mutex_);
     stopped_ = true;
     cond_.notify_all();
 }
 
-void logt_eventbus::wait_until_empty() {
+void logt_bus::wait_until_empty() {
     std::unique_lock<std::mutex> lock(mutex_);
     cond_.wait(lock, []() { return queue_.empty() && !in_flight_; });
 }
 
-void logt_eventbus::mark_processed() {
+void logt_bus::mark_processed() {
     std::unique_lock<std::mutex> lock(mutex_);
     in_flight_ = false;
     if (queue_.empty()) cond_.notify_all();   // a waiter is only satisfied by an empty queue
@@ -140,7 +140,7 @@ logt_sso::logt_sso(LogLevel level, const logt_format& formatter, const logt_chan
 
 logt_sso::~logt_sso() {
     // 析构时自动推送完整日志
-    logt_eventbus::push(ss_.str(), level_, channels);
+    logt_bus::push(ss_.str(), level_, channels);
 }
 
 std::string logt_sso::default_formatter(const logt_format::formatSettings& settings, const logt_format::formatInfo &info)
@@ -272,7 +272,7 @@ void logt::claim(const std::string& name) {
 }
 
 void logt::shutdown() {
-    logt_eventbus::stop();
+    logt_bus::stop();
     if (worker_.joinable()) worker_.join();
 
     // close all channels (each has its own mutex)
@@ -283,7 +283,7 @@ void logt::flush() {
     // A worker that has never started would leave the wait below hanging; one that has been shut
     // down has already drained everything, and call_once() will not start a second one.
     ensure_worker_started();
-    logt_eventbus::wait_until_empty();
+    logt_bus::wait_until_empty();
 }
 
 void logt::exit(int exitcode)
@@ -320,9 +320,9 @@ void logt::worker_thread() {
     }
 
     logt_message message;
-    while (logt_eventbus::pop(message)) {
+    while (logt_bus::pop(message)) {
         write_message(message);
-        logt_eventbus::mark_processed();   // the record is out; a flush() waiting here may go
+        logt_bus::mark_processed();   // the record is out; a flush() waiting here may go
     }
 }
 
