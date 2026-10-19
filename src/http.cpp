@@ -3,8 +3,58 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <charconv>
+#include <iterator>
+#include <string_view>
 
 namespace network::http {
+
+namespace {
+
+bool header_name_equal(std::string_view a, std::string_view b)
+{
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); ++i) {
+        const auto lower_ascii = [](char c) { return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c; };
+        if (lower_ascii(a[i]) != lower_ascii(b[i])) return false;
+    }
+    return true;
+}
+
+const std::string* find_header(const std::map<std::string, std::string>& headers,
+                               std::string_view name)
+{
+    for (const auto& [key, value] : headers) {
+        if (header_name_equal(key, name)) return &value;
+    }
+    return nullptr;
+}
+
+std::optional<size_t> content_length(const std::map<std::string, std::string>& headers)
+{
+    const auto* value = find_header(headers, "Content-Length");
+    if (!value) return std::nullopt;
+    const size_t first = value->find_first_not_of(" \t");
+    if (first == std::string::npos) throw network_error("Invalid Content-Length");
+    const size_t last = value->find_last_not_of(" \t") + 1;
+    size_t length = 0;
+    const auto result = std::from_chars(value->data() + first, value->data() + last, length);
+    if (result.ec != std::errc{} || result.ptr != value->data() + last)
+        throw network_error("Invalid Content-Length");
+    return length;
+}
+
+std::string read_body(std::istream& stream, const std::map<std::string, std::string>& headers)
+{
+    // Preserve embedded nulls. Incremental callers may only have part of the body yet.
+    std::string body{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
+    const auto length = content_length(headers);
+    if (length && !find_header(headers, "Transfer-Encoding") && body.size() > *length)
+        body.resize(*length);
+    return body;
+}
+
+} // namespace
 
 static const std::map<http_method, std::string> method_to_str = {
     {http_method::GET, "GET"},
@@ -99,7 +149,7 @@ std::string request::serialize() const
     }
     
     // Add Content-Length if body exists and not already specified
-    if (!body.empty() && headers.find("Content-Length") == headers.end()) {
+    if (!body.empty() && !find_header(headers, "Content-Length")) {
         result += "Content-Length: " + std::to_string(body.size()) + "\r\n";
     }
     
@@ -176,9 +226,7 @@ request request::deserialize(const std::string& str)
     }
     
     // Read body (rest of stream)
-    std::string body_content;
-    std::getline(stream, body_content, '\0');
-    req.body = body_content;
+    req.body = read_body(stream, req.headers);
     
     return req;
 }
@@ -190,15 +238,7 @@ bool request::has_complete_headers(const std::string& str)
 
 size_t request::get_content_length() const
 {
-    auto it = headers.find("Content-Length");
-    if (it != headers.end()) {
-        try {
-            return std::stoull(it->second);
-        } catch (...) {
-            return 0;
-        }
-    }
-    return 0;
+    return content_length(headers).value_or(0);
 }
 
 // ========== response implementation ==========
@@ -218,7 +258,7 @@ std::string response::serialize() const
     }
     
     // Add Content-Length if body exists and not already specified
-    if (!body.empty() && headers.find("Content-Length") == headers.end()) {
+    if (!body.empty() && !find_header(headers, "Content-Length")) {
         result += "Content-Length: " + std::to_string(body.size()) + "\r\n";
     }
     
@@ -291,9 +331,7 @@ response response::deserialize(const std::string& str)
     }
     
     // Read body
-    std::string body_content;
-    std::getline(stream, body_content, '\0');
-    resp.body = body_content;
+    resp.body = read_body(stream, resp.headers);
     
     return resp;
 }

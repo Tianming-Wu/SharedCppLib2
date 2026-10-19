@@ -224,7 +224,7 @@ public:
         if (!available<uint32_t>()) throw std::out_of_range("bytearray::readWString: not enough data for length");
         uint32_t length = read<uint32_t>();
         if (length == 0) return {};
-        if (!bytesAvailable(length * sizeof(wchar_t))) throw std::out_of_range("bytearray::readWString: not enough data");
+        if (length > remaining() / sizeof(wchar_t)) throw std::out_of_range("bytearray::readWString: not enough data");
         std::wstring str(length, L'\0');
         std::memcpy(&str[0], this->data() + read_pointer, length * sizeof(wchar_t));
         read_pointer += length * sizeof(wchar_t);
@@ -242,7 +242,7 @@ public:
 
     std::wstring readRawWString(size_t const charCount) const {
         if (charCount == 0) return {};
-        if (!bytesAvailable(charCount * sizeof(wchar_t))) throw std::out_of_range("bytearray::readRawWString: not enough data");
+        if (charCount > remaining() / sizeof(wchar_t)) throw std::out_of_range("bytearray::readRawWString: not enough data");
         std::wstring str(charCount, L'\0');
         std::memcpy(&str[0], this->data() + read_pointer, charCount * sizeof(wchar_t));
         read_pointer += charCount * sizeof(wchar_t);
@@ -262,17 +262,19 @@ public:
     ContainerType readContainer() const {
         if (!available<uint32_t>()) throw std::out_of_range("bytearray::readContainer: not enough data for count");
         uint32_t count = read<uint32_t>();
-        if (count == 0) return {};
         if (!available<uint32_t>()) throw std::out_of_range("bytearray::readContainer: not enough data for elem size");
         uint32_t elemSize = read<uint32_t>();
         if (elemSize != sizeof(typename ContainerType::value_type))
             throw std::runtime_error("bytearray::readContainer: element size mismatch");
-        if (!bytesAvailable(count * elemSize)) throw std::out_of_range("bytearray::readContainer: not enough data");
+        if (count > remaining() / sizeof(typename ContainerType::value_type))
+            throw std::out_of_range("bytearray::readContainer: not enough data");
+        if (count == 0) return {};
+        const size_t byteCount = static_cast<size_t>(count) * elemSize;
         ContainerType container(count);
         if (container.size() != count)
             throw std::runtime_error("bytearray::readContainer: count mismatch");
-        std::memcpy(container.data(), this->data() + read_pointer, count * elemSize);
-        read_pointer += count * elemSize;
+        std::memcpy(container.data(), this->data() + read_pointer, byteCount);
+        read_pointer += byteCount;
         return container;
     }
 
@@ -408,7 +410,7 @@ public:
     using base_type::cbegin;
     using base_type::cend;
 
-    bool bytesAvailable(size_t length) const { return read_pointer + length <= size(); }
+    bool bytesAvailable(size_t length) const { return read_pointer <= size() && length <= size() - read_pointer; }
     size_t remaining() const { return size() > read_pointer ? size() - read_pointer : 0; }
 
     template<typename T>

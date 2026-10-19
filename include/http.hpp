@@ -80,7 +80,8 @@ struct request {
     /// @brief Check if request has complete headers (ends with \r\n\r\n)
     static bool has_complete_headers(const std::string& str);
     
-    /// @brief Get required body length from Content-Length header, returns 0 if not present
+    /// @brief Get required body length (header name is case-insensitive), or 0 if absent.
+    /// @throws network_error if Content-Length is invalid or cannot fit in size_t.
     size_t get_content_length() const;
 };
 

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.20)
 
 # if(POLICY CMP0111)
 #     cmake_policy(SET CMP0111 NEW)
@@ -284,6 +284,7 @@ install(TARGETS ${TARGET_LIST}
 
 # 为每个目标设置导出属性
 foreach(target_name ${TARGET_LIST})
+    target_compile_features(${target_name} PUBLIC cxx_std_23)
     # 设置不同配置的库文件位置
     # set_property(TARGET ${target_name} PROPERTY 
     #     ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG}")
@@ -304,6 +305,7 @@ endforeach()
 
 # INTERFACE-only targets 导出属性
 foreach(target_name api ${INTERFACE_TARGET_LIST})
+    target_compile_features(${target_name} INTERFACE cxx_std_23)
     target_include_directories(${target_name} INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>

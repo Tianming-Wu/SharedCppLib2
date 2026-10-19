@@ -3,6 +3,10 @@
 See [release.md](doc/release.md) for the releasing standards.
 
 ### [Unreleased]
+- Fixed: `bytearray` rejects truncated strings and invalid lengths instead of reading beyond its data; reading an empty contiguous container no longer misaligns the next value.
+- Fixed: `http` preserves embedded null bytes in request and response bodies, handles `Content-Length` without regard to header-name case, and rejects invalid lengths.
+- Fixed: `RAII` is usable as a move-only resource guard with a custom deleter; `RAII_HANDLE` closes its owned Windows handle. Access the resource through `get()` instead of an implicit conversion, or relinquish ownership with `release()`.
+- Changed: CMake 3.20 is now required, and linking the library's CMake targets carries the C++23 requirement to consuming projects.
 - Fixed: `logt` — `LogLevel::Quiet` was the lowest level instead of the highest, so a filter of `Quiet` kept everything: `setFilterLevel(LogLevel::Quiet)` logged as much as `Debug` did, and so did a per-channel one. It sits above every level now, which is what "log nothing" has to mean for a filter that keeps what is at or above it.
 - Fixed: `logt` — the console (channel 0) ignored the filter completely, and `setChannelFilter()` refused channel 0. The console follows the global filter now, and can be given a filter of its own: `setChannelFilter(0, LogLevel::Quiet)` keeps the terminal quiet while the files keep recording.
 - New: `logt::flush()` — waits until everything handed over so far has been written, without stopping the logger. A record that has been written is already flushed to its file, so the queue is the only place one can still be lost; call it from a crash handler, or before an `abort()` path.

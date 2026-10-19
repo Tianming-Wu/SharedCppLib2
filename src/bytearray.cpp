@@ -61,12 +61,14 @@ void bytearray::wipe() noexcept
 std::string bytearray::toString() const {
     seekr(0); if (empty()) return {};
     uint32_t len = read<uint32_t>(); if (len == 0) return {};
+    if (!bytesAvailable(len)) throw std::out_of_range("bytearray::toString: not enough data");
     return std::string(reinterpret_cast<const char*>(this->data() + sizeof(uint32_t)), len);
 }
 
 std::wstring bytearray::toWString() const {
     seekr(0); if (empty()) return {};
     uint32_t len = read<uint32_t>(); if (len == 0) return {};
+    if (len > remaining() / sizeof(wchar_t)) throw std::out_of_range("bytearray::toWString: not enough data");
     std::wstring str(len, L'\0');
     std::memcpy(&str[0], this->data() + sizeof(uint32_t), len * sizeof(wchar_t));
     return str;
