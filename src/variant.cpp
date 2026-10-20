@@ -29,6 +29,30 @@ variant::variant(std::vector<variant>&& v) : value(std::move(v)) {}
 variant::variant(const std::map<scl2::string, variant>& m) : value(m) {}
 variant::variant(std::map<scl2::string, variant>&& m) : value(std::move(m)) {}
 
+variant variant::make_array()
+{
+    return variant(std::vector<variant>{});
+}
+
+variant variant::make_array(std::initializer_list<variant> items)
+{
+    return variant(std::vector<variant>(items));
+}
+
+variant variant::make_object()
+{
+    return variant(std::map<scl2::string, variant>{});
+}
+
+variant variant::make_object(std::initializer_list<std::pair<scl2::string, variant>> items)
+{
+    std::map<scl2::string, variant> obj;
+    for (const auto& [key, value] : items) {
+        obj[key] = value;
+    }
+    return variant(std::move(obj));
+}
+
 // ---- conversion accessors ----
 
 bool variant::as_bool() const

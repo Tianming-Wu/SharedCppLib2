@@ -2,6 +2,9 @@
 
 See [release.md](doc/release.md) for the releasing standards.
 
+### [Unreleased]
+- New: `variant::make_array()` and `variant::make_object()` — a default `variant` is null, so an empty array or object could only be written by naming the container type. Both also take an initializer list to fill what they make, and a repeated key keeps its last value.
+
 ### v3.9.0
 - Fixed: `bytearray` rejects truncated strings and invalid lengths instead of reading beyond its data; reading an empty contiguous container no longer misaligns the next value.
 - Fixed: `http` preserves embedded null bytes in request and response bodies, handles `Content-Length` without regard to header-name case, and rejects invalid lengths.
