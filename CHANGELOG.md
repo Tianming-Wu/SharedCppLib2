@@ -2,7 +2,7 @@
 
 See [release.md](doc/release.md) for the releasing standards.
 
-### [Unreleased]
+### v3.9.0
 - Fixed: `bytearray` rejects truncated strings and invalid lengths instead of reading beyond its data; reading an empty contiguous container no longer misaligns the next value.
 - Fixed: `http` preserves embedded null bytes in request and response bodies, handles `Content-Length` without regard to header-name case, and rejects invalid lengths.
 - Fixed: `RAII` is usable as a move-only resource guard with a custom deleter; `RAII_HANDLE` closes its owned Windows handle. Access the resource through `get()` instead of an implicit conversion, or relinquish ownership with `release()`.
