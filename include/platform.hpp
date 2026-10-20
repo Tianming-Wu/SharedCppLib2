@@ -9,6 +9,9 @@
     Note that some apis are only available on specific platforms, since they makes
     no sense on other platforms. Those apis are under platform::windows or platform::linux_os
     namespaces.
+
+    macOS is not supported. The Unix paths here are written for Linux and are not
+    guaranteed to be right anywhere else.
 */
 #pragma once
 
@@ -39,6 +42,18 @@ namespace platform {
 
 fs::path executable_path();
 fs::path executable_dir();
+
+// Where the settings of this user live: `$XDG_CONFIG_HOME` (when it is an
+// absolute path), else `~/.config` on Linux; `%APPDATA%` on Windows.
+// Does not create the directory, and returns an empty path on failure.
+// You should create a subdirectory of your own under it.
+fs::path user_config_dir();
+
+// Where the settings of the whole machine live: `/etc` on Linux,
+// `%PROGRAMDATA%` on Windows. Writing there usually needs privileges.
+// Does not create the directory, and returns an empty path on failure.
+// You should create a subdirectory of your own under it.
+fs::path system_config_dir();
 
 std::string get_env(const std::string& name);
 bool set_env(const std::string& name, const std::string& value);
