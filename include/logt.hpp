@@ -408,18 +408,25 @@ constexpr std::string_view function_name(std::string_view signature) {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
             || (c >= '0' && c <= '9') || c == '_';
     };
+    // true if the identifier right in front of `pos` (spaces ignored) is `word`.
+    constexpr auto word_before = [](std::string_view s, std::size_t pos, std::string_view word) {
+        while (pos > 0 && s[pos - 1] == ' ') --pos;
+        return pos >= word.size() && s.substr(pos - word.size(), word.size()) == word;
+    };
     constexpr std::size_t npos = std::string_view::npos;
 
     // The parameter list is the first '(' outside <...> that is neither preceded by a space
     // — a parameter list is glued to the name, while the parentheses a return type may carry
-    // sit after one — nor the empty pair of an `operator ()`.
+    // sit after one — nor the empty pair of an `operator ()`. Note that a function taking no
+    // arguments also ends in `()`, and GCC / Clang print it that way (`void f()`), so the
+    // empty pair cannot be skipped by itself: only `operator` owns one.
     std::size_t angle = 0, paren = npos;
     for (std::size_t i = 0; i < signature.size() && paren == npos; ++i) {
         const char c = signature[i];
         if (c == '<') ++angle;
         else if (c == '>') { if (angle) --angle; }
         else if (c == '(' && angle == 0 && i > 0 && signature[i - 1] != ' '
-                 && !(i + 1 < signature.size() && signature[i + 1] == ')'))
+                 && !word_before(signature, i, "operator"))
             paren = i;
     }
     if (paren == npos) return signature;
