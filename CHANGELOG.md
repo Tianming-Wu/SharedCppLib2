@@ -4,6 +4,13 @@ See [release.md](doc/release.md) for the releasing standards.
 
 ### [Unreleased]
 - New: `variant::make_array()` and `variant::make_object()` — a default `variant` is null, so an empty array or object could only be written by naming the container type. Both also take an initializer list to fill what they make, and a repeated key keeps its last value.
+- Changed: `logh` is header-only — the header can be included wherever a log call is written, and `LOGH_IMPLEMENTATION` in exactly one source file is gone.
+- New: `logh` writes to the console and to one file at the same time — `setFileOutput()` opens the file in append mode, `setConsoleOutput(false)` silences the console, where before the module could only do one of the two. A file that will not open answers `false` and says why through `setErrorHandler()` (stderr by default) instead of throwing, and the file that is already open keeps being written to.
+- New: `logh::debug()` and the `logh_debug` / `logh_info` / `logh_warn` / `logh_error` / `logh_fatal` macros; a line reads `[INFO] [2026-10-21 16:00:00] message`.
+- New: `LOGH_AUTOSIGNATURE` — the `logh_*` macros add the name of the function the call sits in, cut out of the signature string the compiler already prints, so the line reads `[INFO] [2026-10-21 16:00:00] [Cls::method] message` without the caller writing the name.
+- Changed: `LOGH_DISABLE` replaces `LOGH_DISCARD`, and the `logh_*` macros expand to nothing instead of disappearing, so the calls and the arguments they were handed compile away in a release build.
+- Removed: `logh` — the conditional macros `LOGHC_*` / `LOGH_CONDITIONAL`, which compiled a call out by defining a macro of their own, and `logh::setChannel()` / `logh_out`, which `setFileOutput()` and `setConsoleOutput()` replace.
+- Changed: `logh` reports a format string that does not match its arguments inside the line it was writing (`<format error: …>`), and a log call never throws — a line that cannot be formatted, or cannot be built at all, is reported in place or dropped.
 
 ### v3.9.0
 - Fixed: `bytearray` rejects truncated strings and invalid lengths instead of reading beyond its data; reading an empty contiguous container no longer misaligns the next value.
