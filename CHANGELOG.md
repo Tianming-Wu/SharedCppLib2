@@ -2,7 +2,7 @@
 
 See [release.md](doc/release.md) for the releasing standards.
 
-### [Unreleased]
+### v3.9.1
 - New: `variant::make_array()` and `variant::make_object()` — a default `variant` is null, so an empty array or object could only be written by naming the container type. Both also take an initializer list to fill what they make, and a repeated key keeps its last value.
 - Changed: `logh` is header-only — the header can be included wherever a log call is written, and `LOGH_IMPLEMENTATION` in exactly one source file is gone.
 - New: `logh` writes to the console and to one file at the same time — `setFileOutput()` opens the file in append mode, `setConsoleOutput(false)` silences the console, where before the module could only do one of the two. A file that will not open answers `false` and says why through `setErrorHandler()` (stderr by default) instead of throwing, and the file that is already open keeps being written to.
