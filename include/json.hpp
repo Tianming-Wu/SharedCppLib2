@@ -13,7 +13,7 @@
     Also check jbt if you want some even more compact storage of json data.
 
     [SCL_STANDALONE_MODULE]
-    version: 1.12.0
+    version: 1.12.1
     cpp_generation: cxx17 - cxx23
 */
 

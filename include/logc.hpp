@@ -24,7 +24,7 @@ struct color_standard {
     }
 };
 
-extern const color_standard clrstd_buildin;
+extern const color_standard clrstd_builtin;
 extern const color_standard clrstd_vscode;
 
 bool logPreprocessor(logt_message& message);

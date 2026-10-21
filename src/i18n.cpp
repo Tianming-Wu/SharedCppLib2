@@ -21,7 +21,7 @@ const std::filesystem::path& i18n::lang_folder()
 i18n::i18n()
 {
     if (trInstance != nullptr) {
-        throw std::runtime_error("i18n instance already exists");
+        throw std::logic_error("i18n instance already exists");
     }
 
     trInstance = this;

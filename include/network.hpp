@@ -9,6 +9,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 
 #include "bytearray.hpp"
 
@@ -53,6 +54,10 @@ struct ipv4 {
 struct ipv6 {
     uint16_t blocks[8];
 
+    /// @brief Zone index for a link-local address (fe80::/10); 0 when unset.
+    ///        Not part of the address itself, so it is not in to_bytearray().
+    uint32_t scope_id = 0;
+
     inline constexpr std::array<uint8_t, 16> to_bytes() const noexcept {
         std::array<uint8_t, 16> bytes{};
         for (size_t i = 0; i < 8; ++i) {
@@ -74,23 +79,64 @@ struct ipv6 {
     bool valid() const;
 };
 
+/// @brief Which family to prefer when a name resolves to more than one address.
+enum class ip_preference : std::uint8_t {
+    ipv4_first = 0,
+    ipv6_first = 1,
+};
+
+/// @brief One address, or a host name that has not been resolved yet.
+///
+/// This is the type the network functions take, and it converts from a string,
+/// an ipv4 and an ipv6, so a name and both literal forms are passed the same way.
+///
+/// @note `type` is authoritative. `address` is the text form, and the parsed
+///       members below are only meaningful when `type` says which one they are.
 struct network_address {
-    std::string address;
-    
+    enum class kind : std::uint8_t {
+        unspecified = 0,  ///< no address yet, "any": what binding uses when none was given
+        hostname,         ///< a name that has to be resolved before it can be used
+        ipv4,
+        ipv6,
+    };
+
+    network_address() = default;
+
+    // Not explicit on purpose: this is what makes the call sites uniform.
+    network_address(const ipv4& addr) : type(kind::ipv4), ipv4_addr(addr) { address = addr.to_string(); }
+    network_address(const ipv6& addr) : type(kind::ipv6), ipv6_addr(addr) { address = addr.to_string(); }
+    network_address(const std::string& text) : network_address(parse(text)) {}
+
+    /// @brief An IPv4 or IPv6 literal when @p text parses as one, else a host name.
+    static network_address parse(const std::string& text);
+
+    kind what() const { return type; }
+    bool is_literal() const { return type == kind::ipv4 || type == kind::ipv6; }
+    bool needs_resolution() const { return type == kind::hostname; }
+    bool valid() const { return is_literal(); }
+
+    std::string to_string() const;
+
+    /// @note Throws network_error when this is not an address of that family.
     ipv4 to_ipv4() const;
     ipv6 to_ipv6() const;
 
-    bool valid() const;
-
-    ipv4 __ipv4;
-    ipv6 __ipv6;
-
-    bool dummy = false; // If this flag was set, the address is just a placeholder and does not represent a real address
+    kind type = kind::unspecified;
+    std::string address;   ///< text form: the literal, or the host name as given
+    ipv4 ipv4_addr;
+    ipv6 ipv6_addr;
 };
+
+/// @brief Short name for network_address.
+using netaddr = network_address;
 
 // functions
 bool ping(const network_address& addr, std::chrono::milliseconds timeout = std::chrono::seconds(1));
-network_address resolve(const std::string& hostname);
+
+/// @brief Round trip time to @p addr, or nothing when it does not answer.
+/// @note Takes a literal address; resolve a host name first (dns_query).
+std::optional<std::chrono::milliseconds> ping_rtt(const network_address& addr,
+                                                  std::chrono::milliseconds timeout = std::chrono::seconds(1));
 
 
 // The definitions of these classes are in their respective headers.

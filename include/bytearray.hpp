@@ -12,11 +12,13 @@
 #include <sstream>
 #include <iostream>
 #include <cctype>
+#include <cstddef>
 #include <iomanip>
 #include <cstring>
 #include <bit>
 #include <cstdint>
 #include <initializer_list>
+#include <span>
 #include <type_traits>
 #include <utility>
 // #include <experimental/scope>
@@ -33,23 +35,15 @@ using stringlist = basic_stringlist<char>;
 using wstringlist = basic_stringlist<wchar_t>;
 
 class bytearray;
+class bytearray_view;
 
 // now using std::byte. I'm not really satisfied, because it it so EXPLICIT. There are no any implicit conversions at all.
 // Fine. I just need to warn the users to use append(std::byte{0x08}) instead of append(0x08), which is a fucking INTEGER.
 // #undef std::byte
 // typedef unsigned char std::byte;
 
-// For a better fixed-size construction api which will later be added
-// into the mainstream.
-template<size_t ContentSize>
-struct bytes
-{
-    const size_t content_size = ContentSize;
-    std::byte data[ContentSize];
-};
-
 // simplify std::byte literal construction, so that users can write std::byte{0x08} as B(0x08) instead. Still explicit, but less verbose.
-// The reason not to use std::byte is because of Microsoft's obnoxious definition of EVERYTHING
+// The reason not to use BYTE is because of Microsoft's obnoxious definition of EVERYTHING
 #ifndef BYTEARRAY_NODEFINE
     #define B(IN) std::byte{IN}
     #define PCB(IN) reinterpret_cast<const std::byte*>(&IN)
@@ -74,6 +68,18 @@ public:
     explicit bytearray(size_t count, std::byte value);
     explicit bytearray(size_t count);                         // zeroed
     bytearray(std::initializer_list<std::byte> init);
+
+    /// @brief The bytes the view points at.
+    explicit bytearray(bytearray_view view);
+
+    /// @brief The bytes of a string literal, without its terminating null.
+    /// @note The array extent decides the size, so a literal keeps any embedded nulls:
+    ///       `"a\0b"` is three bytes. A buffer whose length is not the array extent
+    ///       should be passed as a pointer and a size instead.
+    template<std::size_t N>
+    explicit bytearray(const char (&literal)[N])
+        : base_type(reinterpret_cast<const std::byte*>(literal),
+                    reinterpret_cast<const std::byte*>(literal) + (N - 1)) {}
 
     template<typename InputIt>
     bytearray(InputIt first, InputIt last) : base_type(first, last) {}
@@ -141,10 +147,10 @@ public:
     void insertRawWString(const std::wstring& str) { insertRawWString(write_pointer, str); }
     void appendRawWString(const std::wstring& str) { insertRawWString(size(), str); }
 
-    // ── Container write (trivially copyable elements) ────────────────
+    // ── Container write (plain copy) ─────────────────────────────────
+    // Contiguous storage of trivially copyable elements: count, element size, then the block.
     template<typename ContainerType>
-    requires requires { typename ContainerType::value_type; }
-          && std::is_trivially_copyable_v<typename ContainerType::value_type>
+    requires ::scl2::stl::trivially_copyable_container<ContainerType>
     void insertContainer(size_t pos, const ContainerType& container) {
         insert<uint32_t>(pos, static_cast<uint32_t>(container.size()));
         insert<uint32_t>(pos + sizeof(uint32_t), static_cast<uint32_t>(sizeof(typename ContainerType::value_type)));
@@ -153,9 +159,16 @@ public:
                container.size() * sizeof(typename ContainerType::value_type));
     }
 
-    // ── Container write (gdump elements) ─────────────────────────────
+    // ── Container write ─────────────────────────────────────────────
+    // Plain copy: a contiguous block of trivially copyable elements — count, element size,
+    // then the block. readContainer() reads this back the same way.
+    template<typename ContainerType>
+    requires ::scl2::stl::trivially_copyable_container<ContainerType>
+    void appendContainer(const ContainerType& container) { insertContainer(size(), container); }
+
+    // Element by element: count, then each element written with gdump().
     template<typename _T>
-    requires (!::scl2::stl::trivially_copyable_container<_T> && ::scl2::has_gdump_container<_T>)
+    requires ::scl2::has_gdump_container<_T>
     void appendContainer(const _T& in) {
         append<uint32_t>(static_cast<uint32_t>(in.size()));
         for (const auto& elem : in) {
@@ -211,7 +224,7 @@ public:
         if (!available<uint32_t>()) throw std::out_of_range("bytearray::readWString: not enough data for length");
         uint32_t length = read<uint32_t>();
         if (length == 0) return {};
-        if (!bytesAvailable(length * sizeof(wchar_t))) throw std::out_of_range("bytearray::readWString: not enough data");
+        if (length > remaining() / sizeof(wchar_t)) throw std::out_of_range("bytearray::readWString: not enough data");
         std::wstring str(length, L'\0');
         std::memcpy(&str[0], this->data() + read_pointer, length * sizeof(wchar_t));
         read_pointer += length * sizeof(wchar_t);
@@ -229,7 +242,7 @@ public:
 
     std::wstring readRawWString(size_t const charCount) const {
         if (charCount == 0) return {};
-        if (!bytesAvailable(charCount * sizeof(wchar_t))) throw std::out_of_range("bytearray::readRawWString: not enough data");
+        if (charCount > remaining() / sizeof(wchar_t)) throw std::out_of_range("bytearray::readRawWString: not enough data");
         std::wstring str(charCount, L'\0');
         std::memcpy(&str[0], this->data() + read_pointer, charCount * sizeof(wchar_t));
         read_pointer += charCount * sizeof(wchar_t);
@@ -243,37 +256,40 @@ public:
         return result;
     }
 
-    // Container read (trivially copyable elements)
+    // Container read (plain copy: count, element size, then the block)
     template<typename ContainerType>
-    requires requires { typename ContainerType::value_type; }
-          && std::is_trivially_copyable_v<typename ContainerType::value_type>
+    requires ::scl2::stl::restorable_trivially_copyable_container<ContainerType>
     ContainerType readContainer() const {
         if (!available<uint32_t>()) throw std::out_of_range("bytearray::readContainer: not enough data for count");
         uint32_t count = read<uint32_t>();
-        if (count == 0) return {};
         if (!available<uint32_t>()) throw std::out_of_range("bytearray::readContainer: not enough data for elem size");
         uint32_t elemSize = read<uint32_t>();
         if (elemSize != sizeof(typename ContainerType::value_type))
             throw std::runtime_error("bytearray::readContainer: element size mismatch");
-        if (!bytesAvailable(count * elemSize)) throw std::out_of_range("bytearray::readContainer: not enough data");
+        if (count > remaining() / sizeof(typename ContainerType::value_type))
+            throw std::out_of_range("bytearray::readContainer: not enough data");
+        if (count == 0) return {};
+        const size_t byteCount = static_cast<size_t>(count) * elemSize;
         ContainerType container(count);
-        std::memcpy(container.data(), this->data() + read_pointer, count * elemSize);
-        read_pointer += count * elemSize;
+        if (container.size() != count)
+            throw std::runtime_error("bytearray::readContainer: count mismatch");
+        std::memcpy(container.data(), this->data() + read_pointer, byteCount);
+        read_pointer += byteCount;
         return container;
     }
 
-    // Container read (gdump elements)
-    // const: the body only uses const readers, and the recursive
-    // scl2::gload<value_type>(*this) accepts a const bytearray.
+    // Container read (element by element)
+    // const: the body only uses const readers, and scl2::read_element() accepts a const
+    // bytearray (the cursor is mutable).
     template<typename _T>
-    requires (!::scl2::stl::trivially_copyable_container<_T> && ::scl2::has_gdump_container<_T>)
+    requires ::scl2::has_gload_container<_T>
     _T readContainer() const {
         if (!available<uint32_t>()) throw std::out_of_range("bytearray::readContainer: not enough data for count");
         uint32_t count = read<uint32_t>();
         _T result;
         if constexpr (requires(_T& c) { c.reserve(size_t{}); }) result.reserve(count);
         for (uint32_t i = 0; i < count; ++i) {
-            ::scl2::stl::universal_insert(result, ::scl2::gload<typename _T::value_type>(*this));
+            ::scl2::stl::universal_insert(result, ::scl2::read_element<typename _T::value_type>(*this));
         }
         return result;
     }
@@ -394,7 +410,7 @@ public:
     using base_type::cbegin;
     using base_type::cend;
 
-    bool bytesAvailable(size_t length) const { return read_pointer + length <= size(); }
+    bool bytesAvailable(size_t length) const { return read_pointer <= size() && length <= size() - read_pointer; }
     size_t remaining() const { return size() > read_pointer ? size() - read_pointer : 0; }
 
     template<typename T>
@@ -433,7 +449,8 @@ public:
     }
 
     template<typename _T>
-    requires (std::is_class_v<_T> && std::is_trivially_copyable_v<typename _T::value_type>)
+    requires ::scl2::stl::trivially_copyable_container<_T>
+          && requires(const typename _T::value_type* p, size_t n) { _T(p, n); }
     _T toContainer() const {
         using _Tp = typename _T::value_type;
         return _T(reinterpret_cast<const _Tp*>(this->data()), this->size() / sizeof(_Tp));
@@ -577,6 +594,27 @@ public:
     bytearray_view() : data_(nullptr), size_(0) {}
     bytearray_view(const bytearray& ba) : data_(ba.data()), size_(ba.size()) {}
     bytearray_view(const std::byte* data, size_t size) : data_(data), size_(size) {}
+    bytearray_view(const void* data, size_t size)
+        : data_(static_cast<const std::byte*>(data)), size_(size) {}
+    bytearray_view(std::span<const std::byte> span) : data_(span.data()), size_(span.size()) {}
+
+    /// @brief Any contiguous, sized range of bytes: a `std::byte[N]`, a `std::array` or a
+    ///        `std::vector`.
+    /// @note Only lvalues, so that a container which is about to be destroyed cannot become a
+    ///       view by accident.
+    template<typename Range>
+    requires (!std::is_base_of_v<bytearray, std::remove_cvref_t<Range>>)
+          && (!std::is_same_v<std::remove_cvref_t<Range>, bytearray_view>)
+          && requires (Range& r) { std::span<const std::byte>(r); }
+    bytearray_view(Range& range) : bytearray_view(std::span<const std::byte>(range)) {}
+
+    /// @brief The bytes of a string literal, without its terminating null.
+    /// @note The array extent decides the size, so a literal keeps any embedded nulls:
+    ///       `"a\0b"` is three bytes.
+    template<std::size_t N>
+    bytearray_view(const char (&literal)[N])
+        : data_(reinterpret_cast<const std::byte*>(literal)), size_(N - 1) {}
+
     bytearray_view(const bytearray&&) = delete;  // prevent dangling
 
     const std::byte* data() const { return data_; }
@@ -589,7 +627,21 @@ public:
         return data_[i];
     }
 
-    bytearray subarr(size_t begin, size_t n = bytearray::seek_end) const;
+    /// @brief The size that means "to the end" for `subview()`, the way `string_view`
+    ///        spells it.
+    static constexpr size_t npos = static_cast<size_t>(-1);
+
+    /// @brief A view of up to `count` bytes starting at `pos`, still pointing at the same
+    ///        bytes.
+    /// @note `count` is cut down to what is there, so asking for more than the end gives
+    ///       what is left, and `pos` past the end throws `std::out_of_range`.
+    bytearray_view subview(size_t pos = 0, size_t count = npos) const {
+        if (pos > size_) throw std::out_of_range("bytearray_view::subview: out of range");
+        const size_t remaining = size_ - pos;
+        return bytearray_view(data_ + pos, count < remaining ? count : remaining);
+    }
+
+    bytearray subarr(size_t begin, size_t n = npos) const;
 
     bool operator==(const bytearray_view& other) const;
     bool operator!=(const bytearray_view& other) const { return !(*this == other); }

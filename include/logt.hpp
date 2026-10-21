@@ -5,12 +5,7 @@
     Doesn't work well in file mode, disable it in that case by yourself.
 
     This library is way too complex to tell you everything here. Just go and check the document.
-
-    Dev note:
-        I just noticed that the exiting of logt is not that graceful. I can take advantage of the C++
-        scope-exit destruction action to exit the logt automatically.
-
-        I don't want to destroy the current pull-up logic though, so a simple logt_guard class instance is enough.
+    Although it is not long, it's structure is not simple.
 
 */
 #pragma once
@@ -25,6 +20,7 @@
 #include <atomic>
 #include <format>
 #include <sstream>
+#include <string_view>
 #include <unordered_map>
 #include <chrono>
 #include <functional>
@@ -57,17 +53,22 @@
 #endif
 
 enum class LogLevel : int8_t {
-    Quiet = -1, // For not logging anything (filter only)
-    Debug =  0,
-    Info  =  1,
-    Warn  =  2,
-    Error =  3,
-    Fatal =  4,
+    Debug = 0,
+    Info  = 1,
+    Warn  = 2,
+    Error = 3,
+    Fatal = 4,
 
-    // Reserved keys
-    Inherit = 16, // Inherit from global settings, for channel
+    // Reserved keys — these are filter values, not message levels.
+
+    /// Log nothing: it sits above every level, so `level >= Quiet` never holds for a real record.
+    Quiet = 5,
+
+    /// Take the filter from the global setting (for a channel).
+    Inherit = 16,
 };
 
+// channel information, including type, validity, and filter level
 struct logt_channel {
     enum class ChannelType {
         invalid = -1, stdcout = 0, file = 1, custom_ostream = 2
@@ -80,7 +81,7 @@ struct logt_channel {
     bool valid;
     bool enabled;
 
-    LogLevel filter = LogLevel::Inherit;
+    LogLevel filter = LogLevel::Inherit; // By default, inherit the global filter level.
 
     union {
         std::ofstream fileobj;
@@ -112,20 +113,29 @@ struct logt_message {
     logt_message(std::string msg, LogLevel level, logt_channelinfo channels);
 };
 
-class logt_eventbus {
+// logt bus object, the core of logt
+// responsible for message queueing and dispatching
+class logt_bus {
 public:
     static void push(const std::string& s, LogLevel level, logt_channelinfo channel);
     static bool pop(logt_message& result);
     static void stop();
+
+    /// @brief Wait until the queue is empty and all the message in hand has been written.
+    static void wait_until_empty();
+
+    /// @brief Tell the waiters that the message just popped has been written.
+    static void mark_processed();
 
 private:
     static std::mutex mutex_;
     static std::condition_variable cond_;
     static std::queue<logt_message> queue_;
     static std::atomic<bool> stopped_;
+    static bool in_flight_; // a message has been popped but not written yet
 };
 
-
+// logt format object
 class logt_format {
 public:
     logt_format() {}
@@ -161,6 +171,7 @@ public:
 
 typedef std::function<bool(logt_message&)> preprocessor_t;
 
+// logt string stream object. For grammar convenience.
 class logt_sso {
 public:
     logt_sso(LogLevel level, const logt_format& formatter, const logt_channelinfo& channels, const std::string& signature = "");
@@ -210,7 +221,7 @@ private:
 
 class logt_sig {
 public:
-    logt_sig(const std::string& name);
+    logt_sig(std::string_view name);
     
     const std::string& name() const { return name_; }
 
@@ -258,20 +269,34 @@ public:
     static void claim(const std::string& name);
 
     /// @brief Set the global log filter level, by default is `LogLevel::Info`.
-    /// @param level The minimum log level to output
+    /// @param level The lowest level that is still written; a record below it is dropped.
+    /// @note A channel with a filter of its own ([setChannelFilter]) is not affected by this,
+    ///       and `LogLevel::Quiet` — above every level — turns logging off completely.
     inline static void setFilterLevel(LogLevel level) { filter_level_ = level; }
 
     /// @brief Set per-channel log filter level.
-    /// @param channel_id The channel ID (returned by addfile/addostream)
-    /// @param level The minimum log level, or LogLevel::Inherit to use global
+    /// @param channel_id The channel ID (returned by addfile/addostream, or 0 for the console)
+    /// @param level The lowest level for this channel, or LogLevel::Inherit to use the global one
     inline static void setChannelFilter(int channel_id, LogLevel level) {
-        if (channel_id > 0 && channel_id < LOGT_MAX_CHANNEL)
+        if (channel_id >= 0 && channel_id < LOGT_MAX_CHANNEL)
             channels_[channel_id].filter = level;
     }
 
     // 静态关闭方法
     /// @brief Shutdown the logging system, ensuring all messages are processed.
+    /// @note Registering a `logt_guard` or calling this before the process ends is no longer the
+    ///       only way out: the logger registers itself with `std::atexit()` when its worker
+    ///       starts, so returning from `main` and `std::exit()` drain the queue and close the
+    ///       files on their own. Nothing runs on `abort()` / `std::terminate()` /
+    ///       `TerminateProcess()` — see flush() for those.
     static void shutdown();
+
+    /// @brief Wait until every message handed over so far has been written.
+    /// @details Does not stop the logger: records can be logged again afterwards. Call it before
+    ///          anything that may end the process without running destructors — a crash handler,
+    ///          an `abort()` path — since only the queue is at risk: a record that has been
+    ///          written is already flushed to the file.
+    static void flush();
 
     /// @brief Shutdown the logging system then close the application.
     static void exit(int exitcode);
@@ -309,6 +334,9 @@ private:
     static void worker_thread();
     static void ensure_worker_started();
 
+    /// @brief The filter that applies to a channel: its own, or the global one when it inherits.
+    static LogLevel channel_filter(int channel_id);
+
     static void write_message(const logt_message& message);
 
     // 静态成员
@@ -334,23 +362,6 @@ private:
 };
 
 
-class logt_guard {
-public:
-    logt_guard() = default;
-    ~logt_guard() { logt::shutdown(); }
-};
-
-
-// 日志文件管理
-// class logt_manager {
-// public:
-//     logt_manager(const std::filesystem::path& logFolder);
-//     ~logt_manager();
-
-// private:
-//     std::filesystem::path m_logFolder;
-// };
-
 // 类内签名定义宏
 // 不建议使用，因为类成员函数的自定义签名目前会覆盖这个宏定义的签名，所以它不太实用
 #define LOGT_DECLARE \
@@ -361,6 +372,7 @@ private: \
 #define LOGT_PUBLIC_DECLARE \
 public: \
     static ::logt_sig logt;
+
 
 // 类外签名定义宏
 #define LOGT_DEFINE(Class, Name) \
@@ -377,6 +389,114 @@ public: \
 // 临时签名（用于一次性使用）
 #define LOGT_TEMP(Name) \
     ::logt_sig(Name)
+
+
+// ── Signature name ───────────────────────────────────────────────────
+
+// The signature macros print the whole thing — return type, calling convention, parameters,
+// trailing qualifiers — and what a log wants as its name is `Cls::method<int>`. This cuts the
+// name out at compile time, so a function can name itself instead of being handed a string
+// that drifts away from the code.
+
+namespace scl2 {
+
+/// @brief The qualified function name a signature string describes.
+/// @note Template arguments stay in the name (`Cls::tmethod<int>`), and a lambda comes out as
+///       `main::<lambda_1>::operator ()`.
+constexpr std::string_view function_name(std::string_view signature) {
+    constexpr auto is_word_start = [](char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+            || (c >= '0' && c <= '9') || c == '_'
+            || c == '`' || c == '{'; // `anonymous-namespace', {anonymous}
+    };
+    // true if the identifier right in front of `pos` (spaces ignored) is `word`.
+    constexpr auto word_before = [](std::string_view s, std::size_t pos, std::string_view word) {
+        while (pos > 0 && s[pos - 1] == ' ') --pos;
+        return pos >= word.size() && s.substr(pos - word.size(), word.size()) == word;
+    };
+    constexpr std::size_t npos = std::string_view::npos;
+
+    // The parameter list is the first '(' outside <...> that is neither preceded by a space
+    // — a parameter list is glued to the name, while the parentheses a return type may carry
+    // sit after one — nor the empty pair of an `operator ()`. Note that a function taking no
+    // arguments also ends in `()`, and GCC / Clang print it that way (`void f()`), so the
+    // empty pair cannot be skipped by itself: only `operator` owns one.
+    std::size_t angle = 0, paren = npos;
+    for (std::size_t i = 0; i < signature.size() && paren == npos; ++i) {
+        const char c = signature[i];
+        if (c == '<') ++angle;
+        else if (c == '>') { if (angle) --angle; }
+        else if (c == '(' && angle == 0 && i > 0 && signature[i - 1] != ' '
+                 && !word_before(signature, i, "operator"))
+            paren = i;
+    }
+
+    // `operator<`, `operator<<` and `operator<=` spell a '<' that reads as the start of
+    // template arguments above, and MSVC writes `operator <(…)` with a space before the
+    // parentheses, so neither is found; behind an `operator` keyword the next '(' is the
+    // parameter list, less the empty pair that `operator ()` owns.
+    if (paren == npos) {
+        for (std::size_t i = 0; i + 8 <= signature.size(); ++i) {
+            if (signature.compare(i, 8, "operator") != 0) continue;
+            if (i > 0 && is_word_start(signature[i - 1])) continue;
+            if (i + 8 < signature.size() && is_word_start(signature[i + 8])) continue;
+            std::size_t j = i + 8;
+            while (j < signature.size() && signature[j] == ' ') ++j;
+            if (j + 1 < signature.size() && signature[j] == '(' && signature[j + 1] == ')')
+                j += 2;
+            paren = signature.find('(', j);
+            break;
+        }
+    }
+    if (paren == npos) return signature;
+
+    // In front of it the name starts after the last space outside <...> that a word follows.
+    // The return type and the calling convention are before that space; the spaces inside
+    // `operator +` and `operator new` are inside the name.
+    std::size_t start = 0;
+    angle = 0;
+    for (std::size_t i = 0; i + 1 < paren; ++i) {
+        const char c = signature[i];
+        if (c == '<') ++angle;
+        else if (c == '>') { if (angle) --angle; }
+        else if (c == ' ' && angle == 0 && is_word_start(signature[i + 1])) {
+            std::size_t word = i, begin = word;
+            while (begin > 0 && is_word_start(signature[begin - 1])) --begin;
+            if (signature.substr(begin, word - begin) != "operator")
+                start = i + 1;
+        }
+    }
+
+    std::string_view name = signature.substr(start, paren - start);
+
+    // A calling convention says nothing about where the line came from. An anonymous
+    // namespace does, so it stays — and it stays spelled the way the compiler writes it:
+    // `anonymous-namespace'::helper on MSVC, {anonymous}::helper on GCC / Clang.
+    for (std::string_view prefix : { "__cdecl ", "__stdcall ", "__fastcall ",
+                                     "__vectorcall ", "__thiscall ", "__clrcall " }) {
+        if (name.size() > prefix.size() && name.substr(0, prefix.size()) == prefix) {
+            name.remove_prefix(prefix.size());
+            break;
+        }
+    }
+    return name;
+}
+
+} // namespace scl2
+
+// 自动化宏
+#if defined(_MSC_VER)
+    #define LOGT_FUNCTION __FUNCSIG__
+#elif defined(__GNUC__) || defined(__clang__)
+    #define LOGT_FUNCTION __PRETTY_FUNCTION__
+#else
+    #define LOGT_FUNCTION __func__
+#endif
+
+// 签名从本函数自己取，日志里的名字就是 `Class::method`，而不是一个可能和代码脱节的手写字符串
+#define LOGT_AUTO \
+    static ::logt_sig logt(::scl2::function_name(LOGT_FUNCTION))
+
 
 
 

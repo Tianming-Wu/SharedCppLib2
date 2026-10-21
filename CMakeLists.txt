@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.20)
 
 # if(POLICY CMP0111)
 #     cmake_policy(SET CMP0111 NEW)
 # endif()
 
 project(SharedCppLib2
-    VERSION 3.7.0
+    VERSION 3.9.1
     LANGUAGES CXX
 )
 
@@ -49,7 +49,7 @@ add_library(api INTERFACE include/api.hpp)
 # Header-only modules (INTERFACE targets)
 set(INTERFACE_TARGET_LIST
     hmac compression logh rerr bits cache exexception engineering multindex percentage RAII singleinst
-    structural_binding typemask
+    structural_binding typemask orderedmap undostack
     network base64 unixsocket
 )
 
@@ -67,6 +67,11 @@ add_library(RAII INTERFACE include/RAII.hpp)
 add_library(singleinst INTERFACE include/singleinst.hpp)
 add_library(structural_binding INTERFACE include/structural_binding.hpp)
 add_library(typemask INTERFACE include/typemask.hpp)
+# orderedmap 是 header-only 的模板容器（有序 map），标准库自包含，不依赖其他模块。
+add_library(orderedmap INTERFACE include/orderedmap.hpp)
+# undostack 是 header-only 的撤销/重做栈（快照式 undostack + 命令式 commandstack），
+# 只依赖标准库，所以是 INTERFACE 目标，没有对应的源文件。
+add_library(undostack INTERFACE include/undostack.hpp)
 # unixsocket 是 POSIX 专有的头文件模块（AF_UNIX）；在 Windows 上它什么都不定义，只是发一条
 # 警告，所以做成 INTERFACE 目标，不需要（也不能有）对应的源文件。
 add_library(unixsocket INTERFACE include/unixsocket.hpp)
@@ -109,6 +114,11 @@ add_library(ini STATIC src/ini.cpp)
 add_library(xml STATIC src/xml.cpp)
 # xml2 是保真 XML 模块，标准库自包含（不依赖 basic）
 add_library(xml2 STATIC src/xml2.cpp)
+# json2 是保真 JSON 模块（保序 + 原文保留），同样是标准库自包含（不依赖 basic）
+add_library(json2 STATIC src/json2.cpp)
+# encoding 是编码边界上的辅助函数（路径、代码页），标准库自包含（不依赖 basic）；
+# Windows 上它调用系统的转换 API，其他平台上这些转换返回原字符串。
+add_library(encoding STATIC src/encoding.cpp)
 add_library(abstract STATIC src/abstract.cpp)
 add_library(debug STATIC src/debug.cpp)
 add_library(console STATIC src/console.cpp)
@@ -120,6 +130,10 @@ add_library(filesystem STATIC src/filesystem.cpp)
 add_library(datauri STATIC src/datauri.cpp)
 add_library(json STATIC src/json.cpp)
 add_library(toml STATIC src/toml.cpp)
+# toml 的表是有序 map：orderedmap 是 header-only 的独立模块，所以这里公开依赖它
+# （include/orderedmap.hpp 出现在 toml.hpp 里，消费方需要它的 include 目录）。
+# basic 那一条是 foreach 顺手带上的，toml 自身并不调用 basic。
+target_link_libraries(toml PUBLIC orderedmap)
 add_library(i18n STATIC src/i18n.cpp)
 add_library(yaml STATIC src/yaml.cpp)
 add_library(bitmap STATIC src/bitmap.cpp)
@@ -132,7 +146,25 @@ add_library(xkeydb STATIC src/xkeydb.cpp)
 
 add_library(fileio STATIC src/fileio.cpp)
 add_library(file STATIC src/file.cpp)
-add_library(filepack STATIC src/filepack.cpp)
+# resourced 是资源查找模块：容器 ResourcePack 的目录是有序 map，orderedmap 是 header-only 的独立模块，
+# 所以这里公开依赖它。Windows 上还有“字节变成平台对象”的一部分（图标 / 光标），要 user32 与 gdi32。
+add_library(resourced STATIC src/resourced.cpp)
+target_link_libraries(resourced PUBLIC orderedmap singleinst)
+if(WIN32)
+    target_link_libraries(resourced PRIVATE user32 gdi32)
+endif()
+
+# resgen 是**构建期**的生成器：把资源目录打成一个容器。它不属于 resourced ——
+# 编译期要知道的和加载期要知道的不是一回事（就像 SFX 不带压缩，它只需要会解压）。
+# 但两边共享格式：resgen 链接 resourced 并直接调 ResourcePack::dump()，
+# 所以容器布局只有一份实现，写端与读端不可能各自漂移。
+# 它不随包分发二进制，而是把源码装出去，由消费方在它自己的构建里编出来
+# （见 cmake/resources.cmake 与 tools/resgen.cpp 里的说明）。
+# 同时也装一份可执行文件到 bin/：交叉编译或 CI 想把它拿到目标平台上跑时得够得着它。
+add_executable(resgen tools/resgen.cpp)
+target_link_libraries(resgen PRIVATE resourced)
+install(TARGETS resgen RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 add_library(uri STATIC src/uri.cpp)
 
 # pipe 是 Windows 命名管道的封装；POSIX 上它什么都不定义，只发一条提示，
@@ -145,6 +177,10 @@ add_library(network_core STATIC src/network.cpp)
 add_library(network_dns STATIC src/dns.cpp)
 add_library(network_tcp STATIC src/tcpclient.cpp src/tcpserver.cpp)
 add_library(network_udp STATIC src/udp.cpp)
+
+# 地址类型与解析：dns 只依赖 core（core 不反向依赖 dns，将来换解析实现只动这里）
+target_link_libraries(network_dns PUBLIC basic network_core)
+target_link_libraries(network_udp PUBLIC basic network_core network_dns)
 
 add_library(network_http STATIC
     src/http.cpp
@@ -179,9 +215,6 @@ target_link_libraries(compression INTERFACE api basic)
 target_link_libraries(arguments PUBLIC platform) # wstring 转换等功能需要平台相关支持
 # target_link_libraries(debug PUBLIC platform) # 需要用户自行链接以使用 platform 提供的功能
 
-# Network module dependencies (commented out until ready)
-# target_link_libraries(network PUBLIC basic platform)
-
 # datauri 依赖
 target_link_libraries(datauri PUBLIC basic)
 
@@ -193,7 +226,7 @@ target_link_libraries(network_tcp PUBLIC basic network_core network_dns)
 foreach(target
     regexfilter logc sha256 sha512 sha1 crc32 arguments ini abstract
     xml keydb perm condition datauri json toml i18n yaml aes
-    fileio file filepack uri zlib
+    fileio file resourced uri zlib
     bitmap qrcode png xkeydb
 )
     target_link_libraries(${target} PUBLIC basic)
@@ -233,9 +266,9 @@ target_compile_definitions(json PUBLIC
 # 库列表
 set(TARGET_LIST
     sha256 sha512 sha1 crc32 basic indexer regexfilter
-    logt logc platform perm process arguments ini abstract xml xml2 debug
+    logt logc platform perm process arguments ini abstract xml xml2 json2 encoding debug
     console aes keydb types condition filesystem datauri json toml i18n yaml
-    fileio file filepack uri pipe
+    fileio file resourced uri pipe
     network_core network_dns network_tcp network_udp network_http network_io
     bitmap qrcode zlib png xkeydb
 )
@@ -251,6 +284,7 @@ install(TARGETS ${TARGET_LIST}
 
 # 为每个目标设置导出属性
 foreach(target_name ${TARGET_LIST})
+    target_compile_features(${target_name} PUBLIC cxx_std_23)
     # 设置不同配置的库文件位置
     # set_property(TARGET ${target_name} PROPERTY 
     #     ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG}")
@@ -271,6 +305,7 @@ endforeach()
 
 # INTERFACE-only targets 导出属性
 foreach(target_name api ${INTERFACE_TARGET_LIST})
+    target_compile_features(${target_name} INTERFACE cxx_std_23)
     target_include_directories(${target_name} INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
@@ -320,7 +355,16 @@ install(FILES
 # 安装便捷 CMake 脚本（由 Config.cmake 引入，例如 i18n_copy_lang）
 install(FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/i18n.cmake
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/resources.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
+)
+
+# resgen 的工具源码装在 resources.cmake 旁边：scl2_add_resources() 用
+# CMAKE_CURRENT_LIST_DIR 找到它，因此整个包是可重定位的（拷到哪都能用）。
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools/resgen.cpp
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
+    RENAME resgen_tool.cpp
 )
 
 # 安装配置文件

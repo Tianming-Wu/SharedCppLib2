@@ -2,7 +2,7 @@
 
 + 名称: logt  
 + 命名空间: 无  
-+ 文档版本: `1.3.0`
++ 文档版本: `1.4.0`
 
 ## CMake 配置信息
 
@@ -79,12 +79,15 @@ LOGT_DEFINE(DatabaseManager, "Database");
 // network.cpp 文件
 
 void send_data() {
-    LOGT_LOCAL("Network::send_data"); // 这是最清晰的签名方式，推荐使用。
+    LOGT_AUTO; // 推荐的签名方式：名字直接取自函数自身。
 
     logt.info() << "开始传输数据包";
     logt.debug() << "数据包详细信息 - 大小: " << packet_size << " 字节";
 }
 ```
+
+上面这段的签名就是 `send_data`；同样一句写在 `Network::send_data` 里，签名就是
+`Network::send_data`。若自己的名字比函数名更能说明问题，仍然用 `LOGT_LOCAL` 手写。
 
 ### 启用调试模式
 ```cpp
@@ -136,7 +139,7 @@ logt_guard guard;  // 析构时自动调用 logt::shutdown()
 一个便捷的 RAII 包装类，其析构函数自动调用 `logt::shutdown()`。在合适的作用域（例如 `main()` 中）声明一个 `logt_guard` 实例，即可确保离开作用域时日志系统被正确关闭。
 
 > [!NOTE]
-> `logt_guard` 仅为便利性提供，完全可选。如果你选择不使用它，则**必须**在程序退出前调用 `logt::shutdown()`，并且必须在最后一个退出的线程中调用。未调用 `shutdown()` 会在 `main()` 退出时触发 `std::terminate()`，因为工作线程仍在运行。
+> `logt_guard` 仅为便利性提供，完全可选。日志系统会在工作线程启动时向 `std::atexit()` 注册自己，因此从 `main()` 正常返回与调用 `std::exit()` 都会自动排空队列并关掉文件——漏掉 `shutdown()` 不再丢尾巴，也不会再以 `std::terminate()` 结束程序。真正需要你自己处理的是「不展开栈就结束进程」的那些情况：在知道情况的地方调用 `logt::flush()`（或 `shutdown()`），因为 `abort()`、`std::terminate()`、`ExitProcess()`、`TerminateProcess()` 都不会执行任何析构函数。
 
 **示例：**
 
@@ -190,13 +193,13 @@ static void claim(const std::string& name);
 ```cpp
 static void setFilterLevel(LogLevel level);
 ```
-设置全局最低日志级别。级别：`LogLevel::Debug`, `LogLevel::Info`, `LogLevel::Warn`, `LogLevel::Error`, `LogLevel::Fatal`，特殊 `LogLevel::Quiet`。
+设置全局最低日志级别：低于它的记录会被丢弃。级别：`LogLevel::Debug`、`LogLevel::Info`、`LogLevel::Warn`、`LogLevel::Error`、`LogLevel::Fatal`，以及特殊的 `LogLevel::Quiet`——它位于**所有级别之上**，因此什么都不记录。它作用于所有通道（包括控制台），除非该通道用 `setChannelFilter()` 给了自己的过滤级别。
 
 #### setChannelFilter - 按通道日志过滤
 ```cpp
 static void setChannelFilter(int channel_id, LogLevel level);
 ```
-为特定通道设置独立的过滤级别，覆盖全局 `setFilterLevel()` 设置。使用 `LogLevel::Inherit` 恢复为全局过滤级别。当需要不同通道记录不同严重程度的日志时非常有用——例如控制台通道只显示警告，而文件通道记录全部信息。
+为特定通道设置独立的过滤级别，覆盖全局 `setFilterLevel()` 设置。使用 `LogLevel::Inherit` 恢复为全局过滤级别，或用 `LogLevel::Quiet` 让该通道彻底安静。通道 0 就是控制台，所以 `setChannelFilter(0, LogLevel::Quiet)` 正是「终端闭嘴、文件照记」的做法。当需要不同通道记录不同严重程度的日志时非常有用——例如控制台通道只显示警告，而文件通道记录全部信息。
 
 #### enableSuperTimestamp - 高精度时间戳
 ```cpp
@@ -214,7 +217,19 @@ static void install_preprocessor(preprocessor_t preprocessor);
 ```cpp
 static void shutdown();
 ```
-优雅停止工作线程并刷新队列中的日志。**程序退出前务必调用。** 必须在最后一个退出的线程中调用。未调用 `shutdown()` 会在 `main()` 退出时触发 `std::terminate()`。
+优雅停止工作线程、排空队列并关闭所有通道。已不再强制要求：`logt` 在工作线程启动时会注册 `std::atexit()` 处理器，因此从 `main()` 正常返回或调用 `std::exit()` 会自动完成这件事。当进程以其它方式结束、或日志必须在那之前完整落盘时，自己调用它——后者用 `flush()` 就够了。必须在最后一个退出的线程中调用。
+
+#### flush - 等待队列排空
+```cpp
+static void flush();
+```
+等到目前为止交出去的消息全部写完，但**不停止**日志系统——之后还可以继续记录。已经写出去的一条已经 flush 到了文件，所以队列是记录唯一还可能丢失的地方。在「可能不跑析构就结束进程」的操作之前调用它：
+
+```cpp
+logt.fatal() << "out of memory";
+logt::flush();   // 这一条现在已经在文件里了
+std::abort();    // 或者崩溃，或者从外面 TerminateProcess
+```
 
 #### logt_guard - RAII 关闭守卫
 ```cpp
@@ -281,6 +296,21 @@ logt_sso debug() const;
 ### LOGT_LOCAL(Name)
 创建函数作用域内的局部日志签名，适用于在函数内部临时使用的日志标识。
 
+### LOGT_AUTO
+创建一个以它所在函数命名的函数作用域签名，没有需要和代码保持同步的字符串。名字由
+`scl2::function_name()` 从 `__FUNCSIG__`（MSVC）或 `__PRETTY_FUNCTION__` 中削出来，留下限定名：
+成员函数是 `Class::method`，模板是 `Class::method<int>`，lambda 是 `main::<lambda_1>::operator ()`。
+
+```cpp
+void DatabaseManager::connect() {
+    LOGT_AUTO;                       // 签名即 DatabaseManager::connect
+    logt.info() << "Opening database connection...";
+}
+```
+
+签名对象是函数局部静态量，首次调用时构建，所以它和 `LOGT_LOCAL` 遵守同一条规则：首次调用必须
+发生在通道配置之后。
+
 ### LOGT_TEMP(Name)
 创建临时日志签名对象，适用于一次性使用的日志场景，不保留静态状态。
 
@@ -294,13 +324,15 @@ logt_sso debug() const;
 
 ## 日志级别详解
 
-- `LogLevel::Quiet` = -1 — 完全静默模式，不记录任何日志
 - `LogLevel::Debug` = 0 — 调试级别，记录最详细的运行信息
 - `LogLevel::Info` = 1 — 信息级别，记录常规运行状态
 - `LogLevel::Warn` = 2 — 警告级别，记录可能的异常情况
 - `LogLevel::Error` = 3 — 错误级别，记录错误条件
 - `LogLevel::Fatal` = 4 — 严重级别，记录致命错误
+- `LogLevel::Quiet` = 5 — 保留的过滤值，位于所有级别之上：什么都不记录
 - `LogLevel::Inherit` = 16 — 通道过滤的保留标记值，表示使用全局设置
+
+过滤保留**等于或高于**其级别的记录，所以 `setFilterLevel(LogLevel::Warn)` 会丢掉 `Debug` 与 `Info`。消息本身只能通过签名的级别方法记录（`logt.info()`、`logt.warn()`……）；`Quiet` 与 `Inherit` 是过滤值，不是消息级别。
 
 ## 完整应用示例
 
@@ -366,7 +398,7 @@ int main() {
 ## 日志签名
 日志签名是 logt 中用于标识日志消息来源的字符串标签。它们可以在类、模块或函数级别定义，以便在日志输出中清晰地显示消息的上下文来源。
 
-但是，由于目前的设计问题，暂时不建议使用 `LOGT_MODULE`、`LOGT_DECLARE` 等日志签名方式，因为它们所标记的范围较广，不利于定位问题。建议直接在函数内部使用 `LOGT_LOCAL` 定义局部日志签名，以实现精准定位和更清晰的日志输出。
+但是，由于目前的设计问题，暂时不建议使用 `LOGT_MODULE`、`LOGT_DECLARE` 等日志签名方式，因为它们所标记的范围较广，不利于定位问题。建议使用按函数定位的签名：`LOGT_AUTO`（名字取自它所在的函数），或者在自己取的名字更能说明问题时用 `LOGT_LOCAL`。
 
 
 ## 输出格式说明
@@ -393,7 +425,7 @@ int main() {
 - **零阻塞优势**: 充分利用异步特性，日志操作不会影响主线程性能
 - **预处理优化**: 复杂的字符串拼接和格式化建议在日志调用前完成，减少队列中的处理时间
 - **生产环境配置**: 在生产环境中建议设置 `setFilterLevel(LogLevel::Warn)` 或更高，减少不必要的日志输出
-- **资源清理**: 务必在程序退出前调用 `shutdown()` 方法，防止日志消息丢失和资源泄漏
+- **资源清理**: 在「可能不跑析构就结束进程」的地方之前调用 `flush()`；正常退出不需要额外动作，日志系统自己会排空。
 
 ## 扩展功能集成
 

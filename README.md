@@ -44,13 +44,17 @@ I still tried to make the API design as good (friendly, easy-to-use) as possible
 - **[`logt`](doc/logt.md)** - High-performance asynchronous logging
 - **[`logc`](doc/logc.md)** - Colored console output for logt
 - **`indexer`** - Data indexing and search utilities
-- **`hpcalc`** - High-precision arithmetic operations
+- **`bigint`** - Arbitrary-precision integer arithmetic
+- **`bigfloat`** - Arbitrary-precision decimal arithmetic
 - **[`regexfilter`](doc/regexfilter.md)** - Regex-based blacklist/whitelist filtering
 - **`atxsort`** - Universal sorting algorithms
 - **[`ini`](doc/ini.md)** - INI configuration parser and writer
 - **[`json`](doc/json.md)** - JSON parsing, manipulation and serialization (early development)
 - **[`yaml`](doc/yaml.md)** - YAML 1.2 parser with streaming support (early development)
 - **[`toml`](doc/toml.md)** - TOML parser and serializer (early development)
+- **[`json2`](doc/json2.md)** - Lossless JSON: the source text is kept, so an edited file writes back unchanged (early development)
+- **[`encoding`](doc/encoding.md)** - The encoding boundary: UTF-8 inside, conversion at the edges (paths, code pages, byte order marks, the console)
+- **[`resourced`](doc/resourced.md)** - Named resources resolved through layered sources (a blob in the binary, a pack file, a directory of loose files), zero-copy views over a blob already in memory, and bytes into window icons on Windows
 - **`platform`** - Cross-platform utilities and abstractions
 - **[`process`](doc/process.md)** - Child process management with pipe-based stdio (QProcess-inspired)
 - **[`unixsocket`](doc/unixsocket.md)** - Local (AF_UNIX) sockets, POSIX only
@@ -102,7 +106,7 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(your_target SharedCppLib2::basic)
 ```
 
-**Available targets:** `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
+**Available targets:** `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`, `orderedmap`, `xml2`, `json2`, `encoding`, `resourced`
 
 ### 4. Code Example
 ```cpp
@@ -138,7 +142,7 @@ Detailed documentation is available in header files as Doxygen comments.
 - May not compile on gcc / clang due to different template instantiation strategies, leading to compilation errors. Use MSVC when possible. The author will regularly test and attempt to fix these compilation issues.
 - https implementation has been officially abandoned from mainstream, but http integration interface is reserved. There may be OpenSSL compatible integration in the future, split into a separate project.
 
-**Full Changelog**: [WhatsNew](WhatsNew)
+**Full Changelog**: [CHANGELOG.md](CHANGELOG.md)
 
 
 ### Some comments left by Dev:

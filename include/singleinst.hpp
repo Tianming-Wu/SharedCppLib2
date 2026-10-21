@@ -33,9 +33,17 @@
 
     It is useful for something like global registry, configuration.
 
+    `si_static_access` is a convenience forwarder for a class that wants its calls reachable without
+    an object. A call made before an instance exists throws std::logic_error: no instance having
+    been constructed is a mistake in the program, readable from the source, rather than a condition
+    that only shows up at run time. The instance has to outlive every such call, which usually means
+    constructing it in main().
+
     It might not be thread-safe. There might be a thread-safe version in the future.
 
-
+    [SCL_STANDALONE_MODULE]
+    version: 1.0.0
+    cpp_generation: cxx20 - cxx23
 */
 
 #pragma once
@@ -91,7 +99,7 @@ private:
     template <typename... Args> \
     inline static decltype(auto) NAME(Args&&... args) { \
         if (!s_single_instance.hasInstance()) { \
-            throw std::runtime_error("SingleInstance::" #NAME ": instance not created"); \
+            throw std::logic_error("SingleInstance::" #NAME ": no instance exists yet. Construct one first and let it outlive this call."); \
         } \
         return s_single_instance.instance()->IMPL(std::forward<Args>(args)...); \
     }

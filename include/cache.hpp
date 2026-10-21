@@ -102,7 +102,7 @@ public:
     }
 
     void cache() {
-        if(mode != cache_call) throw std::runtime_error("Trying to cache a non-call-time cached function");
+        if(mode != cache_call) throw std::logic_error("Trying to cache a non-call-time cached function");
         if(!is_cached) {
             cached_value = cached_function();
             is_cached = true;
@@ -110,7 +110,7 @@ public:
     }
 
     void release() {
-        if(mode != cache_call) throw std::runtime_error("Trying to release a non-call-time cached function");
+        if(mode != cache_call) throw std::logic_error("Trying to release a non-call-time cached function");
         is_cached = false;
     }
 

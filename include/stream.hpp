@@ -37,7 +37,7 @@ public:
     virtual ~basic_istream() = default;
     
     // Should return true if there is data available to read, false otherwise.
-    virtual bool readyRead() = 0;
+    virtual bool readable() = 0;
 
     // this one comes with a default implementation, since it's fairly compatible to implement
     // Note that the check duration is 10ms. You should implement yourself if you need a different behavior.
@@ -94,6 +94,15 @@ public:
     /// @brief Connect to a remote host.
     virtual bool connect(const std::string& host, uint16_t port) = 0;
 
+    /// @brief Connect to a remote host, giving up after @p timeout.
+    /// @note The default ignores @p timeout and calls the two argument form;
+    ///       an implementation that can should honour it.
+    virtual bool connect(const std::string& host, uint16_t port, std::chrono::milliseconds timeout)
+    {
+        (void)timeout;
+        return connect(host, port);
+    }
+
     /// @brief Disconnect from the remote host.
     virtual void disconnect() = 0;
 
@@ -123,7 +132,7 @@ Usage note:
 
         virtual bool valid() override;
 
-        virtual bool readyRead() override;
+        virtual bool readable() override;
         virtual bool waitForReadyRead(std::chrono::milliseconds timeout = std::chrono::seconds(5)) override;
 
         virtual size_t available() override;

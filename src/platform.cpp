@@ -1,6 +1,28 @@
 #include "platform.hpp"
 
+#include <cstdlib>
+
 namespace platform {
+
+#ifdef OS_WINDOWS
+namespace {
+
+// Reads an environment variable as a path. The value is taken as wide text so
+// it never passes through the ANSI code page.
+fs::path env_path(const wchar_t* name) {
+    wchar_t* value = nullptr;
+    size_t len = 0;
+    errno_t err = _wdupenv_s(&value, &len, name);
+    if (err != 0 || value == nullptr) {
+        return fs::path();
+    }
+    fs::path result(value);
+    free(value);
+    return result;
+}
+
+} // namespace
+#endif
 
 fs::path executable_path() {
     #ifdef OS_WINDOWS
@@ -16,7 +38,34 @@ fs::path executable_dir() {
     return executable_path().parent_path();
 }
 
-std::string get_env(const std::string& name) {
+fs::path user_config_dir() {
+#ifdef OS_WINDOWS
+    return env_path(L"APPDATA");
+#else // OS_UNIX
+    // including android, but if you actually use it on Android and is not root,
+    // you probably won't have a good time.
+
+    // The spec says a relative one must be ignored.
+    if (const char* xdg_config_home = std::getenv("XDG_CONFIG_HOME");
+        xdg_config_home != nullptr && xdg_config_home[0] == '/') {
+        return fs::path(xdg_config_home);
+    }
+    if (const char* home = std::getenv("HOME")) {
+        return fs::path(home) / ".config";
+    }
+    return fs::path();
+#endif
+}
+
+fs::path system_config_dir() {
+#ifdef OS_WINDOWS
+    return env_path(L"PROGRAMDATA");
+#else // OS_UNIX
+    return fs::path("/etc");
+#endif
+}
+
+std::string get_env(const std::string &name) {
 #ifdef OS_WINDOWS
     char* value = nullptr;
     size_t len = 0;
@@ -192,6 +241,23 @@ wargProvider::wargProvider() {
 
 wargProvider::~wargProvider() {
     LocalFree(argv);
+}
+
+
+console_code_pages enable_utf8_console() {
+    console_code_pages pages;
+    pages.output = GetConsoleOutputCP();
+    pages.input = GetConsoleCP();
+
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+
+    return pages;
+}
+
+void restore_console_code_pages(const console_code_pages& pages) {
+    SetConsoleOutputCP(pages.output);
+    SetConsoleCP(pages.input);
 }
 
 } // namespace windows

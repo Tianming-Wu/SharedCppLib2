@@ -22,17 +22,17 @@ public:
     ~lazy_construct() { destroy(); }
 
     T& get() {
-        if (!instance) throw std::runtime_error("lazy_construct: instance not constructed yet");
+        if (!instance) throw std::logic_error("lazy_construct: instance not constructed yet");
         return *instance;    
     }
 
     const T& get() const {
-        if (!instance) throw std::runtime_error("lazy_construct: instance not constructed yet");
+        if (!instance) throw std::logic_error("lazy_construct: instance not constructed yet");
         return *instance;    
     }
 
     void construct(Args&&... args) {
-        if (instance) throw std::runtime_error("lazy_construct: instance already constructed");
+        if (instance) throw std::logic_error("lazy_construct: instance already constructed");
         instance = new T(std::forward<Args>(args)...);
     }
 

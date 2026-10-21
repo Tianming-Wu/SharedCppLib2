@@ -126,7 +126,7 @@ public:
     virtual bool valid() override;
 
     /// Whether an operation has found this connection gone. It is recorded by every operation
-    /// that can find it, including the ones that only look (available(), readyRead()), so a
+    /// that can find it, including the ones that only look (available(), readable()), so a
     /// failed call is enough to tell a timeout from a dead peer.
     bool broken() const;
 
@@ -142,7 +142,7 @@ public:
     void cancel();
     bool cancelled() const;
 
-    virtual bool readyRead() override;
+    virtual bool readable() override;
     virtual bool waitForReadyRead(std::chrono::milliseconds timeout = std::chrono::seconds(5)) override;
 
     virtual size_t available() override;
@@ -199,6 +199,8 @@ private:
 /// @brief The listening end of a named pipe.
 class server {
 public:
+    /// @param name The full pipe path, `R"(\\.\pipe\my_app)"`. It is handed to the operating
+    ///             system as it is; nothing is prefixed to it.
     server(const std::string& name, const permissions& perms = permissions(permission_preset::Default));
     ~server();
 
@@ -252,6 +254,7 @@ private:
 /// @brief The client end of a named pipe.
 class client : public scl2::basic_iostream {
 public:
+    /// @param name The full pipe path, the same one the server was given.
     client(const std::string& name);
     ~client();
 
@@ -266,7 +269,7 @@ public:
 
     virtual bool valid() override;
 
-    virtual bool readyRead() override;
+    virtual bool readable() override;
     virtual bool waitForReadyRead(std::chrono::milliseconds timeout = std::chrono::seconds(5)) override;
 
     virtual size_t available() override;

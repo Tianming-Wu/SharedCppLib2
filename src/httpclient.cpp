@@ -133,7 +133,7 @@ bool client::connect(const std::string& host, uint16_t port)
 {
     m_host = host;
     m_port = port;
-    return m_transport->connect(host, port);
+    return m_transport->connect(host, port, m_connect_timeout);
 }
 
 void client::disconnect()
@@ -186,12 +186,43 @@ response client::send_request(const request& req)
 
 void client::set_timeout(std::chrono::milliseconds timeout)
 {
+    m_header_timeout = timeout;
     m_timeout = timeout;
 }
 
 std::chrono::milliseconds client::get_timeout() const
 {
     return m_timeout;
+}
+
+void client::set_header_timeout(std::chrono::milliseconds timeout)
+{
+    m_header_timeout = timeout;
+}
+
+std::chrono::milliseconds client::header_timeout() const
+{
+    return m_header_timeout;
+}
+
+void client::set_body_timeout(std::chrono::milliseconds timeout)
+{
+    m_timeout = timeout;
+}
+
+std::chrono::milliseconds client::body_timeout() const
+{
+    return m_timeout;
+}
+
+void client::set_connect_timeout(std::chrono::milliseconds timeout)
+{
+    m_connect_timeout = timeout;
+}
+
+std::chrono::milliseconds client::connect_timeout() const
+{
+    return m_connect_timeout;
 }
 
 std::string client::server_host() const
@@ -238,7 +269,7 @@ response client::receive_response()
     
     // Read until we have complete headers
     while (!response::has_complete_headers(buffer)) {
-        if (m_transport->readyRead()) {
+        if (m_transport->readable()) {
             auto data = m_transport->readAll();
             if (!data.empty()) {
                 buffer += data.toStdString();
@@ -247,7 +278,7 @@ response client::receive_response()
         
         // Check timeout
         auto elapsed = std::chrono::steady_clock::now() - start_time;
-        if (elapsed > m_timeout) {
+        if (elapsed > m_header_timeout) {
             throw network_error("Response timeout");
         }
         
@@ -264,7 +295,7 @@ response client::receive_response()
     }
 
     // 规范上无 body 的响应：1xx / 204 / 304（读了会等到连接关闭或超时）
-    const int code = static_cast<int>(resp.status);
+    const int code = resp.status_code;
     if ((code >= 100 && code < 200) || code == 204 || code == 304) {
         resp.body.clear();
         return resp;
@@ -280,7 +311,7 @@ response client::receive_response()
     if (is_chunked(resp.headers)) {
         chunked_decoder dec;
         while (!dec.feed(raw_body)) {
-            if (m_transport->readyRead()) {
+            if (m_transport->readable()) {
                 auto data = m_transport->readAll();
                 if (!data.empty()) raw_body += data.toStdString();
             }
@@ -300,7 +331,7 @@ response client::receive_response()
             content_length = 0;
         }
         while (raw_body.size() < content_length) {
-            if (m_transport->readyRead()) {
+            if (m_transport->readable()) {
                 auto data = m_transport->readAll();
                 if (!data.empty()) raw_body += data.toStdString();
             }
@@ -314,7 +345,7 @@ response client::receive_response()
 
     // 无分帧信息：读到 EOF（服务器按 Connection: close 关闭连接）
     while (true) {
-        if (m_transport->readyRead()) {
+        if (m_transport->readable()) {
             auto data = m_transport->readAll();
             if (data.empty()) break;   // 对端关闭
             raw_body += data.toStdString();

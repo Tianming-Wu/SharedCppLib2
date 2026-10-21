@@ -2,7 +2,7 @@
 
 + Name: string
 + Namespace: `scl2`
-+ Document Version: `1.1.0`
++ Document Version: `1.2.0`
 
 ## CMake Info
 
@@ -135,6 +135,33 @@ std::string utf8 = "hello";
 std::wstring wide = scl2::str_to_wstr(utf8);
 std::string back = scl2::wstr_to_str(wide);
 ```
+
+### strip_bom
+
+```cpp
+// in namespace scl2
+template<typename CharT> std::basic_string<CharT>  strip_bom(std::basic_string<CharT> text);
+template<typename CharT> scl2::basic_string<CharT> strip_bom(scl2::basic_string<CharT> text);
+```
+
+A UTF-8 file written by Notepad, Visual Studio or PowerShell's `Out-File` often begins with a byte
+order mark (`EF BB BF`), and wide text may begin with `U+FEFF`. Neither is part of the text, and a
+parser that does not expect it reads a stray character at the edge of the first token.
+
+`strip_bom` removes one when it is there, and leaves the text alone when it is not. It takes the
+string by value, so the usual call is one move:
+
+```cpp
+scl2::string text = scl2::readFileAsString(path);
+text = scl2::strip_bom(std::move(text));
+```
+
+There are two overloads, one for `std::basic_string` and one for `scl2::basic_string`: template
+argument deduction does not go from the derived class to the base, so both are needed for
+`scl2::string` to work directly.
+
+[`json`](json.md) and [`json2`](json2.md) step over a byte order mark themselves, since a standalone
+module cannot use this function.
 
 ## See Also
 

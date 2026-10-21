@@ -104,14 +104,14 @@ public:
     /// @throws std::runtime_error when there is no compress function.
     scl2::bytearray compress(const scl2::bytearray& data) const
     {
-        if (!m_compress) throw std::runtime_error("scl2::compression_provider: no compress function");
+        if (!m_compress) throw std::logic_error("scl2::compression_provider: no compress function");
         return m_compress(data);
     }
 
     /// @throws std::runtime_error when there is no decompress function.
     scl2::bytearray decompress(const scl2::bytearray& data) const
     {
-        if (!m_decompress) throw std::runtime_error("scl2::compression_provider: no decompress function");
+        if (!m_decompress) throw std::logic_error("scl2::compression_provider: no decompress function");
         return m_decompress(data);
     }
 

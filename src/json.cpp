@@ -5,6 +5,9 @@
 */
 #include "json.hpp"
 
+#include <cmath>
+#include <cstdlib>
+
 #include <fstream>
 #include <sstream>
 
@@ -91,7 +94,7 @@ void json_pointer::split_tokens()
 {
     if (pointer_str.empty()) return; // empty pointer is valid and points to the whole document
     if (pointer_str[0] != '/')
-        throw std::runtime_error("json_pointer::split_tokens: pointer must start with '/'");
+        throw std::invalid_argument("json_pointer::split_tokens: pointer must start with '/'");
 
     size_t pos = 0, lpos = 1;
     while ((pos = pointer_str.find('/', lpos)) != std::string::npos) {
@@ -598,6 +601,17 @@ void json_parser::parseFromString(const std::string &str_input)
         throw std::runtime_error("Input JSON string is empty");
     }
 
+    // A byte order mark is not part of the text. Files written by Notepad, by Visual Studio
+    // and by PowerShell's Out-File start with one, and so do the ones a browser downloads in
+    // some cases. Step over it instead of failing on the first byte.
+    if (json_str.size() >= 3
+        && static_cast<unsigned char>(json_str[0]) == 0xEF
+        && static_cast<unsigned char>(json_str[1]) == 0xBB
+        && static_cast<unsigned char>(json_str[2]) == 0xBF)
+    {
+        pos = 3;
+    }
+
     result_root = parseJsonValue();
 }
 
@@ -736,6 +750,14 @@ std::string json_parser::parseJsonString()
 
 json_value json_parser::parseJsonValue()
 {
+    // Whitespace in front of a value is normal: a document may begin with a blank line, and a
+    // member value sits behind the colon with the space the writer chose.
+    skipWhitespace();
+
+    if (pos >= json_str.size()) {
+        throw std::runtime_error("Unexpected end of JSON input");
+    }
+
     char c = peek();
     if (c == '{') {
         return parseObject();
@@ -1224,13 +1246,44 @@ void json_exporter::exportString(const json_value& value, size_t indentLevel)
     result_str += jquote(value.as_string()); // jquote already escapes
 }
 
+namespace {
+
+/// A double as text, in the shortest form that reads back as the same double.
+///
+/// `std::to_string` is `%f` with six decimals: it turns 1e-10 into "0.000000" (the value is
+/// gone) and writes 1e20 as 27 digits with ".000000" on the end. Trying `%g` at increasing
+/// precision until it reads back is the usual way out, and 17 digits always suffice.
+///
+/// A result without a '.', 'e' or 'E' gets a ".0" appended, so that reading it back gives a
+/// double rather than an integer: a value that changes type on a round trip is a value that
+/// changed. Non-finite values keep the text they always had ("nan" / "inf"), which is not
+/// valid JSON either way and is not this function's decision to make.
+std::string json_double_to_string(double value)
+{
+    if (!std::isfinite(value)) return std::to_string(value);
+
+    char buffer[48];
+    for (int precision = 1; precision <= 17; ++precision) {
+        std::snprintf(buffer, sizeof(buffer), "%.*g", precision, value);
+        if (std::strtod(buffer, nullptr) != value) continue;
+
+        std::string text(buffer);
+        if (text.find_first_of(".eE") == std::string::npos) text += ".0";
+        return text;
+    }
+
+    return std::string(buffer); // unreachable for a finite value
+}
+
+} // namespace <unnamed>
+
 void json_exporter::exportNumber(const json_value &value, size_t indentLevel)
 {
     (void)indentLevel;
     if (value.is_int()) {
         result_str += std::to_string(value.as_int());
     } else {
-        result_str += std::to_string(value.as_double());
+        result_str += json_double_to_string(value.as_double());
     }
 }
 

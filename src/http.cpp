@@ -3,8 +3,58 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <charconv>
+#include <iterator>
+#include <string_view>
 
 namespace network::http {
+
+namespace {
+
+bool header_name_equal(std::string_view a, std::string_view b)
+{
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); ++i) {
+        const auto lower_ascii = [](char c) { return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c; };
+        if (lower_ascii(a[i]) != lower_ascii(b[i])) return false;
+    }
+    return true;
+}
+
+const std::string* find_header(const std::map<std::string, std::string>& headers,
+                               std::string_view name)
+{
+    for (const auto& [key, value] : headers) {
+        if (header_name_equal(key, name)) return &value;
+    }
+    return nullptr;
+}
+
+std::optional<size_t> content_length(const std::map<std::string, std::string>& headers)
+{
+    const auto* value = find_header(headers, "Content-Length");
+    if (!value) return std::nullopt;
+    const size_t first = value->find_first_not_of(" \t");
+    if (first == std::string::npos) throw network_error("Invalid Content-Length");
+    const size_t last = value->find_last_not_of(" \t") + 1;
+    size_t length = 0;
+    const auto result = std::from_chars(value->data() + first, value->data() + last, length);
+    if (result.ec != std::errc{} || result.ptr != value->data() + last)
+        throw network_error("Invalid Content-Length");
+    return length;
+}
+
+std::string read_body(std::istream& stream, const std::map<std::string, std::string>& headers)
+{
+    // Preserve embedded nulls. Incremental callers may only have part of the body yet.
+    std::string body{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
+    const auto length = content_length(headers);
+    if (length && !find_header(headers, "Transfer-Encoding") && body.size() > *length)
+        body.resize(*length);
+    return body;
+}
+
+} // namespace
 
 static const std::map<http_method, std::string> method_to_str = {
     {http_method::GET, "GET"},
@@ -33,12 +83,27 @@ static const std::map<std::string, http_method> str_to_method = {
 static const std::map<http_status, std::string> status_messages = {
     {http_status::OK, "OK"},
     {http_status::CREATED, "Created"},
+    {http_status::ACCEPTED, "Accepted"},
     {http_status::NO_CONTENT, "No Content"},
+    {http_status::MOVED_PERMANENTLY, "Moved Permanently"},
+    {http_status::FOUND, "Found"},
+    {http_status::NOT_MODIFIED, "Not Modified"},
     {http_status::BAD_REQUEST, "Bad Request"},
+    {http_status::UNAUTHORIZED, "Unauthorized"},
+    {http_status::FORBIDDEN, "Forbidden"},
     {http_status::NOT_FOUND, "Not Found"},
     {http_status::METHOD_NOT_ALLOWED, "Method Not Allowed"},
+    {http_status::REQUEST_TIMEOUT, "Request Timeout"},
+    {http_status::CONFLICT, "Conflict"},
+    {http_status::LENGTH_REQUIRED, "Length Required"},
+    {http_status::PAYLOAD_TOO_LARGE, "Payload Too Large"},
+    {http_status::URI_TOO_LONG, "URI Too Long"},
+    {http_status::TOO_MANY_REQUESTS, "Too Many Requests"},
     {http_status::INTERNAL_SERVER_ERROR, "Internal Server Error"},
-    {http_status::NOT_IMPLEMENTED, "Not Implemented"}
+    {http_status::NOT_IMPLEMENTED, "Not Implemented"},
+    {http_status::BAD_GATEWAY, "Bad Gateway"},
+    {http_status::SERVICE_UNAVAILABLE, "Service Unavailable"},
+    {http_status::GATEWAY_TIMEOUT, "Gateway Timeout"}
 };
 
 std::string method_to_string(http_method method)
@@ -62,6 +127,12 @@ std::string status_to_string(http_status status)
     return it != status_messages.end() ? it->second : "Unknown";
 }
 
+std::string status_to_string(int status_code)
+{
+    if (status_code == 0) return "";
+    return status_to_string(static_cast<http_status>(status_code));
+}
+
 // ========== request implementation ==========
 
 std::string request::serialize() const
@@ -78,7 +149,7 @@ std::string request::serialize() const
     }
     
     // Add Content-Length if body exists and not already specified
-    if (!body.empty() && headers.find("Content-Length") == headers.end()) {
+    if (!body.empty() && !find_header(headers, "Content-Length")) {
         result += "Content-Length: " + std::to_string(body.size()) + "\r\n";
     }
     
@@ -155,9 +226,7 @@ request request::deserialize(const std::string& str)
     }
     
     // Read body (rest of stream)
-    std::string body_content;
-    std::getline(stream, body_content, '\0');
-    req.body = body_content;
+    req.body = read_body(stream, req.headers);
     
     return req;
 }
@@ -169,15 +238,7 @@ bool request::has_complete_headers(const std::string& str)
 
 size_t request::get_content_length() const
 {
-    auto it = headers.find("Content-Length");
-    if (it != headers.end()) {
-        try {
-            return std::stoull(it->second);
-        } catch (...) {
-            return 0;
-        }
-    }
-    return 0;
+    return content_length(headers).value_or(0);
 }
 
 // ========== response implementation ==========
@@ -188,7 +249,8 @@ std::string response::serialize() const
     result.reserve(512);
 
     // Status line: HTTP/version STATUS_CODE STATUS_MESSAGE
-    result += http_version + " " + std::to_string(static_cast<int>(status)) + " " + status_to_string(status) + "\r\n";
+    const int code = (status_code != 0) ? status_code : static_cast<int>(status);
+    result += http_version + " " + std::to_string(code) + " " + status_to_string(code) + "\r\n";
     
     // Headers
     for (const auto& [key, value] : headers) {
@@ -196,7 +258,7 @@ std::string response::serialize() const
     }
     
     // Add Content-Length if body exists and not already specified
-    if (!body.empty() && headers.find("Content-Length") == headers.end()) {
+    if (!body.empty() && !find_header(headers, "Content-Length")) {
         result += "Content-Length: " + std::to_string(body.size()) + "\r\n";
     }
     
@@ -231,12 +293,16 @@ response response::deserialize(const std::string& str)
     
     std::istringstream line_stream(line);
     std::string version;
-    int status_code;
+    int status_code = 0;
     
     line_stream >> version >> status_code;
     
     resp.http_version = version;
-    resp.status = static_cast<http_status>(status_code);
+    resp.status_code = status_code;
+
+    // `status` only names the codes we know; the exact one is kept above.
+    const http_status as_enum = static_cast<http_status>(status_code);
+    resp.status = status_messages.count(as_enum) ? as_enum : http_status::UNKNOWN;
     
     // Parse headers
     while (std::getline(stream, line)) {
@@ -265,9 +331,7 @@ response response::deserialize(const std::string& str)
     }
     
     // Read body
-    std::string body_content;
-    std::getline(stream, body_content, '\0');
-    resp.body = body_content;
+    resp.body = read_body(stream, resp.headers);
     
     return resp;
 }
@@ -281,6 +345,7 @@ response response::make_text(http_status status, const std::string& text)
 {
     response resp;
     resp.status = status;
+    resp.status_code = static_cast<int>(status);
     resp.headers["Content-Type"] = "text/plain; charset=utf-8";
     resp.body = text;
     return resp;
@@ -290,6 +355,7 @@ response response::make_json(http_status status, const std::string& json)
 {
     response resp;
     resp.status = status;
+    resp.status_code = static_cast<int>(status);
     resp.headers["Content-Type"] = "application/json; charset=utf-8";
     resp.body = json;
     return resp;

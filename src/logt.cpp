@@ -2,11 +2,14 @@
 
 #include "basics.hpp"
 
+#include <cstdlib>   // std::atexit
+
 // 静态成员定义
-std::mutex logt_eventbus::mutex_;
-std::condition_variable logt_eventbus::cond_;
-std::queue<logt_message> logt_eventbus::queue_;
-std::atomic<bool> logt_eventbus::stopped_{false};
+std::mutex logt_bus::mutex_;
+std::condition_variable logt_bus::cond_;
+std::queue<logt_message> logt_bus::queue_;
+std::atomic<bool> logt_bus::stopped_;
+bool logt_bus::in_flight_ = false;
 
 
 // 静态成员定义
@@ -78,13 +81,16 @@ logt_message::logt_message(std::string msg, LogLevel level, logt_channelinfo cha
 , channels(channels) {}
 
 
-void logt_eventbus::push(const std::string& s, LogLevel level, logt_channelinfo channel) {
+void logt_bus::push(const std::string& s, LogLevel level, logt_channelinfo channel) {
     std::unique_lock<std::mutex> lock(mutex_);
+    // After a shutdown the worker is gone, so a message pushed now would sit in the queue for ever
+    // and mean nothing to anybody. Drop it instead of hoarding it.
+    if (stopped_) return;
     queue_.push(logt_message(s, level, channel));
     cond_.notify_one();
 }
 
-bool logt_eventbus::pop(logt_message& result) {
+bool logt_bus::pop(logt_message& result) {
     std::unique_lock<std::mutex> lock(mutex_);
     cond_.wait(lock, [&]() { return !queue_.empty() || stopped_; });
     
@@ -93,13 +99,25 @@ bool logt_eventbus::pop(logt_message& result) {
     
     result = std::move(queue_.front());
     queue_.pop();
+    in_flight_ = true;   // popped, not written yet: a flush() waits for the write too
     return true;
 }
 
-void logt_eventbus::stop() {
+void logt_bus::stop() {
     std::unique_lock<std::mutex> lock(mutex_);
     stopped_ = true;
     cond_.notify_all();
+}
+
+void logt_bus::wait_until_empty() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cond_.wait(lock, []() { return queue_.empty() && !in_flight_; });
+}
+
+void logt_bus::mark_processed() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    in_flight_ = false;
+    if (queue_.empty()) cond_.notify_all();   // a waiter is only satisfied by an empty queue
 }
 
 
@@ -122,12 +140,15 @@ logt_sso::logt_sso(LogLevel level, const logt_format& formatter, const logt_chan
 
 logt_sso::~logt_sso() {
     // 析构时自动推送完整日志
-    logt_eventbus::push(ss_.str(), level_, channels);
+    logt_bus::push(ss_.str(), level_, channels);
 }
 
 std::string logt_sso::default_formatter(const logt_format::formatSettings& settings, const logt_format::formatInfo &info)
 {
     std::string format_result;
+    // The index into level_labels_ is unchecked on purpose: a level only ever comes from the level
+    // methods of a logt_sig, and a message built by hand carrying a filter value (Quiet / Inherit)
+    // is a bug — crashing is the intended answer to it.
     format_result = logt::level_labels_[static_cast<int>(info.level)];
 
     if(settings.enableAlignment) {
@@ -155,7 +176,7 @@ std::string logt_sso::default_formatter(const logt_format::formatSettings& setti
 
 
 
-logt_sig::logt_sig(const std::string& name)
+logt_sig::logt_sig(std::string_view name)
     : name_(name)
 {
     formatter = logt::formatter_;
@@ -251,11 +272,18 @@ void logt::claim(const std::string& name) {
 }
 
 void logt::shutdown() {
-    logt_eventbus::stop();
+    logt_bus::stop();
     if (worker_.joinable()) worker_.join();
 
     // close all channels (each has its own mutex)
     for(logt_channel& ch : channels_) ch.close();
+}
+
+void logt::flush() {
+    // A worker that has never started would leave the wait below hanging; one that has been shut
+    // down has already drained everything, and call_once() will not start a second one.
+    ensure_worker_started();
+    logt_bus::wait_until_empty();
 }
 
 void logt::exit(int exitcode)
@@ -292,9 +320,15 @@ void logt::worker_thread() {
     }
 
     logt_message message;
-    while (logt_eventbus::pop(message)) {
+    while (logt_bus::pop(message)) {
         write_message(message);
+        logt_bus::mark_processed();   // the record is out; a flush() waiting here may go
     }
+}
+
+LogLevel logt::channel_filter(int channel_id) {
+    const LogLevel own = channels_[channel_id].filter;
+    return own == LogLevel::Inherit ? filter_level_ : own;
 }
 
 void logt::write_message(const logt_message& message) {
@@ -307,7 +341,7 @@ void logt::write_message(const logt_message& message) {
     // std::unique_lock<std::mutex> lock(file_mutex_); // I don't this this is needed anymore
     std::string timestamp_str = (formatter_.settings.enableTimestamp)?(format_timestamp(message.timestamp) + " "):"";
 
-    if(processed.channels.stdoutput()) {
+    if(processed.channels.stdoutput() && message.level >= channel_filter(0)) {
         *channels_[0].ostream << timestamp_str << processed.content << std::endl; // keep colors for stdout
     }
 
@@ -316,9 +350,7 @@ void logt::write_message(const logt_message& message) {
             auto lock = channels_[i].lock();
             
             auto& channel = channels_[i];
-            LogLevel filter = filter_level_;
-            if (channel.filter != LogLevel::Inherit) filter = channel.filter;
-            if (message.level < filter) continue; // skip this channel
+            if (message.level < channel_filter(i)) continue; // skip this channel
 
             if (channel.valid) {
                 switch(channel.type) {
@@ -396,5 +428,11 @@ std::string logt::format_timestamp(const std::chrono::steady_clock::time_point& 
 void logt::ensure_worker_started() {
     std::call_once(worker_flag_, []() {
         worker_ = std::thread(worker_thread);
+
+        // The logger drains itself when the process ends the ordinary way: returning from main
+        // and std::exit() both run this, so a missing shutdown() / logt_guard no longer loses the
+        // tail of the log — and no longer ends the program in std::terminate() either, since the
+        // worker gets joined here. Nothing runs on abort() / terminate() / TerminateProcess().
+        std::atexit(&logt::shutdown);
     });
 }

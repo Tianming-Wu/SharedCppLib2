@@ -1,5 +1,6 @@
 #pragma once
 #include "apibase.hpp"
+#include <cstddef>
 
 /*
     This file contains some basic implementation that should not belong to any module.
@@ -50,14 +51,28 @@ concept is_container = requires(T a) {
 };
 
 
-// Check if the container's value type is trivially copyable.
-// In the api support we need to know seperately if the container is trivially copyable or not,
-// since I would not give up the benifit of single plain-copying for trivially copyable types.
+// Check if the container's elements are trivially copyable AND its storage is contiguous.
+// The plain-copy path of the bytearray container helpers writes the whole block out of
+// `data()`, so contiguity is part of the contract: without data()/size() that path would be
+// selected and then fail inside the template. (value_type alone is not enough — std::list,
+// std::map and std::string all have a trivially copyable value_type without being a block.)
 template<typename T>
-concept trivially_copyable_container = requires(T a) {
+concept trivially_copyable_container = requires(const T& c) {
     typename T::value_type;
     requires std::is_trivially_copyable_v<typename T::value_type>;
+    c.data();
+    c.size();
 };
+
+// The same, plus what reading the block back needs: a count constructor to size it and a
+// mutable data() to fill. std::string and std::array hold a contiguous trivially copyable
+// block but have no count constructor, so they never take the plain-copy path.
+template<typename T>
+concept restorable_trivially_copyable_container = trivially_copyable_container<T>
+    && requires(T& c, std::size_t count) {
+        { c.data() } -> std::same_as<typename T::value_type*>;
+        T(count);
+    };
 
 
 template<typename T>
@@ -78,14 +93,14 @@ void universal_insert(T& container, typename T::value_type&& value) {
     }
 }
 
-// std::pair support.
+// std::pair support — including std::map's value_type shape, whose first is const.
 // This enable us to work with std::map and std::unordered_map out-of-the-box.
 
 template<typename T>
 concept is_pair = requires(T t) {
     typename T::first_type;
     typename T::second_type;
-    { t.first } -> std::same_as<const typename T::first_type&>;
+    { t.first } -> std::convertible_to<const typename T::first_type&>;
     { t.second } -> std::same_as<typename T::second_type&>;
 };
 

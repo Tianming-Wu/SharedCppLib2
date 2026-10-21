@@ -23,7 +23,9 @@
 #include <vector>
 #include <map>
 #include <cstdint>
+#include <initializer_list>
 #include <type_traits>
+#include <utility>
 
 #include "string.hpp"
 #include "bytearray.hpp"
@@ -59,6 +61,14 @@ public:
     variant(std::vector<variant>&& v);
     variant(const std::map<scl2::string, variant>& m);
     variant(std::map<scl2::string, variant>&& m);
+
+    // ---- factories for the container kinds ----
+    // A default variant is null, so an empty array or object has to be asked for.
+    // Duplicate keys keep the last value.
+    static variant make_array();
+    static variant make_object();
+    static variant make_array(std::initializer_list<variant> items);
+    static variant make_object(std::initializer_list<std::pair<scl2::string, variant>> items);
 
     // ---- type probing ----
     type_t type() const noexcept { return static_cast<type_t>(value.index()); }

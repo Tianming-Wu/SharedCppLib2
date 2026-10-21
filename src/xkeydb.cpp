@@ -9,7 +9,6 @@
 #include "crc32.hpp"
 #include "fileio.hpp"
 #include "hmac.hpp"
-#include "platform.hpp" // OS_WINDOWS, and windows.h on Windows
 #include "sha256.hpp"
 #include "zlib.hpp"
 
@@ -863,27 +862,16 @@ void database::writeImage(const scl2::bytearray& image) const
         // Flush before replacing: handing the bytes to the operating system is not enough,
         // a power loss could still leave the new name pointing at data that never landed.
         scl2::writeFile(tmp, image, true);
+
+        // Replace in one step, so a reader never sees a half-written database. The temporary
+        // file has to sit next to the target for this to be a rename rather than a copy.
+        scl2::replaceFile(tmp, m_path);
     }
     catch (const std::exception&) {
-        throw xkeydb_exception(xkeydb_error::FileWriteError, "xkeydb: cannot write " + tmp.string());
-    }
-
-    // Replace in one step, so a reader never sees a half-written database. The temporary
-    // file has to sit next to the target for this to be a rename rather than a copy.
-#ifdef OS_WINDOWS
-    if (!MoveFileExW(tmp.c_str(), m_path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
         std::error_code ignored;
         fs::remove(tmp, ignored);
-        throw xkeydb_exception(xkeydb_error::FileWriteError, "xkeydb: cannot replace " + m_path.string());
+        throw xkeydb_exception(xkeydb_error::FileWriteError, "xkeydb: cannot write " + m_path.string());
     }
-#else
-    std::error_code ec;
-    fs::rename(tmp, m_path, ec);
-    if (ec) {
-        fs::remove(tmp, ec);
-        throw xkeydb_exception(xkeydb_error::FileWriteError, "xkeydb: cannot replace " + m_path.string());
-    }
-#endif
 }
 
 void database::writeOut()

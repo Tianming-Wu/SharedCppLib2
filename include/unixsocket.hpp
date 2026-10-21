@@ -246,7 +246,7 @@ public:
     bool valid() override { return m_fd >= 0; }
 
     /// @brief Whether there is something to read now: data, or a closed peer.
-    bool readyRead() override
+    bool readable() override
     {
         if (m_fd < 0) return false;
 

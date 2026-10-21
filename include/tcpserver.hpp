@@ -41,7 +41,7 @@ public:
     server_client_handler& operator=(const server_client_handler&) = delete;
     server_client_handler& operator=(server_client_handler&&) = delete;
 
-    bool readyRead() override final;
+    bool readable() override final;
     size_t available() override final;
 
     scl2::bytearray read(size_t bytes) override final;

@@ -24,7 +24,8 @@ target_link_libraries(target SharedCppLib2::pipe)
 
 ## 简介
 
-命名管道是本机两个进程之间的连接，用名字寻址，而不是地址加端口。不开放端口，从网络上
+命名管道是本机两个进程之间的连接，用名字寻址，而不是地址加端口。这个名字是完整的管道路径
+`\\.\pipe\my_app`：库把它原样交给操作系统，不添任何东西。不开放端口，从网络上
 也访问不到，名字就是全部地址。
 
 一个 `server` 持有这个名字，并为每个连接发下一个 `server_client`；`client` 连接到这个
@@ -40,18 +41,21 @@ target_link_libraries(target SharedCppLib2::pipe)
 #include <SharedCppLib2/pipe.hpp>
 
 #if SCL2_PIPE_SUPPORTED
-    scl2::pipe::server server("my_app");
+    scl2::pipe::server server(R"(\\.\pipe\my_app)");
     ...
 #endif
 ```
 
 ## 快速上手
 
+名字写成原始字符串字面量，反斜杠就不用手工翻倍：`R"(\\.\pipe\my_app)"` 就是路径
+`\\.\pipe\my_app`，一共 15 个字符。
+
 服务端：
 ```cpp
 #include <SharedCppLib2/pipe.hpp>
 
-scl2::pipe::server server("my_app", scl2::pipe::permission_preset::Everyone);
+scl2::pipe::server server(R"(\\.\pipe\my_app)", scl2::pipe::permission_preset::Everyone);
 server.setPipeMode(scl2::pipe::mode::Message);
 server.setClientLimit(2);
 
@@ -78,7 +82,7 @@ while (server.active()) {
 
 客户端：
 ```cpp
-scl2::pipe::client client("my_app");
+scl2::pipe::client client(R"(\\.\pipe\my_app)");
 
 if (!client.connect(std::chrono::seconds(5))) {
     std::fprintf(stderr, "no server at that name\n");
@@ -143,7 +147,7 @@ client.close();
 | `broken()` | 是否已经有操作发现这条连接没了 |
 | `setThrowOnBroken(enabled)` / `throwOnBroken()` | 失败时是否抛 `connection_broken`。默认关闭 |
 | `cancel()` / `cancelled()` | 释放这条连接上的等待，以及是否被如此要求过 |
-| `readyRead()` | 此刻是否有可读内容 |
+| `readable()` | 此刻是否有可读内容 |
 | `waitForReadyRead(timeout = 5s)` | 等到有为止 |
 | `available()` | 有多少字节在等待 |
 | `read(bytes)` | 最多 `bytes` 字节。在 `mode::Message` 下返回空 |
@@ -159,13 +163,14 @@ client.close();
 
 | 成员 | 说明 |
 |---------|---------|
+| `client(name)` | 为这个名字准备一个客户端。与服务端同样接受完整管道路径 |
 | `connect(timeout = 5s)` | 连接到服务端，最多等待 `timeout`。名字还不存在、或所有实例都忙时会重试 |
 | `waitForConnection(timeout = 5s)` | 与 `connect(timeout)` 相同；当服务端稍后才启动时，这个名字更能表达意图 |
 | `serverExists()` | 此刻该名字上是否有东西在监听。只有名字不存在时才返回 `false` |
 | `valid()` / `broken()` | 同 `server_client` |
 | `setThrowOnBroken(enabled)` / `throwOnBroken()` | 同 `server_client` |
 | `cancel()` / `cancelled()` | 同 `server_client`；客户端没有服务端，只有它自己的 cancel |
-| `readyRead()` / `waitForReadyRead(timeout = 5s)` / `available()` | 同 `server_client` |
+| `readable()` / `waitForReadyRead(timeout = 5s)` / `available()` | 同 `server_client` |
 | `read(bytes)` / `readAll()` / `write(data)` | 同 `server_client` |
 | `waitForFinished(timeout = 5s)` | 同 `server_client` |
 | `pipeMode()` | 服务端声明的模式，由 `connect()` 填入 |
@@ -214,7 +219,7 @@ client.close();
 | `read()` / `readAll()` | 空，或者断开前收到的那一部分 |
 | `write()` | 0 |
 | `waitForFinished()` | `false` |
-| `available()` / `readyRead()` | 缓冲区里还剩多少；**只是看一眼也会记录状态** |
+| `available()` / `readable()` | 缓冲区里还剩多少；**只是看一眼也会记录状态** |
 | `valid()` | 一旦 `broken()` 置位就是 `false` |
 
 所以光看返回值分不出"还没有"和"再也没有了"：`broken()` 是区分它们的东西，值得在**失败之后**问一次

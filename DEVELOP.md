@@ -7,7 +7,8 @@ Some effective code example:
 
 int main(int argc, char** argv) {
     // 1. Initialize basic environment for logging only
-    logt_guard guard; // Suggested, ensures logt::shutdown() is called on scope exit
+    // 2. Initialize logging for the rest of the run
+    logt_guard guard; // Optional. A normal return drains and closes on its own (see the note below).
 
     logt::claim("main");
     logt::addfile(...);
@@ -37,7 +38,9 @@ int main(int argc, char** argv) {
         result = -2;
     }
 
-    // if do not use logt_guard, you should call logt::shutdown() here.
+    // Nothing to do here: a normal return drains the queue and closes the files by itself. logt
+    // registers a std::atexit() handler when its worker starts, so neither a logt_guard nor a
+    // shutdown() call is required any more.
 
     return result;
 }
@@ -58,9 +61,13 @@ __try {
     // your logic here
 } __except(EXCEPTION_EXECUTE_HANDLER) {
     logt.fatal() << "Windows SEH caught a hard crash (e.g. Segfault)";
-    logt::shutdown();
+    logt::flush();   // get the queue out now: no destructor and no atexit handler runs on this path
 }
 ```
+
+> On a path like this nothing unwinds: `flush()` is what moves the records still in the queue into
+> the file. Nothing in the process can help when it is killed from outside (`TerminateProcess`,
+> `taskkill /F`), which is the reason to keep the queue short if that is a possibility.
 
 
 #### Stack traces

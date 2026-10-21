@@ -21,12 +21,27 @@
         std::string v = doc["mods"][0]["modId"].as_string(); // access
         std::string out = doc.toString();                    // serialize back
 
+    Fidelity — what a parse / edit / serialize cycle does with the file it read:
+      - fidelity::raw (the default) keeps the source text: comments, blank lines, the order of the
+        members, indentation, the spelling of every value and the line endings. Serialization
+        writes the source back and regenerates only the values that were replaced, so editing one
+        setting leaves the rest of the file — comments included — as it was.
+      - fidelity::semantic keeps the values only. Everything is regenerated in a canonical layout,
+        with the members still in document order (no comments, no source spelling).
+
+    A table is scl2::ordered_map: TOML keys are unique, so a table is a map, and a map that
+    remembers the order of the file is what a round trip needs. That makes this module standalone
+    but for `ordered_map`.
+
     [SCL_STANDALONE_MODULE]
-    version: 0.2.0
+    version: 0.3.0
     cpp_generation: cxx17 - cxx23
+    standalone_dependency: orderedmap
 */
 
 #pragma once
+
+#include "orderedmap.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -34,6 +49,7 @@
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -42,8 +58,25 @@ namespace scl2 {
 class toml_value;
 class toml;
 
+namespace parser_impl { class parser; }
+
+/// @brief How much of the source text a parse keeps.
+/// @see The fidelity section of doc/toml.md.
+enum class fidelity {
+    raw,       ///< comments, layout, order and the spelling of every value are kept
+    semantic,  ///< the values only; serialization regenerates the document
+};
+
+/// @brief How a table was written, which is what decides how it is written back.
+enum class toml_table_style : uint8_t {
+    generated = 0,   ///< built by hand: written as a [header] block
+    header,          ///< came from a [a.b] or [[a.b]] header line
+    inline_table,    ///< came from { a = 1 }: written on its member's line
+    dotted,          ///< exists only as the prefix of a dotted key: written inside its parent
+};
+
 typedef std::vector<toml_value> toml_array;
-typedef std::map<std::string, toml_value> toml_table;
+typedef scl2::ordered_map<std::string, toml_value> toml_table;
 
 /// @brief A TOML date-time value, preserved verbatim as text.
 struct toml_datetime {
@@ -75,8 +108,21 @@ public:
     toml_value(toml_datetime&& dt);
     toml_value(const std::vector<toml_value>& arr);
     toml_value(std::vector<toml_value>&& arr);
+    toml_value(const toml_table& obj);
+    toml_value(toml_table&& obj);
+    /// The shape std::map used to be: still accepted, so code that builds a table with it keeps
+    /// working. The result carries no source text, like any value made by hand.
     toml_value(const std::map<std::string, toml_value>& obj);
     toml_value(std::map<std::string, toml_value>&& obj);
+
+    toml_value(const toml_value&) = default;
+    toml_value(toml_value&&) = default;
+
+    /// @brief Take the value of @p other, and regenerate its text.
+    /// @note This is what `doc["port"] = 9090` goes through. The member keeps its own lead, key,
+    ///       separator and trailing comment — only the value itself is written again.
+    toml_value& operator=(const toml_value& other);
+    toml_value& operator=(toml_value&& other) noexcept;
 
     /// Accept any integral or floating type - cast to int64_t or double.
     template<typename T,
@@ -103,13 +149,13 @@ public:
     const std::string& as_string() const;
     const std::string& as_datetime() const;
     const std::vector<toml_value>& as_array() const;
-    const std::map<std::string, toml_value>& as_table() const;
+    const toml_table& as_table() const;
     bool& as_bool();
     int64_t& as_int();
     double& as_double();
     std::string& as_string();
     std::vector<toml_value>& as_array();
-    std::map<std::string, toml_value>& as_table();
+    toml_table& as_table();
 
     // ---- array ----
     toml_value& operator[](size_t index);
@@ -125,6 +171,72 @@ public:
     const toml_value& operator[](const std::string& key) const;
     const toml_value& at(const std::string& key) const;
     size_t table_size() const;
+
+    /// @brief Remove the member @p key (a table) or the element @p index (an array).
+    /// @return Whether there was one. An array element takes its separator with it.
+    bool erase(const std::string& key);
+    bool erase(size_t index);
+
+    // ---- source text (fidelity::raw) ----
+    // Everything below is empty on a value that was built by hand, and describes what the file
+    // said on one that was parsed. Serialization uses it verbatim when it is there.
+
+    /// @brief Whether this value came from a parsed document.
+    bool has_source() const { return sourced_; }
+
+    /// @brief Whether the value was replaced after the parse, so its text is written again.
+    /// @note The lead, the key, the separator and the trailing comment of the member survive that:
+    ///       a changed value keeps its comment.
+    bool dirty() const { return dirty_; }
+
+    /// @brief The value token as it stands in the file, for a scalar (`0x1F`, `'literal'`, `1_000`,
+    ///        `1.0`, `1979-05-27T07:32:00Z`). Empty for a container and for a regenerated value.
+    const std::string& raw() const { return raw_; }
+
+    /// @brief The whole header line of a table that was written as `[a.b]` / `[[a.b]]`,
+    ///        line ending and trailing comment included.
+    const std::string& header_text() const { return header_; }
+
+    /// @brief The comment and blank lines in front of this member (for an array element or an
+    ///        inline table member: the text in front of it, separator included).
+    const std::string& lead() const { return lead_; }
+
+    /// @brief The rest of this member's line after its value, line ending included.
+    const std::string& trail() const { return trail_; }
+
+    /// @brief The key as it stands (`a.b`, `"a b"`), empty when it is generated from the map key.
+    const std::string& key_text() const { return key_text_; }
+
+    /// @brief The text between the key and the value, `" = "` in most files.
+    const std::string& separator() const { return separator_; }
+
+    /// @brief The text between the last element and the closing bracket (arrays, inline tables).
+    const std::string& tail() const { return tail_; }
+
+    /// @brief How this table was written; `toml_table_style::generated` on anything else.
+    toml_table_style table_style() const { return style_; }
+
+    /// @brief Whether this table is written on its member's line as `{ a = 1 }`.
+    bool is_inline_table() const { return style_ == toml_table_style::inline_table; }
+
+    // ---- source text, writable ----
+
+    /// @brief State the value token as written, for a value being built by hand.
+    /// @details `v.set_raw("0x1F")` writes `0x1F` and keeps it: the same thing a parse does.
+    void set_raw(std::string text);
+
+    /// @brief Replace the lines in front of this member (a comment line ends with a line ending).
+    void set_lead(std::string text);
+
+    /// @brief Replace what follows this member's value to the end of its line, line ending included.
+    void set_trail(std::string text);
+
+    /// @brief Put a `# comment` after this member's value, in place of the one that is there.
+    /// @param text The comment text, without the `#`. Empty removes the comment.
+    void set_comment(std::string text);
+
+    /// @brief Write this table as `{ a = 1 }` on its member's line (or as a `[header]` block again).
+    void set_inline_table(bool on = true);
 
     toml_value_type type() const;
 
@@ -155,6 +267,11 @@ public:
             } else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, bool>) {
                 // never allow narrowing like int -> char (string::operator=(char)) or int -> bool
                 throw std::runtime_error("toml: assign_to: value type is not assignable to the target");
+            } else if constexpr (std::is_same_v<T, std::map<std::string, toml_value>>
+                                 && std::is_same_v<SRC, toml_table>) {
+                // a table used to be a std::map; keep that destination working
+                dest.clear();
+                for (const auto& [k, v] : src) dest.emplace(k, v);
             } else if constexpr (std::is_assignable_v<T&, const SRC&>) {
                 dest = src;
             } else {
@@ -164,9 +281,24 @@ public:
     }
 
 private:
-    std::variant<std::string, int64_t, double, bool, toml_datetime,
-                 std::vector<toml_value>, std::map<std::string, toml_value>>
-        value;
+    friend class parser_impl::parser;
+
+    using variant_type = std::variant<std::string, int64_t, double, bool, toml_datetime,
+                                      std::vector<toml_value>, toml_table>;
+
+    variant_type value;
+
+    // Source text (fidelity::raw). Empty on a value that was built by hand.
+    std::string raw_;        // the scalar token as written
+    std::string header_;     // the whole header line of a table written as [a.b]
+    std::string lead_;       // what comes before this slot
+    std::string key_text_;   // the key as written
+    std::string separator_;  // between the key and the value
+    std::string trail_;      // what follows the value on its line
+    std::string tail_;       // before the closing bracket of an array / inline table
+    toml_table_style style_ = toml_table_style::generated;
+    bool sourced_ = false;   // it came from a parsed document
+    bool dirty_ = false;     // its value was replaced, so its text is written again
 };
 
 /// @brief A TOML document — always a table of key/value pairs.
@@ -175,17 +307,34 @@ public:
     toml() = default;
 
     /// @brief Parse a TOML document from a string.
+    /// @param str The document text (UTF-8; a leading byte order mark is accepted).
+    /// @param f How much of the source text to keep. `fidelity::raw` by default.
     /// @throw std::runtime_error on syntax errors.
-    static toml fromString(const std::string& str);
+    static toml fromString(const std::string& str, fidelity f = fidelity::raw);
 
     /// @brief Parse a TOML document from a file (UTF-8).
-    static toml fromFile(const std::filesystem::path& path);
+    /// @param path The file.
+    /// @param f How much of the source text to keep. `fidelity::raw` by default.
+    static toml fromFile(const std::filesystem::path& path, fidelity f = fidelity::raw);
 
     /// @brief Serialize this document back to TOML text.
+    /// @details `fidelity::raw`: the source text comes back, and only the values that were
+    ///          replaced, added or removed are written again. `fidelity::semantic`: the whole
+    ///          document is regenerated in a canonical layout, members in document order.
     std::string toString() const;
 
     /// @brief Serialize and write to @p path.
     std::string toFile(const std::filesystem::path& path) const;
+
+    /// @brief The fidelity this document was parsed with.
+    fidelity mode() const { return m_fidelity; }
+
+    /// @brief The text after the last member of the document, as it stands in the file.
+    ///        Trailing comments and blank lines live here.
+    const std::string& epilog() const { return m_epilog; }
+
+    /// @brief Replace that text — the place for a comment at the end of the file.
+    void set_epilog(std::string text) { m_epilog = std::move(text); }
 
     // The document itself is a table:
     bool has_key(const std::string& key) const;
@@ -195,11 +344,18 @@ public:
     size_t size() const;
     bool empty() const;
 
+    /// @brief Remove the member @p key, comment included. @return Whether there was one.
+    bool erase(const std::string& key);
+
     toml_table& table();
     const toml_table& table() const;
 
 private:
+    friend class parser_impl::parser;
+
     toml_table m_table;
+    std::string m_epilog;                                        // what follows the last member
+    fidelity m_fidelity = fidelity::raw;
 };
 
 } // namespace scl2

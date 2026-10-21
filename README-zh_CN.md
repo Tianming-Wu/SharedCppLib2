@@ -43,13 +43,17 @@ Other languages: [English](README.md)
 - **[`logt`](doc/zh_CN/logt.md)** - 高性能异步日志记录
 - **[`logc`](doc/zh_CN/logc.md)** - 为 logt 提供彩色控制台输出
 - **`indexer`** - 数据索引和搜索工具
-- **`hpcalc`** - 高精度算术运算
+- **`bigint`** - 任意精度大整数运算
+- **`bigfloat`** - 任意精度大浮点数运算
 - **[`regexfilter`](doc/zh_CN/regexfilter.md)** - 基于正则表达式的黑名单/白名单过滤
 - **`atxsort`** - 通用排序算法
 - **[`ini`](doc/zh_CN/ini.md)** - INI 配置解析与写入库
 - **[`json`](doc/zh_CN/json.md)** - JSON 解析、操作和序列化（早期开发）
 - **[`yaml`](doc/zh_CN/yaml.md)** - YAML 1.2 解析器，支持流式读取（早期开发）
 - **[`toml`](doc/zh_CN/toml.md)** - TOML 解析与序列化（早期开发）
+- **[`json2`](doc/zh_CN/json2.md)** - 无损 JSON：保留原文，改过之后写回去只有改动处不同（早期开发）
+- **[`encoding`](doc/zh_CN/encoding.md)** - 编码边界：内部一律 UTF-8，只在边界上转换（路径、代码页、BOM、控制台）
+- **[`resourced`](doc/zh_CN/resourced.md)** - 具名资源与分层来源（二进制里的块、包文件、裸文件目录），对已在内存中的块零拷贝取用，Windows 上把字节直接变成窗口图标
 - **`platform`** - 跨平台工具和抽象层
 - **[`process`](doc/zh_CN/process.md)** - 子进程管理与管道标准流读写（参考 QProcess）
 - **[`unixsocket`](doc/zh_CN/unixsocket.md)** - 本地（AF_UNIX）套接字，仅限 POSIX
@@ -104,7 +108,7 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(您的目标 SharedCppLib2::basic)
 ```
 
-**可用目标：** `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`
+**可用目标：** `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`, `xml2`, `json2`, `encoding`, `resourced`
 
 上述列表可能不完整，以顶部列表为准。
 
@@ -143,4 +147,4 @@ scl2::bytearray tag = scl2::hmac<scl2::sha256>::compute(payload, key);
 - 可能无法在 gcc / clang 上编译，因为 gcc 采用了与 MSVC 不同的模板实例化策略，导致某些模板无法通过编译期检查。在可用的时候，尽量使用 MSVC 编译器。作者会定期进行相关测试，并尝试修复相关编译问题。
 - HTTPS 实现已从 mainstream 正式放弃，但是预留了 http 集成接口。后续可能会有 OpenSSL 兼容集成，分到独立项目中。
 
-**完整更新日志**: [WhatsNew](WhatsNew) （也可能缺少维护）
+**完整更新日志**: [CHANGELOG.md](CHANGELOG.md) （也可能缺少维护）

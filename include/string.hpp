@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <regex>
 
@@ -70,5 +71,40 @@ std::wstring str_to_wstr(const std::string& str);
 
 /// @brief Convert wide string to UTF-8 string.
 std::string wstr_to_str(const std::wstring& wstr);
+
+/// @brief Drop a leading byte order mark, if there is one.
+/// @details A UTF-8 file written by Notepad, Visual Studio or PowerShell's `Out-File` often
+///          begins with `EF BB BF`, and a wide one may begin with U+FEFF. Neither is part of
+///          the text, and a parser that does not expect it reads a stray character at the edge
+///          of the first token.
+/// @tparam CharT The character type: a 3-byte UTF-8 mark for the 1-byte ones, a leading
+///               U+FEFF for the wider ones.
+/// @param text The text, taken by value so that `s = strip_bom(std::move(s));` is one move.
+/// @return The text without a leading byte order mark (unchanged when there is none).
+template<typename CharT>
+std::basic_string<CharT> strip_bom(std::basic_string<CharT> text)
+{
+    if constexpr (sizeof(CharT) == 1) {
+        if (text.size() >= 3
+            && static_cast<unsigned char>(text[0]) == 0xEF
+            && static_cast<unsigned char>(text[1]) == 0xBB
+            && static_cast<unsigned char>(text[2]) == 0xBF)
+            text.erase(0, 3);
+    } else {
+        if (!text.empty() && static_cast<std::uint32_t>(text[0]) == 0xFEFFu)
+            text.erase(0, 1);
+    }
+    return text;
+}
+
+/// @brief The same, for the library's own string type.
+/// @details Template argument deduction does not go from scl2::basic_string to
+///          std::basic_string, so this overload is what makes `s = scl2::strip_bom(s);`
+///          work with scl2::string as well.
+template<typename CharT>
+scl2::basic_string<CharT> strip_bom(scl2::basic_string<CharT> text)
+{
+    return scl2::basic_string<CharT>(strip_bom(std::basic_string<CharT>(std::move(text))));
+}
 
 } // namespace scl2
