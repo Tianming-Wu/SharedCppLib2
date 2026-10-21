@@ -30,7 +30,7 @@
     several threads at once needs the caller to serialize.
 
     [SCL_STANDALONE_MODULE]
-    version: 2.0.0
+    version: 2.0.1
     cpp_generation: cxx20 - cxx23
 */
 
@@ -123,7 +123,8 @@ namespace plogh {
     constexpr std::string_view function_name(std::string_view signature) {
         constexpr auto is_word_start = [](char c) {
             return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
-                || (c >= '0' && c <= '9') || c == '_';
+                || (c >= '0' && c <= '9') || c == '_'
+                || c == '`' || c == '{'; // `anonymous-namespace', {anonymous}
         };
         // true if the identifier right in front of `pos` (spaces ignored) is `word`.
         constexpr auto word_before = [](std::string_view s, std::size_t pos, std::string_view word) {
@@ -132,6 +133,9 @@ namespace plogh {
         };
         constexpr std::size_t npos = std::string_view::npos;
 
+        // The parameter list is the first '(' outside <...> that is neither preceded by a
+        // space — a parameter list is glued to the name, while the parentheses a return type
+        // may carry sit after one — nor the empty pair of an `operator ()`.
         std::size_t angle = 0, paren = npos;
         for (std::size_t i = 0; i < signature.size() && paren == npos; ++i) {
             const char c = signature[i];
@@ -141,8 +145,29 @@ namespace plogh {
                     && !word_before(signature, i, "operator"))
                 paren = i;
         }
+
+        // `operator<`, `operator<<` and `operator<=` spell a '<' that reads as the start of
+        // template arguments above, and MSVC writes `operator <(…)` with a space before the
+        // parentheses, so neither is found; behind an `operator` keyword the next '(' is the
+        // parameter list, less the empty pair that `operator ()` owns.
+        if (paren == npos) {
+            for (std::size_t i = 0; i + 8 <= signature.size(); ++i) {
+                if (signature.compare(i, 8, "operator") != 0) continue;
+                if (i > 0 && is_word_start(signature[i - 1])) continue;
+                if (i + 8 < signature.size() && is_word_start(signature[i + 8])) continue;
+                std::size_t j = i + 8;
+                while (j < signature.size() && signature[j] == ' ') ++j;
+                if (j + 1 < signature.size() && signature[j] == '(' && signature[j + 1] == ')')
+                    j += 2;
+                paren = signature.find('(', j);
+                break;
+            }
+        }
         if (paren == npos) return signature;
 
+        // In front of it the name starts after the last space outside <...> that a word
+        // follows. The return type and the calling convention are before that space; the
+        // spaces inside `operator +` and `operator new` are inside the name.
         std::size_t start = 0;
         angle = 0;
         for (std::size_t i = 0; i + 1 < paren; ++i) {
@@ -156,9 +181,22 @@ namespace plogh {
                     start = i + 1;
             }
         }
-        return signature.substr(start, paren - start);
+
+        std::string_view name = signature.substr(start, paren - start);
+
+        // A calling convention says nothing about where the line came from. An anonymous
+        // namespace does, so it stays — and it stays spelled the way the compiler writes it:
+        // `anonymous-namespace'::helper on MSVC, {anonymous}::helper on GCC / Clang.
+        for (std::string_view prefix : { "__cdecl ", "__stdcall ", "__fastcall ",
+                                         "__vectorcall ", "__thiscall ", "__clrcall " }) {
+            if (name.size() > prefix.size() && name.substr(0, prefix.size()) == prefix) {
+                name.remove_prefix(prefix.size());
+                break;
+            }
+        }
+        return name;
     }
-} // namespace __plogh
+} // namespace plogh
 
 #if defined(_MSC_VER)
     #define LOGH_FUNCSIG __FUNCSIG__

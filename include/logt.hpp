@@ -406,7 +406,8 @@ namespace scl2 {
 constexpr std::string_view function_name(std::string_view signature) {
     constexpr auto is_word_start = [](char c) {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
-            || (c >= '0' && c <= '9') || c == '_';
+            || (c >= '0' && c <= '9') || c == '_'
+            || c == '`' || c == '{'; // `anonymous-namespace', {anonymous}
     };
     // true if the identifier right in front of `pos` (spaces ignored) is `word`.
     constexpr auto word_before = [](std::string_view s, std::size_t pos, std::string_view word) {
@@ -429,6 +430,24 @@ constexpr std::string_view function_name(std::string_view signature) {
                  && !word_before(signature, i, "operator"))
             paren = i;
     }
+
+    // `operator<`, `operator<<` and `operator<=` spell a '<' that reads as the start of
+    // template arguments above, and MSVC writes `operator <(…)` with a space before the
+    // parentheses, so neither is found; behind an `operator` keyword the next '(' is the
+    // parameter list, less the empty pair that `operator ()` owns.
+    if (paren == npos) {
+        for (std::size_t i = 0; i + 8 <= signature.size(); ++i) {
+            if (signature.compare(i, 8, "operator") != 0) continue;
+            if (i > 0 && is_word_start(signature[i - 1])) continue;
+            if (i + 8 < signature.size() && is_word_start(signature[i + 8])) continue;
+            std::size_t j = i + 8;
+            while (j < signature.size() && signature[j] == ' ') ++j;
+            if (j + 1 < signature.size() && signature[j] == '(' && signature[j + 1] == ')')
+                j += 2;
+            paren = signature.find('(', j);
+            break;
+        }
+    }
     if (paren == npos) return signature;
 
     // In front of it the name starts after the last space outside <...> that a word follows.
@@ -447,7 +466,20 @@ constexpr std::string_view function_name(std::string_view signature) {
                 start = i + 1;
         }
     }
-    return signature.substr(start, paren - start);
+
+    std::string_view name = signature.substr(start, paren - start);
+
+    // A calling convention says nothing about where the line came from. An anonymous
+    // namespace does, so it stays — and it stays spelled the way the compiler writes it:
+    // `anonymous-namespace'::helper on MSVC, {anonymous}::helper on GCC / Clang.
+    for (std::string_view prefix : { "__cdecl ", "__stdcall ", "__fastcall ",
+                                     "__vectorcall ", "__thiscall ", "__clrcall " }) {
+        if (name.size() > prefix.size() && name.substr(0, prefix.size()) == prefix) {
+            name.remove_prefix(prefix.size());
+            break;
+        }
+    }
+    return name;
 }
 
 } // namespace scl2

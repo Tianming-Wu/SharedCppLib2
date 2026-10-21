@@ -12,6 +12,8 @@ See [release.md](doc/release.md) for the releasing standards.
 - Removed: `logh` — the conditional macros `LOGHC_*` / `LOGH_CONDITIONAL`, which compiled a call out by defining a macro of their own, and `logh::setChannel()` / `logh_out`, which `setFileOutput()` and `setConsoleOutput()` replace.
 - Changed: `logh` reports a format string that does not match its arguments inside the line it was writing (`<format error: …>`), and a log call never throws — a line that cannot be formatted, or cannot be built at all, is reported in place or dropped.
 - Fixed: `logt` — `scl2::function_name()`, which `LOGT_AUTO` names its logger after, returned the whole signature for a function that takes no arguments: under `__PRETTY_FUNCTION__`, `void f()` and `int f() const` came back as themselves instead of `f`. An empty pair of parentheses is skipped only when it belongs to `operator ()`.
+- Fixed: `logh` — `LOGH_AUTOSIGNATURE` printed the whole signature for `operator<`, `operator<=` and `operator<<`, and kept the calling convention in front of the name. An anonymous namespace is part of the name as the compiler spells it: `` `anonymous-namespace'::helper `` on MSVC, `{anonymous}::helper` on GCC / Clang.
+- Fixed: `logt` — the same two cases in `scl2::function_name()`: operators whose spelling contains `<`, and the calling convention in front of the name.
 
 ### v3.9.0
 - Fixed: `bytearray` rejects truncated strings and invalid lengths instead of reading beyond its data; reading an empty contiguous container no longer misaligns the next value.
