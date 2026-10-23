@@ -333,8 +333,9 @@ bool parser::readLine(std::istream &input)
 
 void parser::parseLine()
 {
-    // we should have a full string in line buffer.
-    // now parse the indentation, and trim the content.
+    // Ignore blank and comment-only lines before changing indentation scopes.
+    _line = stripComments(_line);
+    if (_line.empty()) return;
 
     _indent_level = countIndentLevel();
 
@@ -350,9 +351,6 @@ void parser::parseLine()
             _stack.back().parent_key = std::move(_stack[_stack.size() - 2].pending_key);
         }
     }
-
-    _line = stripComments(_line);
-    if (_line.empty()) return; // empty line, skip
 
     // Trim leading whitespace (indent was already counted)
     _line = _line.substr(_line_pos);

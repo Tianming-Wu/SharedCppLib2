@@ -2,6 +2,9 @@
 
 See [release.md](doc/release.md) for the releasing standards.
 
+## [Unreleased]
+- Fixed: blank and comment-only YAML lines no longer pop indentation scopes, preserving nested mappings and sequences.
+
 ### v3.9.1
 - New: `variant::make_array()` and `variant::make_object()` — a default `variant` is null, so an empty array or object could only be written by naming the container type. Both also take an initializer list to fill what they make, and a repeated key keeps its last value.
 - Changed: `logh` is header-only — the header can be included wherever a log call is written, and `LOGH_IMPLEMENTATION` in exactly one source file is gone.
