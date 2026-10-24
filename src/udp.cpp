@@ -230,11 +230,12 @@ datagram socket::receiveFrom(std::chrono::milliseconds timeout)
     tv.tv_sec  = static_cast<long>(timeout.count() / 1000);
     tv.tv_usec = static_cast<long>((timeout.count() % 1000) * 1000);
 
+    // Zero means "do not wait", a negative timeout means "wait forever".
+    timeval* wait = (timeout.count() < 0) ? nullptr : &tv;
 #ifdef OS_WINDOWS
-    int ret = ::select(0, &readset, nullptr, nullptr, (timeout.count() == 0) ? nullptr : &tv);
+    int ret = ::select(0, &readset, nullptr, nullptr, wait);
 #else
-    int ret = ::select(m_socket + 1, &readset, nullptr, nullptr,
-                       (timeout.count() == 0) ? nullptr : &tv);
+    int ret = ::select(m_socket + 1, &readset, nullptr, nullptr, wait);
 #endif
 
     if (ret <= 0 || !FD_ISSET(m_socket, &readset)) {

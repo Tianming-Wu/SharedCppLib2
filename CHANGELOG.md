@@ -3,6 +3,7 @@
 See [release.md](doc/release.md) for the releasing standards.
 
 ## [Unreleased]
+- Fixed: a UDP socket's `receiveFrom()` without a timeout blocked for ever instead of taking only what had already arrived; zero now polls, and a negative timeout waits without a limit.
 - New: `network::ws::client` — a WebSocket client: opening handshake, text and binary messages, fragmentation and control frames handled inside, and `wss` through any transport that implements the shared stream interface.
 - Fixed: network HTTP and WebSocket reads are bounded, HTTP framing headers are validated without regard to header-name case, and closed TCP clients are reclaimed.
 - Fixed: blank and comment-only YAML lines no longer pop indentation scopes, preserving nested mappings and sequences.
