@@ -25,7 +25,7 @@ target_link_libraries(target SharedCppLib2::network)
 
 > [!NOTE]
 > 这一层完全是同步的，没有事件循环，也没有回调：调用会在拿到结果时返回，超时也是一个
-> 返回值。HTTP（[http](http.md)）与 WebSocket 是建立在 TCP 之上的独立协议层。
+> 返回值。HTTP（[http](http.md)）与 WebSocket（[ws](ws.md)）是建立在 TCP 之上的独立协议层。
 
 ## 描述
 
@@ -350,4 +350,5 @@ std::optional<std::chrono::milliseconds> ping_rtt(
 ## 相关模块
 
 - [http](http.md) — 建立在 TCP 之上的 HTTP 客户端与服务端
+- [ws](ws.md) — WebSocket 客户端
 - [bytearray](bytearray.md) — I/O 调用使用的缓冲类型

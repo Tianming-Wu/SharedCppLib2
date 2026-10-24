@@ -261,4 +261,5 @@ network::http::response upload_file(const std::string& url,
 ## 相关模块
 
 - [network](network.md) — 地址、DNS、TCP 与 UDP
+- [ws](ws.md) — WebSocket 客户端
 - [bytearray](bytearray.md) — 辅助函数使用的缓冲类型

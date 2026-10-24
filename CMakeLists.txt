@@ -213,11 +213,15 @@ target_link_libraries(network_http PUBLIC basic network_core network_tcp)
 add_library(network_io STATIC src/network_io.cpp)
 target_link_libraries(network_io PUBLIC network_http network_tcp uri fileio basic)
 
+# WebSocket 协议层：只依赖 transport_interface（basic）与握手用的 sha1；
+# 因此同一份实现既能跑在 tcp::client 上，也能跑在 SCL2Ext 的 TLS transport 上。
+add_library(network_ws STATIC src/wsclient.cpp)
+target_link_libraries(network_ws PUBLIC basic PRIVATE sha1 network_tcp)
 
 # Aggregate target — link this to get all network functionality
 add_library(network INTERFACE)
 target_link_libraries(network INTERFACE
-    network_core network_dns network_tcp network_udp network_http network_io
+    network_core network_dns network_tcp network_udp network_http network_io network_ws
 )
 
 # 禁用 MSVC 的显式模板实例化警告
@@ -289,7 +293,7 @@ set(TARGET_LIST
     logt logc platform perm process arguments ini abstract xml xml2 json2 encoding debug
     console aes keydb types condition filesystem datauri json toml i18n yaml
     fileio file resourced uri pipe
-    network_core network_dns network_tcp network_udp network_http network_io
+    network_core network_dns network_tcp network_udp network_http network_io network_ws
     bitmap qrcode zlib png xkeydb
 )
 

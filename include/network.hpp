@@ -142,6 +142,7 @@ std::optional<std::chrono::milliseconds> ping_rtt(const network_address& addr,
 // The definitions of these classes are in their respective headers.
 namespace http {}
 namespace dns {}
+namespace ws {}
 
 
 } // namespace network

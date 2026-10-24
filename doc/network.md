@@ -26,7 +26,7 @@ target_link_libraries(target SharedCppLib2::network)
 > [!NOTE]
 > The whole layer is synchronous and has no event loop or callbacks: a call returns when it
 > has its answer, and a timeout is a return value. HTTP ([http](http.md)) and WebSocket
-> are separate protocol layers built on top of TCP.
+> ([ws](ws.md)) are separate protocol layers built on top of TCP.
 
 ## Description
 
@@ -366,4 +366,5 @@ host name and an IPv6 address. Resolve a name with `dns_query()` first.
 ## See Also
 
 - [http](http.md) — HTTP client and server on top of TCP
+- [ws](ws.md) — WebSocket client
 - [bytearray](bytearray.md) — the buffer type the I/O calls use

@@ -267,4 +267,5 @@ network::http::response upload_file(const std::string& url,
 ## See Also
 
 - [network](network.md) — addresses, DNS, TCP and UDP
+- [ws](ws.md) — WebSocket client
 - [bytearray](bytearray.md) — the buffer type the helpers use

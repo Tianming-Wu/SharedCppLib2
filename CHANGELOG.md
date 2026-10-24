@@ -3,6 +3,7 @@
 See [release.md](doc/release.md) for the releasing standards.
 
 ## [Unreleased]
+- New: `network::ws::client` — a WebSocket client: opening handshake, text and binary messages, fragmentation and control frames handled inside, and `wss` through any transport that implements the shared stream interface.
 - Fixed: network HTTP and WebSocket reads are bounded, HTTP framing headers are validated without regard to header-name case, and closed TCP clients are reclaimed.
 - Fixed: blank and comment-only YAML lines no longer pop indentation scopes, preserving nested mappings and sequences.
 - Changed: the libraries install under `lib/scl2`, so one prefix keeps a directory per project; the package files stay in `lib/cmake/SharedCppLib2` and the exported targets follow the new location.
