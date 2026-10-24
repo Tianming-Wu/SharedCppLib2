@@ -1,5 +1,7 @@
 #include "tcpserver.hpp"
 
+#include <algorithm>
+#include <cerrno>
 #include <cstring>
 
 extern int _n_sock;
@@ -70,6 +72,10 @@ scl2::bytearray server_client_handler::read(size_t bytes)
         0
     );
     if (received <= 0) {
+        if (m_client_info.socket != invalid_socket) {
+            close_socket(m_client_info.socket);
+            m_client_info.socket = invalid_socket;
+        }
         return scl2::bytearray();
     }
     return scl2::bytearray(buffer.data(), static_cast<size_t>(received));
@@ -79,9 +85,12 @@ scl2::bytearray server_client_handler::readAll()
 {
     size_t bytes = available();
     if (bytes == 0) {
+        // select() also reports an orderly peer shutdown as readable. Probe it
+        // without allowing a blocking accepted socket to stall the server.
+        if (readable()) return read(1);
         return scl2::bytearray();
     }
-    return read(bytes);
+    return read(bytes < size_t(64u * 1024u) ? bytes : size_t(64u * 1024u));
 }
 
 size_t server_client_handler::write(const scl2::bytearray &data)
@@ -224,6 +233,9 @@ void server::start(uint16_t port)
 #ifdef OS_WINDOWS
     u_long non_blocking = 1;
     ::ioctlsocket(listen_socket, FIONBIO, &non_blocking);
+#else
+    int non_blocking = 1;
+    ::ioctl(listen_socket, FIONBIO, &non_blocking);
 #endif
 
     m_listen_socket = listen_socket;
@@ -260,6 +272,20 @@ void server::stop()
 
 uint16_t server::port() const { return m_port; }
 network_address server::address() const { return m_address; }
+
+bool server::closeClient(client_id id)
+{
+    auto guard = lock();
+    const auto it = m_clients.find(id);
+    if (it == m_clients.end()) return false;
+
+    if (it->second.socket != invalid_socket) {
+        close_socket(it->second.socket);
+        it->second.socket = invalid_socket;
+    }
+    m_clients.erase(it);
+    return true;
+}
 
 std::string server::hostname(size_t max_length)
 {
@@ -298,6 +324,48 @@ int server::tick()
         return -1;
     }
 
+    {
+        auto guard = lock();
+        for (auto it = m_clients.begin(); it != m_clients.end();) {
+            if (it->second.socket == invalid_socket) {
+                it = m_clients.erase(it);
+                continue;
+            }
+
+            fd_set readset;
+            FD_ZERO(&readset);
+            FD_SET(it->second.socket, &readset);
+            timeval tv{};
+#ifdef OS_WINDOWS
+            const int ready = ::select(0, &readset, nullptr, nullptr, &tv);
+#else
+            const int ready = ::select(it->second.socket + 1, &readset, nullptr, nullptr, &tv);
+#endif
+            if (ready <= 0 || !FD_ISSET(it->second.socket, &readset)) {
+                ++it;
+                continue;
+            }
+
+            char probe = 0;
+            const int received = ::recv(it->second.socket, &probe, 1, MSG_PEEK);
+            bool closed = received == 0;
+            if (received < 0) {
+#ifdef OS_WINDOWS
+                const int error = ::WSAGetLastError();
+                closed = error != WSAEWOULDBLOCK && error != WSAEINPROGRESS;
+#else
+                closed = errno != EAGAIN && errno != EWOULDBLOCK;
+#endif
+            }
+            if (closed) {
+                close_socket(it->second.socket);
+                it = m_clients.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+
     sockaddr_in client_addr;
     std::memset(&client_addr, 0, sizeof(client_addr));
 #ifdef OS_WINDOWS
@@ -311,6 +379,14 @@ int server::tick()
     if (client_socket == invalid_socket) {
         return 0; // no pending connections
     }
+
+#ifdef OS_WINDOWS
+    u_long non_blocking = 1;
+    ::ioctlsocket(client_socket, FIONBIO, &non_blocking);
+#else
+    int non_blocking = 1;
+    ::ioctl(client_socket, FIONBIO, &non_blocking);
+#endif
 
     client_id new_id = m_next_client_id++;
     auto [it, inserted] = m_clients.try_emplace(new_id);

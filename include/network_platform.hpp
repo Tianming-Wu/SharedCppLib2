@@ -13,6 +13,10 @@
 #endif
 
 #ifdef OS_WINDOWS
+    // Keep Windows' min/max macros out of users of the network headers.
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
     // Winsock2.h MUST be included before Windows.h
     #include <winsock2.h>
     #include <ws2tcpip.h>

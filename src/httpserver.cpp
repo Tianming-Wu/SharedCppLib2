@@ -77,6 +77,9 @@ void server::handleClient(tcp::client_id id)
     if (handler.readable()) {
         auto data = handler.readAll();
         if (data.empty()) {
+            // readAll() probes EOF and invalidates the TCP client on shutdown.
+            m_tcp_server.closeClient(id);
+            m_client_buffers.erase(id);
             return;
         }
 
@@ -84,10 +87,27 @@ void server::handleClient(tcp::client_id id)
         m_client_buffers[id] += data.toStdString();
 
         std::string& buffer = m_client_buffers[id];
-        
-        // Check if we have complete headers
-        if (!request::has_complete_headers(buffer)) {
+
+        const size_t header_end = buffer.find("\r\n\r\n");
+        if (header_end == std::string::npos) {
+            if (buffer.size() > max_header_size) {
+                response resp = response::make_text(http_status::PAYLOAD_TOO_LARGE,
+                                                    "Request headers too large");
+                handler.write(scl2::bytearray(resp.serialize()));
+                m_tcp_server.closeClient(id);
+                m_client_buffers.erase(id);
+            }
             return; // Wait for more data
+        }
+
+        if (header_end + 4 > max_header_size ||
+            buffer.size() > max_header_size + max_body_size) {
+            response resp = response::make_text(http_status::PAYLOAD_TOO_LARGE,
+                                                "Request too large");
+            handler.write(scl2::bytearray(resp.serialize()));
+            m_tcp_server.closeClient(id);
+            m_client_buffers.erase(id);
+            return;
         }
         
         // Try to parse the request to check Content-Length
@@ -98,15 +118,59 @@ void server::handleClient(tcp::client_id id)
             // Parsing failed, send 400 Bad Request
             response resp = response::make_text(http_status::BAD_REQUEST, "Bad Request");
             handler.write(scl2::bytearray(resp.serialize()));
+            m_tcp_server.closeClient(id);
             m_client_buffers.erase(id);
             return;
         }
+
+        for (const auto& [name, value] : req.headers) {
+            if (name.size() == 17) {
+                std::string lowered = name;
+                for (char& c : lowered) {
+                    if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + ('a' - 'A'));
+                }
+                if (lowered == "transfer-encoding") {
+                    response resp = response::make_text(http_status::BAD_REQUEST,
+                                                        "Transfer-Encoding is not supported");
+                    handler.write(scl2::bytearray(resp.serialize()));
+                    m_tcp_server.closeClient(id);
+                    m_client_buffers.erase(id);
+                    return;
+                }
+            }
+        }
         
         // Check if we have complete body
-        size_t content_length = req.get_content_length();
-        size_t header_end = buffer.find("\r\n\r\n");
+        size_t content_length = 0;
+        try {
+            content_length = req.get_content_length();
+        } catch (const std::exception&) {
+            response resp = response::make_text(http_status::BAD_REQUEST, "Bad Request");
+            handler.write(scl2::bytearray(resp.serialize()));
+            m_tcp_server.closeClient(id);
+            m_client_buffers.erase(id);
+            return;
+        }
+        if (content_length > max_body_size) {
+            response resp = response::make_text(http_status::PAYLOAD_TOO_LARGE,
+                                                "Request body too large");
+            handler.write(scl2::bytearray(resp.serialize()));
+            m_tcp_server.closeClient(id);
+            m_client_buffers.erase(id);
+            return;
+        }
+
         size_t body_start = header_end + 4;
         size_t current_body_length = buffer.size() - body_start;
+
+        if (current_body_length > max_body_size) {
+            response resp = response::make_text(http_status::PAYLOAD_TOO_LARGE,
+                                                "Request body too large");
+            handler.write(scl2::bytearray(resp.serialize()));
+            m_tcp_server.closeClient(id);
+            m_client_buffers.erase(id);
+            return;
+        }
         
         if (current_body_length < content_length) {
             return; // Wait for more body data
@@ -139,6 +203,7 @@ void server::handleClient(tcp::client_id id)
         handler.write(scl2::bytearray(resp.serialize()));
         
         // Clear the buffer
+        m_tcp_server.closeClient(id);
         m_client_buffers.erase(id);
     }
 }

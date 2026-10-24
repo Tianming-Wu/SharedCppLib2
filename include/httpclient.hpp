@@ -15,6 +15,7 @@
 #include <memory>
 #include <chrono>
 #include <optional>
+#include <cstddef>
 
 namespace network::http {
 
@@ -84,6 +85,14 @@ public:
     void set_body_timeout(std::chrono::milliseconds timeout);
     std::chrono::milliseconds body_timeout() const;
 
+    /// @brief Limit the response header block buffered by the client.
+    void set_max_header_size(std::size_t bytes);
+    std::size_t max_header_size() const;
+
+    /// @brief Limit the response body buffered by the client.
+    void set_max_body_size(std::size_t bytes);
+    std::size_t max_body_size() const;
+
     /// @brief Timeout for the connection itself, resolution included
     ///        (default: 10 seconds).
     /// @note Only transports that can honour it do; see
@@ -112,6 +121,8 @@ private:
     std::chrono::milliseconds m_timeout = std::chrono::seconds(30);         // body
     std::chrono::milliseconds m_header_timeout = std::chrono::seconds(30);  // status line + headers
     std::chrono::milliseconds m_connect_timeout = std::chrono::seconds(10); // connection
+    std::size_t m_max_header_size = 64u * 1024u;
+    std::size_t m_max_body_size = 64u * 1024u * 1024u;
 };
 
 } // namespace network::http

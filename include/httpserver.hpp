@@ -19,6 +19,7 @@
 #include <map>
 #include <string>
 #include <memory>
+#include <cstddef>
 
 namespace network::http {
 
@@ -63,6 +64,9 @@ private:
     tcp::server m_tcp_server;
     std::map<std::pair<http_method, std::string>, route_handler> m_routes;
     std::map<tcp::client_id, std::string> m_client_buffers; // Partial HTTP requests
+
+    static constexpr std::size_t max_header_size = 64u * 1024u;
+    static constexpr std::size_t max_body_size = 8u * 1024u * 1024u;
 };
 
 } // namespace network::http

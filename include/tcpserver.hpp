@@ -78,6 +78,9 @@ public:
     
     std::vector<client_id> clients();
 
+    /// @brief Close and remove a client. Safe when the id is already gone.
+    bool closeClient(client_id id);
+
     server_client_handler selectClient(client_id& id);
 
     auto lock() -> std::unique_lock<std::mutex>;

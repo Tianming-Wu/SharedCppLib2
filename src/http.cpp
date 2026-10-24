@@ -46,6 +46,11 @@ std::optional<size_t> content_length(const std::map<std::string, std::string>& h
 
 std::string read_body(std::istream& stream, const std::map<std::string, std::string>& headers)
 {
+    if (find_header(headers, "Content-Length") &&
+        find_header(headers, "Transfer-Encoding")) {
+        throw network_error("Content-Length and Transfer-Encoding cannot be combined");
+    }
+
     // Preserve embedded nulls. Incremental callers may only have part of the body yet.
     std::string body{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
     const auto length = content_length(headers);
@@ -215,6 +220,12 @@ request request::deserialize(const std::string& str)
         
         std::string key = line.substr(0, colon);
         std::string value = line.substr(colon + 1);
+
+        if ((header_name_equal(key, "Content-Length") ||
+             header_name_equal(key, "Transfer-Encoding")) &&
+            find_header(req.headers, key)) {
+            throw network_error("Duplicate HTTP framing header");
+        }
         
         // Trim whitespace from value
         size_t start = value.find_first_not_of(" \t");
@@ -321,6 +332,12 @@ response response::deserialize(const std::string& str)
         
         std::string key = line.substr(0, colon);
         std::string value = line.substr(colon + 1);
+
+        if ((header_name_equal(key, "Content-Length") ||
+             header_name_equal(key, "Transfer-Encoding")) &&
+            find_header(resp.headers, key)) {
+            throw network_error("Duplicate HTTP framing header");
+        }
         
         size_t start = value.find_first_not_of(" \t");
         if (start != std::string::npos) {

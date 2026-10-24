@@ -3,6 +3,7 @@
 See [release.md](doc/release.md) for the releasing standards.
 
 ## [Unreleased]
+- Fixed: network HTTP and WebSocket reads are bounded, HTTP framing headers are validated without regard to header-name case, and closed TCP clients are reclaimed.
 - Fixed: blank and comment-only YAML lines no longer pop indentation scopes, preserving nested mappings and sequences.
 
 ### v3.9.1
