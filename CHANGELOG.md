@@ -5,6 +5,7 @@ See [release.md](doc/release.md) for the releasing standards.
 ## [Unreleased]
 - Fixed: network HTTP and WebSocket reads are bounded, HTTP framing headers are validated without regard to header-name case, and closed TCP clients are reclaimed.
 - Fixed: blank and comment-only YAML lines no longer pop indentation scopes, preserving nested mappings and sequences.
+- Changed: the libraries install under `lib/scl2`, so one prefix keeps a directory per project; the package files stay in `lib/cmake/SharedCppLib2` and the exported targets follow the new location.
 
 ### v3.9.1
 - New: `variant::make_array()` and `variant::make_object()` — a default `variant` is null, so an empty array or object could only be written by naming the container type. Both also take an initializer list to fill what they make, and a repeated key keeps its last value.
