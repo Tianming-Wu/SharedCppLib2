@@ -18,7 +18,26 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # 安装路径配置  
 include(GNUInstallDirs)
-set(INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/scl2)
+
+# 同一套源码编两次：普通库，与 SCL2EventSubsystem 用的变体（开 SCL2_EVENT_SUBSYSTEM 宏）。
+# 变体的库文件、导出集、包名都另放一套，普通库的安装不受影响；两者不可混链，
+# 见 include/scl2mode.hpp 里的护栏。
+option(SCL2_EVENT_SUBSYSTEM "Build the variant used by SCL2EventSubsystem" OFF)
+
+if(SCL2_EVENT_SUBSYSTEM)
+    set(INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/event)
+    set(SCL2_EXPORT_SET scl2eventScl2Targets)
+    set(SCL2_EXPORT_FILE scl2eventScl2Targets.cmake)
+    set(SCL2_EXPORT_NAMESPACE scl2event::)
+    set(SCL2_EXPORT_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/scl2event)
+else()
+    set(INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/scl2)
+    set(SCL2_EXPORT_SET SharedCppLib2Targets)
+    set(SCL2_EXPORT_FILE SharedCppLib2Targets.cmake)
+    set(SCL2_EXPORT_NAMESPACE SharedCppLib2::)
+    set(SCL2_EXPORT_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2)
+endif()
+
 set(INSTALL_INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/SharedCppLib2)
 
 # 防止编码报错
@@ -194,6 +213,7 @@ target_link_libraries(network_http PUBLIC basic network_core network_tcp)
 add_library(network_io STATIC src/network_io.cpp)
 target_link_libraries(network_io PUBLIC network_http network_tcp uri fileio basic)
 
+
 # Aggregate target — link this to get all network functionality
 add_library(network INTERFACE)
 target_link_libraries(network INTERFACE
@@ -275,7 +295,7 @@ set(TARGET_LIST
 
 # 安装目标
 install(TARGETS ${TARGET_LIST}
-    EXPORT SharedCppLib2Targets
+    EXPORT ${SCL2_EXPORT_SET}
     ARCHIVE DESTINATION ${INSTALL_LIBDIR}
     LIBRARY DESTINATION ${INSTALL_LIBDIR}
     RUNTIME DESTINATION ${INSTALL_BINDIR}
@@ -285,6 +305,10 @@ install(TARGETS ${TARGET_LIST}
 # 为每个目标设置导出属性
 foreach(target_name ${TARGET_LIST})
     target_compile_features(${target_name} PUBLIC cxx_std_23)
+    if(SCL2_EVENT_SUBSYSTEM)
+        # 公开传递：消费方包含适配过的头时必须是同一种语义。
+        target_compile_definitions(${target_name} PUBLIC SCL2_EVENT_SUBSYSTEM)
+    endif()
     # 设置不同配置的库文件位置
     # set_property(TARGET ${target_name} PROPERTY 
     #     ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG}")
@@ -306,6 +330,9 @@ endforeach()
 # INTERFACE-only targets 导出属性
 foreach(target_name api ${INTERFACE_TARGET_LIST})
     target_compile_features(${target_name} INTERFACE cxx_std_23)
+    if(SCL2_EVENT_SUBSYSTEM)
+        target_compile_definitions(${target_name} INTERFACE SCL2_EVENT_SUBSYSTEM)
+    endif()
     target_include_directories(${target_name} INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
@@ -314,7 +341,7 @@ foreach(target_name api ${INTERFACE_TARGET_LIST})
 endforeach()
 
 install(TARGETS api ${INTERFACE_TARGET_LIST}
-    EXPORT SharedCppLib2Targets
+    EXPORT ${SCL2_EXPORT_SET}
     INCLUDES DESTINATION ${INSTALL_INCLUDEDIR}
 )
 
@@ -332,11 +359,14 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/SharedCppLib2/
 )
 
 # 安装导出文件
-install(EXPORT SharedCppLib2Targets
-    FILE SharedCppLib2Targets.cmake
-    NAMESPACE SharedCppLib2::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
+install(EXPORT ${SCL2_EXPORT_SET}
+    FILE ${SCL2_EXPORT_FILE}
+    NAMESPACE ${SCL2_EXPORT_NAMESPACE}
+    DESTINATION ${SCL2_EXPORT_DESTINATION}
 )
+
+# 变体只由 SCL2EventSubsystem 的包负责，自己的 Config/版本文件不装。
+if(NOT SCL2_EVENT_SUBSYSTEM)
 
 # 生成配置文件
 include(CMakePackageConfigHelpers)
@@ -386,3 +416,5 @@ install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/SharedCppLib2ConfigVersion.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SharedCppLib2
 )
+
+endif()   # NOT SCL2_EVENT_SUBSYSTEM

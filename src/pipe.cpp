@@ -1,5 +1,8 @@
 #include "pipe.hpp"
 
+// The other half of the variant guard in scl2mode.hpp.
+SCL2_MODE_DEFINE
+
 #if SCL2_PIPE_SUPPORTED
 
 #include "platform.hpp"

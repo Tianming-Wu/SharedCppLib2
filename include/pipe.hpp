@@ -31,6 +31,7 @@
 #include "basics.hpp"
 #include "bytearray.hpp"
 #include "engineering.hpp"
+#include "scl2mode.hpp"
 #include "stream.hpp"
 #include "typemask.hpp"
 
