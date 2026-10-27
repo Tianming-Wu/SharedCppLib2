@@ -195,6 +195,15 @@ add_library(pipe STATIC src/pipe.cpp)
 target_link_libraries(pipe PUBLIC basic)
 target_link_libraries(pipe PRIVATE platform)
 
+# serial 是串口：Windows 走 COMM API，POSIX 走 termios。头文件和 process 一样不引入平台头
+# （句柄以 std::intptr_t 传递），平台差异全在 serial.cpp。Windows 上的端口枚举读注册表，
+# 所以还要 advapi32。
+add_library(serial STATIC src/serial.cpp)
+target_link_libraries(serial PUBLIC basic PRIVATE platform)
+if(WIN32)
+    target_link_libraries(serial PRIVATE advapi32)
+endif()
+
 add_library(network_core STATIC src/network.cpp)
 add_library(network_dns STATIC src/dns.cpp)
 add_library(network_tcp STATIC src/tcpclient.cpp src/tcpserver.cpp)
@@ -295,7 +304,7 @@ set(TARGET_LIST
     sha256 sha512 sha1 crc32 basic indexer regexfilter
     logt logc platform perm process arguments ini abstract xml xml2 json2 encoding debug
     console aes keydb types condition filesystem datauri json toml i18n yaml settings
-    fileio file resourced uri pipe
+    fileio file resourced uri pipe serial
     network_core network_dns network_tcp network_udp network_http network_io network_ws
     bitmap qrcode zlib png xkeydb
 )
