@@ -1,11 +1,8 @@
 #include "httpclient.hpp"
 
 #include <cctype>
-#include <charconv>
 #include <chrono>
-#include <limits>
 #include <thread>
-#include <algorithm>
 
 namespace network::http {
 
@@ -32,50 +29,10 @@ const std::string* find_header(const std::map<std::string, std::string>& headers
     return nullptr;
 }
 
-void set_header(std::map<std::string, std::string>& headers,
-                const std::string& name, const std::string& value)
-{
-    for (auto& [key, current] : headers) {
-        if (iequals(key, name)) {
-            current = value;
-            return;
-        }
-    }
-    headers[name] = value;
-}
-
 bool is_chunked(const std::map<std::string, std::string>& headers)
 {
     const std::string* te = find_header(headers, "Transfer-Encoding");
-    if (!te) return false;
-
-    size_t at = 0;
-    while (at <= te->size()) {
-        const size_t comma = te->find(',', at);
-        const size_t end = comma == std::string::npos ? te->size() : comma;
-        size_t first = te->find_first_not_of(" \t", at);
-        if (first != std::string::npos && first < end) {
-            size_t last = te->find_last_not_of(" \t", end - 1);
-            if (last != std::string::npos && iequals(te->substr(first, last - first + 1), "chunked")) {
-                return comma == std::string::npos;
-            }
-        }
-        if (comma == std::string::npos) break;
-        at = comma + 1;
-    }
-    return false;
-}
-
-std::optional<size_t> parse_content_length(const std::string& value)
-{
-    const size_t first = value.find_first_not_of(" \t");
-    if (first == std::string::npos) throw network_error("Invalid Content-Length");
-    const size_t last = value.find_last_not_of(" \t") + 1;
-    size_t length = 0;
-    const auto result = std::from_chars(value.data() + first, value.data() + last, length);
-    if (result.ec != std::errc{} || result.ptr != value.data() + last)
-        throw network_error("Invalid Content-Length");
-    return length;
+    return te && te->find("chunked") != std::string::npos;
 }
 
 // 增量 chunked 解码器（状态机）。网络数据可能被切成任意小块到达，因此必须
@@ -89,7 +46,6 @@ struct chunked_decoder {
     bool done = false;
     st state = st::SizeLine;
     unsigned long long data_left = 0;      // 当前块剩余待收字节
-    size_t max_output = 0;
 
     // 用 raw 中自 pos 起的新数据推进解析；完整消费（0 块 + trailer 空行）时
     // 返回 true，数据不足时返回 false（可追加数据后再次调用）。
@@ -109,9 +65,13 @@ struct chunked_decoder {
                     throw network_error("Invalid chunked encoding");
                 line = line.substr(fs);
                 unsigned long long sz = 0;
-                const auto result = std::from_chars(line.data(), line.data() + line.size(), sz, 16);
-                if (result.ec != std::errc{} || result.ptr != line.data() + line.size())
+                std::string::size_type p = 0;
+                try {
+                    sz = std::stoull(line, &p, 16);
+                } catch (...) {
                     throw network_error("Invalid chunk size");
+                }
+                if (p == 0) throw network_error("Invalid chunk size");
                 if (sz == 0) { state = st::Trailer; break; }
                 data_left = sz;
                 state = st::Data;
@@ -123,8 +83,6 @@ struct chunked_decoder {
                 if (avail == 0) return false;                // 等块数据
                 const size_t take = avail < data_left
                                     ? avail : static_cast<size_t>(data_left);
-                if (take > max_output - out.size())
-                    throw network_error("Response body too large");
                 out.append(raw, pos, take);
                 pos += take;
                 data_left -= take;
@@ -201,7 +159,7 @@ response client::post(const std::string& path,
                      const std::map<std::string, std::string>& headers)
 {
     auto full_headers = headers;
-    set_header(full_headers, "Content-Type", content_type);
+    full_headers["Content-Type"] = content_type;
     
     request req = build_request(http_method::POST, path, body, full_headers);
     return send_request(req);
@@ -257,26 +215,6 @@ std::chrono::milliseconds client::body_timeout() const
     return m_timeout;
 }
 
-void client::set_max_header_size(std::size_t bytes)
-{
-    m_max_header_size = bytes;
-}
-
-std::size_t client::max_header_size() const
-{
-    return m_max_header_size;
-}
-
-void client::set_max_body_size(std::size_t bytes)
-{
-    m_max_body_size = bytes;
-}
-
-std::size_t client::max_body_size() const
-{
-    return m_max_body_size;
-}
-
 void client::set_connect_timeout(std::chrono::milliseconds timeout)
 {
     m_connect_timeout = timeout;
@@ -308,18 +246,17 @@ request client::build_request(http_method method, const std::string& path,
     req.body = body;
     
     // Set Host header (required for HTTP/1.1)
-    set_header(req.headers, "Host", m_host);
+    req.headers["Host"] = m_host;
     if (m_port != 80 && m_port != 443) {
-        std::string host = *find_header(req.headers, "Host");
-        set_header(req.headers, "Host", host + ":" + std::to_string(m_port));
+        req.headers["Host"] += ":" + std::to_string(m_port);
     }
     
     // Set Connection header
-    set_header(req.headers, "Connection", "close");
+    req.headers["Connection"] = "close";
     
     // Copy additional headers
     for (const auto& [key, value] : headers) {
-        set_header(req.headers, key, value);
+        req.headers[key] = value;
     }
     
     return req;
@@ -329,24 +266,13 @@ response client::receive_response()
 {
     std::string buffer;
     auto start_time = std::chrono::steady_clock::now();
-
-    const auto read_chunk = [this]() {
-        size_t bytes = m_transport->available();
-        if (bytes == 0) bytes = 4096; // transports such as TLS may not expose a count
-        return m_transport->read(bytes < size_t(16u * 1024u) ? bytes : size_t(16u * 1024u));
-    };
     
     // Read until we have complete headers
     while (!response::has_complete_headers(buffer)) {
         if (m_transport->readable()) {
-            auto data = read_chunk();
+            auto data = m_transport->readAll();
             if (!data.empty()) {
                 buffer += data.toStdString();
-                const size_t separator = buffer.find("\r\n\r\n");
-                if ((separator == std::string::npos && buffer.size() > m_max_header_size) ||
-                    (separator != std::string::npos && separator + 4 > m_max_header_size)) {
-                    throw network_error("Response headers too large");
-                }
             }
         }
         
@@ -377,8 +303,6 @@ response client::receive_response()
 
     const size_t header_end = buffer.find("\r\n\r\n");
     std::string raw_body = buffer.substr(header_end + 4);
-    if (raw_body.size() > m_max_body_size)
-        throw network_error("Response body too large");
 
     // body 的分帧方式：
     //   - Transfer-Encoding: chunked —— 逐块解码（末尾 0 块与 trailer 一并消费）
@@ -386,15 +310,10 @@ response client::receive_response()
     //   - 其它（HTTP/1.0 或无 CL）   —— 读到连接关闭为止（请求已带 Connection: close）
     if (is_chunked(resp.headers)) {
         chunked_decoder dec;
-        dec.max_output = m_max_body_size;
         while (!dec.feed(raw_body)) {
             if (m_transport->readable()) {
-                auto data = read_chunk();
-                if (!data.empty()) {
-                    raw_body += data.toStdString();
-                    if (raw_body.size() > m_max_body_size)
-                        throw network_error("Response body too large");
-                }
+                auto data = m_transport->readAll();
+                if (!data.empty()) raw_body += data.toStdString();
             }
             auto elapsed = std::chrono::steady_clock::now() - start_time;
             if (elapsed > m_timeout) throw network_error("Response body timeout");
@@ -404,23 +323,17 @@ response client::receive_response()
         return resp;
     }
 
-    if (const std::string* te = find_header(resp.headers, "Transfer-Encoding")) {
-        (void)te;
-        throw network_error("Unsupported Transfer-Encoding");
-    }
-
     if (const std::string* cl = find_header(resp.headers, "Content-Length")) {
-        const size_t content_length = *parse_content_length(*cl);
-        if (content_length > m_max_body_size)
-            throw network_error("Response body too large");
+        size_t content_length = 0;
+        try {
+            content_length = static_cast<size_t>(std::stoull(*cl));
+        } catch (...) {
+            content_length = 0;
+        }
         while (raw_body.size() < content_length) {
             if (m_transport->readable()) {
-                auto data = read_chunk();
-                if (!data.empty()) {
-                    raw_body += data.toStdString();
-                    if (raw_body.size() > m_max_body_size)
-                        throw network_error("Response body too large");
-                }
+                auto data = m_transport->readAll();
+                if (!data.empty()) raw_body += data.toStdString();
             }
             auto elapsed = std::chrono::steady_clock::now() - start_time;
             if (elapsed > m_timeout) throw network_error("Response body timeout");
@@ -433,11 +346,9 @@ response client::receive_response()
     // 无分帧信息：读到 EOF（服务器按 Connection: close 关闭连接）
     while (true) {
         if (m_transport->readable()) {
-            auto data = read_chunk();
+            auto data = m_transport->readAll();
             if (data.empty()) break;   // 对端关闭
             raw_body += data.toStdString();
-            if (raw_body.size() > m_max_body_size)
-                throw network_error("Response body too large");
             continue;
         }
         auto elapsed = std::chrono::steady_clock::now() - start_time;

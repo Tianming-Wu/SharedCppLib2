@@ -30,7 +30,6 @@
         may encounter severe performance degradation, because the
         current implementation is not optimized for that.
 
-    
     Dev plan (ideas):
         For large chunk of binary data, use a special type (type
         support will also be added later): ExternalFile, and store

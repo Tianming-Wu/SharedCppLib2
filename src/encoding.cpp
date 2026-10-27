@@ -66,10 +66,7 @@ std::string path_to_utf8(const std::filesystem::path& path)
     // u8string() is std::string up to C++17 and std::u8string from C++20 on; both hold UTF-8,
     // and char8_t has to be looked at through char to get back into a std::string.
     const auto utf8 = path.u8string();
-    if constexpr (std::is_same_v<decltype(utf8), std::string>)
-        return utf8;
-    else
-        return std::string(reinterpret_cast<const char*>(utf8.data()), utf8.size());
+    return std::string(reinterpret_cast<const char*>(utf8.data()), utf8.size());
 }
 
 #ifdef SCL2_ENCODING_WINDOWS

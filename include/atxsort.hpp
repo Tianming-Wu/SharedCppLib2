@@ -7,7 +7,7 @@
 #include <concepts>
 #include <utility>
 
-namespace atxsort {
+namespace scl2::sort {
 
 // 比较函数 concept
 template<typename T>
@@ -103,4 +103,4 @@ void radix_sort(Iter begin, Iter end) {
     }
 }
 
-} // namespace atxsort
+} // namespace scl2::sort

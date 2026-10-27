@@ -564,8 +564,8 @@ public:
     // Reorders the elements in [first, last) — the order list, not the key order — with `comp`
     // on the stored pairs. Stable, O(n log n), no allocation. To sort by value, pass a
     // comparator on `second`.
-    template<typename Compare>
-    void sort(iterator first, iterator last, Compare comp) {
+    template<typename SortCompare>
+    void sort(iterator first, iterator last, SortCompare comp) {
         if (first == last) return;
 
         size_type length = 0;
@@ -584,8 +584,8 @@ public:
         after->prev = tail;
     }
 
-    template<typename Compare>
-    void sort(Compare comp) { sort(begin(), end(), comp); }
+    template<typename SortCompare>
+    void sort(SortCompare comp) { sort(begin(), end(), comp); }
 
     // sort() with a projection instead of a comparator: proj(element) is compared with <. This
     // is the shape for "sort by something inside the mapped value", e.g.
@@ -916,8 +916,8 @@ private:
     }
 
     // ── Order-list merge sort: relinks only, allocation free, stable ────────────────
-    template<typename Compare>
-    static void merge_sort_range(link* head, size_type length, Compare& comp, link*& out_head, link*& out_tail) {
+    template<typename SortCompare>
+    static void merge_sort_range(link* head, size_type length, SortCompare& comp, link*& out_head, link*& out_tail) {
         if (length <= 1) {
             head->prev = nullptr;
             head->next = nullptr;

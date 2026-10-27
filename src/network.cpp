@@ -4,6 +4,8 @@
 #include "typemask.hpp"
 
 #include <vector>
+#include <algorithm>
+#include <limits>
 
 #ifdef OS_WINDOWS
     #include <iphlpapi.h>  // IPAddr / ICMP_ECHO_REPLY / IP_SUCCESS
@@ -150,10 +152,10 @@ std::optional<std::chrono::milliseconds> ping_rtt(const network_address &addr, s
         return std::nullopt;  // ICMPv6 is not built yet, and neither is anything else
     }
 
-    const DWORD budget = (timeout.count() > 0) ? static_cast<DWORD>(timeout.count()) : 1;
     const uint32_t target = addr.ipv4_addr.to_uint32();
 
 #ifdef OS_WINDOWS
+    const DWORD budget = (timeout.count() > 0) ? static_cast<DWORD>(timeout.count()) : 1;
     HANDLE handle = ::IcmpCreateFile();
     if (handle == INVALID_HANDLE_VALUE) {
         return std::nullopt;
@@ -179,6 +181,9 @@ std::optional<std::chrono::milliseconds> ping_rtt(const network_address &addr, s
     }
     return std::chrono::milliseconds(echo->RoundTripTime);
 #else
+    const auto budget = (timeout.count() > 0)
+        ? std::min(timeout.count(), static_cast<decltype(timeout.count())>(std::numeric_limits<int>::max()))
+        : 1;
     // Unprivileged ICMP: a DGRAM socket with IPPROTO_ICMP, which Linux allows.
     // Falls back to a raw socket, which needs privileges.
     int sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);

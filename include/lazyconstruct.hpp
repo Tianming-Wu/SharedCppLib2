@@ -3,7 +3,9 @@
 
     This library is header only.
 
-    [SCL_INDEPENDENT_MODULE]
+    [SCL_STANDALONE_MODULE]
+    version: 1.0.0
+    cpp_generation: cxx17 - cxx23
 */
 
 #pragma once

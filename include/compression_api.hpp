@@ -1,5 +1,6 @@
 #pragma once
 #include "apibase.hpp"
+#include "bytearray.hpp"
 #include <istream>
 #include <ostream>
 

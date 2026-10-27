@@ -134,7 +134,8 @@ public:
 
     /// @brief Encode this image into a PNG stream.
     /// @throws std::runtime_error if the requested format cannot represent it.
-    scl2::bytearray encode(const options& opt = {}) const;
+    scl2::bytearray encode(const options& opt) const;
+    scl2::bytearray encode() const { return encode(options{}); }
 
     /// @brief Alias of encode(), following the library's `dump()` naming.
     scl2::bytearray dump() const { return encode(); }

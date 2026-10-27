@@ -1,5 +1,3 @@
-#pragma once
-
 /*
     Memory module for SharedCppLib2
 
@@ -14,9 +12,11 @@
         This module is highly platform dependent, and currently only Windows is supported.
         Well SharedCppLib2 is mostly multiplatform, so I may have to deal with this later.
 */
+#pragma once
 #include "platform.hpp"
 
 #ifdef OS_WINDOWS
+// This module is not supported on non-windows platforms.
 
 #undef CopyMemory
 
