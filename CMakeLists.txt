@@ -153,6 +153,9 @@ add_library(toml STATIC src/toml.cpp)
 # （include/orderedmap.hpp 出现在 toml.hpp 里，消费方需要它的 include 目录）。
 # basic 那一条是 foreach 顺手带上的，toml 自身并不调用 basic。
 target_link_libraries(toml PUBLIC orderedmap)
+# settings 是一个设置对象，底下是 json2 / toml / ini / xkeydb 四种存储，所以这四条都是公开依赖。
+add_library(settings STATIC src/settings.cpp)
+target_link_libraries(settings PUBLIC json2 toml ini xkeydb)
 add_library(i18n STATIC src/i18n.cpp)
 add_library(yaml STATIC src/yaml.cpp)
 add_library(bitmap STATIC src/bitmap.cpp)
@@ -249,7 +252,7 @@ target_link_libraries(network_tcp PUBLIC basic network_core network_dns)
 # basic 库依赖关系
 foreach(target
     regexfilter logc sha256 sha512 sha1 crc32 arguments ini abstract
-    xml keydb perm condition datauri json toml i18n yaml aes
+    xml keydb perm condition datauri json toml i18n yaml aes settings
     fileio file resourced uri zlib
     bitmap qrcode png xkeydb
 )
@@ -291,7 +294,7 @@ target_compile_definitions(json PUBLIC
 set(TARGET_LIST
     sha256 sha512 sha1 crc32 basic indexer regexfilter
     logt logc platform perm process arguments ini abstract xml xml2 json2 encoding debug
-    console aes keydb types condition filesystem datauri json toml i18n yaml
+    console aes keydb types condition filesystem datauri json toml i18n yaml settings
     fileio file resourced uri pipe
     network_core network_dns network_tcp network_udp network_http network_io network_ws
     bitmap qrcode zlib png xkeydb

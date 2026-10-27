@@ -52,6 +52,7 @@ Other languages: [English](README.md)
 - **[`yaml`](doc/zh_CN/yaml.md)** - YAML 1.2 解析器，支持流式读取（早期开发）
 - **[`toml`](doc/zh_CN/toml.md)** - TOML 解析与序列化（早期开发）
 - **[`json2`](doc/zh_CN/json2.md)** - 无损 JSON：保留原文，改过之后写回去只有改动处不同（早期开发）
+- **[`settings`](doc/zh_CN/settings.md)** - 绑定到一个文件的设置对象：嵌套键、带类型的读取，JSON / TOML / INI / xkeydb 共用一个接口
 - **[`encoding`](doc/zh_CN/encoding.md)** - 编码边界：内部一律 UTF-8，只在边界上转换（路径、代码页、BOM、控制台）
 - **[`resourced`](doc/zh_CN/resourced.md)** - 具名资源与分层来源（二进制里的块、包文件、裸文件目录），对已在内存中的块零拷贝取用，Windows 上把字节直接变成窗口图标
 - **`platform`** - 跨平台工具和抽象层
@@ -108,7 +109,7 @@ find_package(SharedCppLib2 REQUIRED)
 target_link_libraries(您的目标 SharedCppLib2::basic)
 ```
 
-**可用目标：** `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`, `xml2`, `json2`, `encoding`, `resourced`
+**可用目标：** `sha256`, `crc32`, `basic`, `indexer`, `regexfilter`, `logt`, `logc`, `Base64`, `platform`, `arguments`, `ini`, `abstract`, `xml`, `debug`, `stream`, `console`, `keydb`, `types`, `condition`, `filesystem`, `datauri`, `json`, `network_core`, `network_dns`, `network_tcp`, `network_udp`, `network_http`, `network`, `api`, `hmac`, `logh`, `rerr`, `bits`, `cache`, `exexception`, `engineering`, `multindex`, `percentage`, `RAII`, `singleinst`, `structural_binding`, `typemask`, `xml2`, `json2`, `encoding`, `resourced`, `settings`
 
 上述列表可能不完整，以顶部列表为准。
 

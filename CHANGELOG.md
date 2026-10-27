@@ -3,6 +3,7 @@
 See [release.md](doc/release.md) for the releasing standards.
 
 ## [Unreleased]
+- New: `settings` — an application's settings as one object bound to one file: keys are paths (`window/width`), `get<T>()` falls back to a default for a value that is missing or unreadable, and `set_default()` fills a key only when it holds nothing. The file is JSON, TOML, INI or an `xkeydb` database, chosen from its extension; JSON and TOML files keep their own text, so a save changes only what was edited, and `xkeydb` files can be encrypted.
 - Fixed: a UDP socket's `receiveFrom()` without a timeout blocked for ever instead of taking only what had already arrived; zero now polls, and a negative timeout waits without a limit.
 - New: `network::ws::client` — a WebSocket client: opening handshake, text and binary messages, fragmentation and control frames handled inside, and `wss` through any transport that implements the shared stream interface.
 - Fixed: network HTTP and WebSocket reads are bounded, HTTP framing headers are validated without regard to header-name case, and closed TCP clients are reclaimed.
