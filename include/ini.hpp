@@ -118,26 +118,25 @@ public:
     scl2::bytearray getValueAsByteArray(const std::string& section, const std::string& key, const scl2::bytearray& default_value) const;
     void setValue(const std::string& section, const std::string& key, const scl2::bytearray& value);
 
-    // template function for api-supported types. You need to inclulde api.hpp for this to work.
+    // template functions for api-supported types. You need to include api.hpp for these to work.
     #ifdef SHAREDCPPLIB2_API_SUPPORT
     template<typename T>
-    requires scl2::hasSerializeSupport<T>
+    requires (scl2::has_generic_deserialize<T> && scl2::has_generic_serialize<T>)
     T getValueAsApiType(const std::string& section, const std::string& key, const T& default_value = T()) const {
         if(data.contains(section) && data.at(section).contains(key)) {
             const std::string& valueStr = data.at(section).at(key);
-            T value;
-            typename T::string_type s = typename T::string_type(valueStr.begin(), valueStr.end());
-            scl2::__deserialize_function<T>(value);
-            return value;
+            using string_type = scl2::__get_string_type<T>;
+            return scl2::generic_deserialize<T, string_type>(
+                string_type(valueStr.begin(), valueStr.end()));
         }
         return default_value;
     }
-    
+
     template<typename T>
-    requires scl2::hasSerializeSupport<T>
+    requires (scl2::has_generic_serialize<T> && scl2::has_generic_deserialize<T>)
     void setValue(const std::string& section, const std::string& key, const T& value) {
-        typename T::string_type s;
-        scl2::__serialize_function<T>(value, s);
+        using string_type = scl2::__get_string_type<T>;
+        const string_type s = scl2::generic_serialize<T, string_type>(value);
         data[section][key] = std::string(s.begin(), s.end());
     }
     #endif // SHAREDCPPLIB2_API_SUPPORT

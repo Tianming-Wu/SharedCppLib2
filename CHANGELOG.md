@@ -9,6 +9,7 @@ See [release.md](doc/release.md) for the releasing standards.
 - Fixed: blank and comment-only YAML lines no longer pop indentation scopes, preserving nested mappings and sequences.
 - Changed: the libraries install under `lib/scl2`, so one prefix keeps a directory per project; the package files stay in `lib/cmake/SharedCppLib2` and the exported targets follow the new location.
 - New: `SCL2_EVENT_SUBSYSTEM`, a CMake option that builds a second variant of the same sources for SCL2EventSubsystem — it installs to `lib/event` and exports as `scl2eventScl2Targets`, and `scl2mode.hpp` makes the two variants refuse to link together.
+- Fixed: `ini` — `getValueAsApiType()` and `setValue()` for a type with generic serialization did not compile.
 
 ### v3.9.1
 - New: `variant::make_array()` and `variant::make_object()` — a default `variant` is null, so an empty array or object could only be written by naming the container type. Both also take an initializer list to fill what they make, and a repeated key keeps its last value.
