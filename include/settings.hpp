@@ -18,6 +18,13 @@
         int width = config.get("window/width", 800);
         config.set("window/width", 1024);
         config.save();
+
+    An enumeration registered with scl2_strenum / scl2_bitstrenum is written by the name its
+    table gives it, and read back the same way:
+
+        config.set("mode", AIU::StartStopMode::Automatic);      // the file holds "Automatic"
+        auto mode = config.get("mode").as_strenum<AIU::StartStopMode>();
+        auto mode = config.get("mode", AIU::StartStopMode::Automatic);   // with a default
 */
 
 #pragma once
@@ -25,6 +32,7 @@
 #include "basics.hpp"
 #include "bytearray.hpp"
 #include "api.hpp"
+#include "enum.hpp"
 
 #include "json2.hpp"
 #include "toml.hpp"
@@ -39,6 +47,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <variant>
 
 namespace scl2 {
@@ -104,10 +113,13 @@ public:
     requires (std::is_floating_point_v<T>)
     settings_key(T v) : value_(static_cast<double>(v)) {}
 
-    /// Any enumeration, stored as its underlying value.
+    /// Any enumeration. One registered with scl2_strenum / scl2_bitstrenum is stored by the
+    /// name its table gives it, so a file someone may open reads "Automatic" rather than
+    /// 3; a value the table has no name for stays the number it is. Everything else is
+    /// stored as its underlying value.
     template<typename T>
     requires (std::is_enum_v<T>)
-    settings_key(T v) : value_(static_cast<std::int64_t>(v)) {}
+    settings_key(T v) : value_(enum_storage(v)) {}
 
     /// A class that is plain data: stored as its bytes.
     template<typename T>
@@ -149,16 +161,35 @@ public:
     /// starts with "base64:" - which is how the text providers store a bytearray.
     scl2::bytearray as_bytearray() const;
 
+    /// The value as an enumeration taken straight from its number - the short form of
+    /// static_cast<T>(as_int64()).
+    /// @note An enumeration registered with scl2_strenum / scl2_bitstrenum is read with
+    ///       as_strenum / as_bitstrenum or with as<T>() instead: its value may be a name.
     template<typename T>
-    requires (std::is_enum_v<T>)
+    requires (std::is_enum_v<T>
+              && !scl2::strenum_registered<T>
+              && !scl2::bitstrenum_registered<T>)
     T as_enum() const { return static_cast<T>(as_int64()); }
+
+    /// The value as the enumeration its table names it. A name is looked up, and a value
+    /// stored as a number - or as text that is one - is taken as that number.
+    /// @throws std::runtime_error when the key holds nothing that names a value of @p E.
+    template<typename E>
+    requires (std::is_enum_v<E> && scl2::strenum_registered<E>)
+    E as_strenum() const { return enum_value<E>(); }
+
+    /// The same for an enumeration registered with scl2_bitstrenum: a "FlagA | FlagC"
+    /// text, or the number behind it.
+    template<typename E>
+    requires (std::is_enum_v<E> && scl2::bitstrenum_registered<E>)
+    E as_bitstrenum() const { return enum_value<E>(); }
 
     /// The value as @p T: bool, an integral, a floating point, an enumeration, std::string,
     /// scl2::bytearray, a class that is plain data, or one with generic dump/load.
     template<typename T>
     T as() const {
         if constexpr (std::is_same_v<T, bool>)                  return as_bool();
-        else if constexpr (std::is_enum_v<T>)                   return static_cast<T>(as_int64());
+        else if constexpr (std::is_enum_v<T>)                   return enum_value<T>();
         else if constexpr (std::is_integral_v<T>)               return static_cast<T>(as_int64());
         else if constexpr (std::is_floating_point_v<T>)         return static_cast<T>(as_double());
         else if constexpr (std::is_same_v<T, std::string>)      return as_string();
@@ -196,6 +227,34 @@ public:
     static settings_key from_variant(const scl2::variant& value);
 
 private:
+    /// What an enumeration is stored as: the name its table gives it when that name is one,
+    /// the number otherwise. A value the table has no name for therefore loses nothing.
+    template<typename T>
+    requires (std::is_enum_v<T>)
+    static storage enum_storage(T value)
+    {
+        if constexpr (scl2::strenum_registered<T> || scl2::bitstrenum_registered<T>) {
+            if (auto text = scl2::to_string(value); text.has_value() && !text->empty()) {
+                return storage(std::move(*text));
+            }
+        }
+        return storage(static_cast<std::int64_t>(value));
+    }
+
+    /// An enumeration read back: the name it was stored as, else the number it holds. Text
+    /// that is neither a name nor a number throws, as every other as_* does.
+    template<typename T>
+    requires (std::is_enum_v<T>)
+    T enum_value() const
+    {
+        if constexpr (scl2::strenum_registered<T> || scl2::bitstrenum_registered<T>) {
+            if (const auto* text = std::get_if<std::string>(&value_)) {
+                if (auto parsed = scl2::from_string<T>(*text)) return *parsed;
+            }
+        }
+        return static_cast<T>(as_int64());
+    }
+
     storage value_;
 };
 
@@ -224,8 +283,20 @@ public:
     void set(const std::string& key, const settings_key& value);
     void set(const std::string& key, settings_key&& value);
 
+    /// An enumeration: a text file keeps the name its table gives it, an xkeydb file keeps
+    /// the number - that one is a store for the program, not for a reader.
+    template<typename T>
+    requires (std::is_enum_v<T>)
+    void set(const std::string& key, T value) { set_enum(key, value); }
+
     /// Store @p value only when the key holds nothing yet.
     void set_default(const std::string& key, const settings_key& value);
+
+    template<typename T>
+    requires (std::is_enum_v<T>)
+    void set_default(const std::string& key, T value) {
+        if (!contains(key)) set_enum(key, value);
+    }
 
     /// The value under @p key, null when there is none. A key that names an object or an
     /// array holds no value, so it answers null as well.
@@ -278,6 +349,16 @@ private:
     template<typename T> const T& getp() const;
 
     void set_value(const std::string& key, const settings_key& value);
+
+    template<typename T>
+    requires (std::is_enum_v<T>)
+    void set_enum(const std::string& key, T value) {
+        if (provider_id == settings_provider::xkeydb) {
+            set_value(key, settings_key(static_cast<std::int64_t>(value)));
+        } else {
+            set_value(key, settings_key(value));
+        }
+    }
 
 private:
     settings_provider provider_id = settings_provider::json;

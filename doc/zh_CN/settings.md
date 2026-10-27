@@ -122,6 +122,29 @@ if (config.contains("window/width")) { ... }
 
 `remove()` 回答该键原先在不在；`clear()` 清空整个文档。
 
+### 枚举
+
+用 `scl2_strenum` 或 `scl2_bitstrenum` 注册过的枚举会保留名字，所以别人打开的文件里是
+`"Automatic"` 而不是 `3`：
+
+```cpp
+config.set("mode", StartStopMode::Automatic);                       // 文件里是 "Automatic"
+StartStopMode mode = config.get("mode", StartStopMode::Automatic);
+StartStopMode same = config.get("mode").as_strenum<StartStopMode>();
+```
+
+| 类型 | 存成 | 读回 |
+|---------|---------|---------|
+| 用 `scl2_strenum` 注册过 | 名字；表里没有名字的值存成数字 | `as_strenum<E>()`、`as<E>()`、`get<E>()` |
+| 用 `scl2_bitstrenum` 注册过 | `"Read \| Write"`；表里没有名字的值存成数字 | `as_bitstrenum<E>()`、`as<E>()`、`get<E>()` |
+| 其它 | 底层值 | `as_enum<E>()`、`as<E>()`、`get<E>()` |
+
+- `xkeydb` 文件对任何枚举都保留数字：那个文件是给程序看的，不是给人看的。
+- 名字按名字读回；数字（或内容是数字的文本）按那个数字读，所以手改过的文件和旧版本写的
+  文件都能读。
+- `as_enum<E>()` 只接受没有名字表的枚举；传进一个注册过的枚举是编译错误，所以读取注册过的
+  枚举要用 `as_strenum()` / `as_bitstrenum()`。
+
 ## 文件
 
 ```cpp
@@ -185,6 +208,7 @@ scl2::settings secure("secure.xkeydb", options);
 | `settings(path, provider)` | 打开或创建该文件 |
 | `settings(path, options)` | 同上，带上 `settings_options` 里的选项 |
 | `set(key, value)` | 存一个值；null 删除该键 |
+| `set(key, enumeration)` / `set_default(key, enumeration)` | 枚举：类型有名字表时按名字存，`xkeydb` 里存数字 |
 | `set_default(key, value)` | 键还没有值时才存 |
 | `get(key)` | 以 `settings_key` 给出值；没有时是 null |
 | `get(key, default)` | 同上，缺失时给出默认值 |
@@ -207,6 +231,7 @@ scl2::settings secure("secure.xkeydb", options);
 | `is_null()` / `is_bool()` / `is_int()` / `is_float()` / `is_string()` / `is_bytes()` | 它装着什么 |
 | `type_name()` | 同上，文本形式 |
 | `as<T>()` | 按上面的转换把值读成 `T` |
+| `as_enum<E>()` / `as_strenum<E>()` / `as_bitstrenum<E>()` | 按数字或名字把值读成枚举 |
 | `as_bool()` / `as_int64()` / `as_uint64()` / `as_double()` / `as_string()` / `as_bytearray()` | 同上，按类型取 |
 | `as_trivial_class<T>()` / `as_nontrivial_class<T>()` | 把字节还原成类 |
 

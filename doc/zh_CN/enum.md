@@ -43,7 +43,7 @@ enum class Color {
     Blue
 };
 
-scl2_strenum(Color, strenum_fallback_value,
+scl2_strenum(Color, scl2::strenum_fallback_value,
     scl2_pair(Color::Red,   "Red"),
     scl2_pair(Color::Green, "Green"),
     scl2_pair(Color::Blue,  "Blue")
@@ -97,7 +97,7 @@ enum class Permissions : uint32_t {
 
 scl2_enum_bitop(Permissions)
 scl2_bitenum_traits(Permissions, 0, 3)
-scl2_bitstrenum(Permissions, bitstrenum_fallback_partial,
+scl2_bitstrenum(Permissions, scl2::bitstrenum_fallback_partial,
     scl2_pair(Permissions::Read,  "Read"),
     scl2_pair(Permissions::Write, "Write"),
     scl2_pair(Permissions::Exec,  "Exec")
@@ -163,7 +163,7 @@ scl2_pair(Color::Red, "Red")  // 展开为 {Color::Red, "Red"}
 便捷宏，用于创建 `strenum` 映射并注册到 ADL 查找，以配合 `to_string` 使用。
 
 ```cpp
-scl2_strenum(MyEnum, strenum_fallback_value,
+scl2_strenum(MyEnum, scl2::strenum_fallback_value,
     scl2_pair(MyEnum::A, "ValueA"),
     scl2_pair(MyEnum::B, "ValueB")
 )
@@ -174,7 +174,7 @@ scl2_strenum(MyEnum, strenum_fallback_value,
 便捷宏，用于创建 `bitstrenum` 映射并注册到 ADL 查找，以配合 `to_string` 使用。
 
 ```cpp
-scl2_bitstrenum(MyFlags, bitstrenum_fallback_partial,
+scl2_bitstrenum(MyFlags, scl2::bitstrenum_fallback_partial,
     scl2_pair(MyFlags::FlagA, "FlagA"),
     scl2_pair(MyFlags::FlagB, "FlagB")
 )
@@ -277,6 +277,12 @@ bitstrenum(
 | `bitstrenum_fallback_combined` | 返回 `已知名称 | 0b...` 组合已知和未知位 |
 | `bitstrenum_fallback_combinedm` | 返回 `已知名称 | 1 << n` 组合已知和未知位 |
 
+> [!TIP]
+> 会被写进 `settings` 文件的位标志枚举，注册时建议用 `bitstrenum_fallback_combined`：已知位
+> 写成名字，没有名字的位写成 `0b...`，保存再读回时值不会凭空少掉几位。注意 `from_string()`
+> 只认名字——带 `0b...` 的文本本身读不回来，所以“什么该留住、什么可以丢”由使用方决定，
+> 库只按注册时的约定去写。
+
 ### 自由函数
 
 #### to_string
@@ -315,6 +321,16 @@ auto c = scl2::from_string<Color>("Red");   // Color::Red
 auto p = scl2::from_string<Perm>("Read | Write");  // Perm::Read | Perm::Write
 auto x = scl2::from_string<Color>("Purple");  // std::nullopt
 ```
+
+#### strenum_registered / bitstrenum_registered
+
+```cpp
+template<typename E> concept strenum_registered;     // 有 scl2_strenum 注册的名字表
+template<typename E> concept bitstrenum_registered;  // 有 scl2_bitstrenum 注册的名字表
+```
+
+在模板里判断某个枚举是否注册了名字表。`settings_key::as_strenum()` / `as_bitstrenum()`
+用它们在编译期把没有注册的枚举挡掉；`as_enum()` 则相反，只接受没有注册的枚举。
 
 ### 枚举转换器
 

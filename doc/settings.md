@@ -128,6 +128,30 @@ Conversions the accessors make:
 
 `remove()` answers whether the key was there; `clear()` empties the document.
 
+### Enumerations
+
+An enumeration registered with `scl2_strenum` or `scl2_bitstrenum` keeps its name, so a file
+someone may open reads `"Automatic"` rather than `3`:
+
+```cpp
+config.set("mode", StartStopMode::Automatic);                       // the file holds "Automatic"
+StartStopMode mode = config.get("mode", StartStopMode::Automatic);
+StartStopMode same = config.get("mode").as_strenum<StartStopMode>();
+```
+
+| Type | Stored as | Read with |
+|---------|---------|---------|
+| registered with `scl2_strenum` | the name; the number when the table has no name for the value | `as_strenum<E>()`, `as<E>()`, `get<E>()` |
+| registered with `scl2_bitstrenum` | `"Read \| Write"`; the number when the table has no name for the value | `as_bitstrenum<E>()`, `as<E>()`, `get<E>()` |
+| anything else | the underlying value | `as_enum<E>()`, `as<E>()`, `get<E>()` |
+
+- An `xkeydb` file keeps the number for every enumeration: that file is for the program, not
+  for a reader.
+- A name is read back by name; a number, or text that is one, is taken as that number, so a
+  hand-edited file and one written by an older version both read.
+- `as_enum<E>()` accepts only an enumeration that has no table; passing a registered one is a
+  compile error, which is what makes `as_strenum()` / `as_bitstrenum()` the way in.
+
 ## The file
 
 ```cpp
@@ -195,6 +219,7 @@ scl2::settings secure("secure.xkeydb", options);
 | `settings(path, provider)` | open or create that file |
 | `settings(path, options)` | the same, with the options `settings_options` carries |
 | `set(key, value)` | store a value; null removes the key |
+| `set(key, enumeration)` / `set_default(key, enumeration)` | an enumeration: by name when its type has a table, the number in `xkeydb` |
 | `set_default(key, value)` | store it only when the key holds nothing |
 | `get(key)` | the value as `settings_key`; null when there is none |
 | `get(key, default)` | the same, with a value for a missing key |
@@ -217,6 +242,7 @@ A `settings` is move-only: a copy would be a second object bound to the same fil
 | `is_null()` / `is_bool()` / `is_int()` / `is_float()` / `is_string()` / `is_bytes()` | what it holds |
 | `type_name()` | that, as text |
 | `as<T>()` | the value as `T`, with the conversions above |
+| `as_enum<E>()` / `as_strenum<E>()` / `as_bitstrenum<E>()` | the value as an enumeration, by number or by name |
 | `as_bool()` / `as_int64()` / `as_uint64()` / `as_double()` / `as_string()` / `as_bytearray()` | the same, by type |
 | `as_trivial_class<T>()` / `as_nontrivial_class<T>()` | the bytes as a class |
 

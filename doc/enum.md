@@ -43,7 +43,7 @@ enum class Color {
     Blue
 };
 
-scl2_strenum(Color, strenum_fallback_value,
+scl2_strenum(Color, scl2::strenum_fallback_value,
     scl2_pair(Color::Red,   "Red"),
     scl2_pair(Color::Green, "Green"),
     scl2_pair(Color::Blue,  "Blue")
@@ -97,7 +97,7 @@ enum class Permissions : uint32_t {
 
 scl2_enum_bitop(Permissions)
 scl2_bitenum_traits(Permissions, 0, 3)
-scl2_bitstrenum(Permissions, bitstrenum_fallback_partial,
+scl2_bitstrenum(Permissions, scl2::bitstrenum_fallback_partial,
     scl2_pair(Permissions::Read,  "Read"),
     scl2_pair(Permissions::Write, "Write"),
     scl2_pair(Permissions::Exec,  "Exec")
@@ -163,7 +163,7 @@ scl2_pair(Color::Red, "Red")  // expands to {Color::Red, "Red"}
 Convenience macro to create a `strenum` map and register it for ADL-based `to_string` lookup.
 
 ```cpp
-scl2_strenum(MyEnum, strenum_fallback_value,
+scl2_strenum(MyEnum, scl2::strenum_fallback_value,
     scl2_pair(MyEnum::A, "ValueA"),
     scl2_pair(MyEnum::B, "ValueB")
 )
@@ -174,7 +174,7 @@ scl2_strenum(MyEnum, strenum_fallback_value,
 Convenience macro to create a `bitstrenum` map and register it for ADL-based `to_string` lookup.
 
 ```cpp
-scl2_bitstrenum(MyFlags, bitstrenum_fallback_partial,
+scl2_bitstrenum(MyFlags, scl2::bitstrenum_fallback_partial,
     scl2_pair(MyFlags::FlagA, "FlagA"),
     scl2_pair(MyFlags::FlagB, "FlagB")
 )
@@ -277,6 +277,13 @@ bitstrenum(
 | `bitstrenum_fallback_combined` | Return `KnownName | 0b...` for known + unknown |
 | `bitstrenum_fallback_combinedm` | Return `KnownName | 1 << n` for known + unknown |
 
+> [!TIP]
+> A bit flag enum that ends up in a `settings` file is best registered with
+> `bitstrenum_fallback_combined`: flags with a name are written by name, bits without one as
+> `0b...`, so a save does not quietly drop them. `from_string()` still only knows names - text
+> carrying a bitset does not come back as a value - so what has to survive and what may be
+> lost stays the caller's decision; the table does only what it was registered to do.
+
 ### Free function
 
 #### to_string
@@ -315,6 +322,17 @@ auto c = scl2::from_string<Color>("Red");   // Color::Red
 auto p = scl2::from_string<Perm>("Read | Write");  // Perm::Read | Perm::Write
 auto x = scl2::from_string<Color>("Purple");  // std::nullopt
 ```
+
+#### strenum_registered / bitstrenum_registered
+
+```cpp
+template<typename E> concept strenum_registered;     // E has a table from scl2_strenum
+template<typename E> concept bitstrenum_registered;  // E has a table from scl2_bitstrenum
+```
+
+Whether an enum has a name table, for use in templates. `settings_key::as_strenum()` and
+`as_bitstrenum()` use them to keep an unregistered enum out at compile time; `as_enum()` goes
+the other way and accepts only enumerations without a table.
 
 ### Enum converter
 

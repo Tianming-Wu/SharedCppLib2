@@ -25,6 +25,7 @@
 #pragma once
 
 #include <type_traits>
+#include <stdexcept>
 #if __cpp_lib_generator >= 202207L
 #include <generator>
 #endif
@@ -566,6 +567,23 @@ inline std::optional<E> from_string(const CharT* str) {
 }
 
 
+// Whether an enum has a table to read names with.
+//
+// The fallback get_strenum_map() above returns void, so calling .to_string() on it is
+// invalid - which is exactly the difference a requires-expression can see. The call is
+// unqualified on purpose: ADL finds the map that scl2_strenum() registered in the
+// namespace the enum lives in.
+template<typename E>
+concept strenum_registered = std::is_enum_v<E> && requires (E value) {
+    get_strenum_map(value).to_string(value);
+};
+
+template<typename E>
+concept bitstrenum_registered = std::is_enum_v<E> && requires (E value) {
+    get_bitstrenum_map(value).to_string(value);
+};
+
+
 // macros for better definition
 // In-class enum support is currently not provided
 
@@ -589,6 +607,11 @@ inline std::optional<E> from_string(const CharT* str) {
         return NAME##_bitstrenum; \
     }
 
+// A flag value can only be written by name while every bit in it has a name. Register with
+// bitstrenum_fallback_combined when the bits no flag names have to survive too: they are
+// written as 0b..., which keeps the value readable, but bitstrenum::from_string() only knows
+// the names - a text carrying such a bitset does not come back as a value. Reading it is the
+// caller's business; the table reports what it was told to report.
 
 // output grammer helper.
 
@@ -608,7 +631,7 @@ inline std::optional<E> from_string(const CharT* str) {
         Green,
         Blue
     };
-    scl2_strenum(Color, strenum_fallback_value,
+    scl2_strenum(Color, scl2::strenum_fallback_value,
         scl2_pair(Color::Red, "Red"),
         scl2_pair(Color::Green, "Green"),
         scl2_pair(Color::Blue, "Blue")
