@@ -329,7 +329,8 @@ std::string apply_style_inline(const scl2::stringlist &lines, const std::vector<
 
 void progress_bar_colored(double progress, int length, const color& color) {
     int pos = static_cast<int>(length * progress); // 计算进度条的填充长度
-    std::cout << textColor(color); // 填充绿色
+    std::cout << "\r[";
+    std::cout << bgcolor(color); // 填充绿色
     for (int i = 0; i < pos; ++i) std::cout << " ";
 	std::cout << reset_color; // 清除颜色
 	for (int i = pos; i < length; ++i) std::cout << " ";
@@ -356,7 +357,8 @@ void progress_bar_texted(double progress, int length) {
 void progress_bar_colored(int current, int all, int length, const color& color) {
     double progress = static_cast<double>(current) / all;
     int pos = static_cast<int>(length * progress); // 计算进度条的填充长度
-    std::cout << textColor(color); // 填充绿色
+    std::cout << "\r[";
+    std::cout << bgcolor(color); // 填充绿色
     for (int i = 0; i < pos; ++i) std::cout << " ";
 	std::cout << reset_color; // 清除颜色
 	for (int i = pos; i < length; ++i) std::cout << " ";
