@@ -5,6 +5,8 @@
 
 namespace scl2::qrcode {
 
+const encoder::options encoder::default_opt;
+
 size_t capacityForVersion(Version v, ErrorCorrectionLevel l)
 {
     // [1-40] [{L = 0, M = 1, Q = 2, H = 3}]
